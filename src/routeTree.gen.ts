@@ -9,18 +9,90 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SyncRouteImport } from './routes/sync'
+import { Route as RelatoriosRouteImport } from './routes/relatorios'
+import { Route as PendenciasRouteImport } from './routes/pendencias'
+import { Route as PacientesRouteImport } from './routes/pacientes'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as IaRouteImport } from './routes/ia'
+import { Route as HistoricoRouteImport } from './routes/historico'
+import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as EvolucoesRouteImport } from './routes/evolucoes'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
+import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as AgendaRouteImport } from './routes/agenda'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SyncRoute = SyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelatoriosRoute = RelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PendenciasRoute = PendenciasRouteImport.update({
+  id: '/pendencias',
+  path: '/pendencias',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PacientesRoute = PacientesRouteImport.update({
+  id: '/pacientes',
+  path: '/pacientes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IaRoute = IaRouteImport.update({
+  id: '/ia',
+  path: '/ia',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoricoRoute = HistoricoRouteImport.update({
+  id: '/historico',
+  path: '/historico',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinanceiroRoute = FinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EvolucoesRoute = EvolucoesRouteImport.update({
+  id: '/evolucoes',
+  path: '/evolucoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CadastroRoute = CadastroRouteImport.update({
+  id: '/cadastro',
+  path: '/cadastro',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AgendaRoute = AgendaRouteImport.update({
   id: '/agenda',
   path: '/agenda',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -31,36 +103,193 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/agenda': typeof AgendaRoute
+  '/cadastro': typeof CadastroRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
+  '/evolucoes': typeof EvolucoesRoute
+  '/financeiro': typeof FinanceiroRoute
+  '/historico': typeof HistoricoRoute
+  '/ia': typeof IaRoute
+  '/login': typeof LoginRoute
+  '/pacientes': typeof PacientesRoute
+  '/pendencias': typeof PendenciasRoute
+  '/relatorios': typeof RelatoriosRoute
+  '/sync': typeof SyncRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/agenda': typeof AgendaRoute
+  '/cadastro': typeof CadastroRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
+  '/evolucoes': typeof EvolucoesRoute
+  '/financeiro': typeof FinanceiroRoute
+  '/historico': typeof HistoricoRoute
+  '/ia': typeof IaRoute
+  '/login': typeof LoginRoute
+  '/pacientes': typeof PacientesRoute
+  '/pendencias': typeof PendenciasRoute
+  '/relatorios': typeof RelatoriosRoute
+  '/sync': typeof SyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/agenda': typeof AgendaRoute
+  '/cadastro': typeof CadastroRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
+  '/evolucoes': typeof EvolucoesRoute
+  '/financeiro': typeof FinanceiroRoute
+  '/historico': typeof HistoricoRoute
+  '/ia': typeof IaRoute
+  '/login': typeof LoginRoute
+  '/pacientes': typeof PacientesRoute
+  '/pendencias': typeof PendenciasRoute
+  '/relatorios': typeof RelatoriosRoute
+  '/sync': typeof SyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/agenda' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/agenda'
+    | '/cadastro'
+    | '/configuracoes'
+    | '/dashboard'
+    | '/evolucoes'
+    | '/financeiro'
+    | '/historico'
+    | '/ia'
+    | '/login'
+    | '/pacientes'
+    | '/pendencias'
+    | '/relatorios'
+    | '/sync'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/agenda' | '/dashboard'
-  id: '__root__' | '/' | '/agenda' | '/dashboard'
+  to:
+    | '/'
+    | '/admin'
+    | '/agenda'
+    | '/cadastro'
+    | '/configuracoes'
+    | '/dashboard'
+    | '/evolucoes'
+    | '/financeiro'
+    | '/historico'
+    | '/ia'
+    | '/login'
+    | '/pacientes'
+    | '/pendencias'
+    | '/relatorios'
+    | '/sync'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/agenda'
+    | '/cadastro'
+    | '/configuracoes'
+    | '/dashboard'
+    | '/evolucoes'
+    | '/financeiro'
+    | '/historico'
+    | '/ia'
+    | '/login'
+    | '/pacientes'
+    | '/pendencias'
+    | '/relatorios'
+    | '/sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   AgendaRoute: typeof AgendaRoute
+  CadastroRoute: typeof CadastroRoute
+  ConfiguracoesRoute: typeof ConfiguracoesRoute
   DashboardRoute: typeof DashboardRoute
+  EvolucoesRoute: typeof EvolucoesRoute
+  FinanceiroRoute: typeof FinanceiroRoute
+  HistoricoRoute: typeof HistoricoRoute
+  IaRoute: typeof IaRoute
+  LoginRoute: typeof LoginRoute
+  PacientesRoute: typeof PacientesRoute
+  PendenciasRoute: typeof PendenciasRoute
+  RelatoriosRoute: typeof RelatoriosRoute
+  SyncRoute: typeof SyncRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sync': {
+      id: '/sync'
+      path: '/sync'
+      fullPath: '/sync'
+      preLoaderRoute: typeof SyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relatorios': {
+      id: '/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof RelatoriosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pendencias': {
+      id: '/pendencias'
+      path: '/pendencias'
+      fullPath: '/pendencias'
+      preLoaderRoute: typeof PendenciasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pacientes': {
+      id: '/pacientes'
+      path: '/pacientes'
+      fullPath: '/pacientes'
+      preLoaderRoute: typeof PacientesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ia': {
+      id: '/ia'
+      path: '/ia'
+      fullPath: '/ia'
+      preLoaderRoute: typeof IaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/historico': {
+      id: '/historico'
+      path: '/historico'
+      fullPath: '/historico'
+      preLoaderRoute: typeof HistoricoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/financeiro': {
+      id: '/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/evolucoes': {
+      id: '/evolucoes'
+      path: '/evolucoes'
+      fullPath: '/evolucoes'
+      preLoaderRoute: typeof EvolucoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -68,11 +297,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/configuracoes': {
+      id: '/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ConfiguracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cadastro': {
+      id: '/cadastro'
+      path: '/cadastro'
+      fullPath: '/cadastro'
+      preLoaderRoute: typeof CadastroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/agenda': {
       id: '/agenda'
       path: '/agenda'
       fullPath: '/agenda'
       preLoaderRoute: typeof AgendaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -87,8 +337,20 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   AgendaRoute: AgendaRoute,
+  CadastroRoute: CadastroRoute,
+  ConfiguracoesRoute: ConfiguracoesRoute,
   DashboardRoute: DashboardRoute,
+  EvolucoesRoute: EvolucoesRoute,
+  FinanceiroRoute: FinanceiroRoute,
+  HistoricoRoute: HistoricoRoute,
+  IaRoute: IaRoute,
+  LoginRoute: LoginRoute,
+  PacientesRoute: PacientesRoute,
+  PendenciasRoute: PendenciasRoute,
+  RelatoriosRoute: RelatoriosRoute,
+  SyncRoute: SyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

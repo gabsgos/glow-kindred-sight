@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -110,9 +110,8 @@ function AgendaPage() {
         ))}
 
         {HOURS.map((h) => (
-          <>
+          <Fragment key={`row-${h}`}>
             <div
-              key={`h-${h}`}
               className="border-b border-r bg-background px-2 py-3 text-xs text-muted-foreground"
             >
               {String(h).padStart(2, "0")}:00
@@ -132,7 +131,7 @@ function AgendaPage() {
                 </div>
               );
             })}
-          </>
+          </Fragment>
         ))}
       </div>
 
