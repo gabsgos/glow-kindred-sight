@@ -24,6 +24,7 @@ import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PacientesIdRouteImport } from './routes/pacientes.$id'
 
 const SyncRoute = SyncRouteImport.update({
   id: '/sync',
@@ -100,6 +101,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PacientesIdRoute = PacientesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PacientesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -113,10 +119,11 @@ export interface FileRoutesByFullPath {
   '/historico': typeof HistoricoRoute
   '/ia': typeof IaRoute
   '/login': typeof LoginRoute
-  '/pacientes': typeof PacientesRoute
+  '/pacientes': typeof PacientesRouteWithChildren
   '/pendencias': typeof PendenciasRoute
   '/relatorios': typeof RelatoriosRoute
   '/sync': typeof SyncRoute
+  '/pacientes/$id': typeof PacientesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -130,10 +137,11 @@ export interface FileRoutesByTo {
   '/historico': typeof HistoricoRoute
   '/ia': typeof IaRoute
   '/login': typeof LoginRoute
-  '/pacientes': typeof PacientesRoute
+  '/pacientes': typeof PacientesRouteWithChildren
   '/pendencias': typeof PendenciasRoute
   '/relatorios': typeof RelatoriosRoute
   '/sync': typeof SyncRoute
+  '/pacientes/$id': typeof PacientesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -148,10 +156,11 @@ export interface FileRoutesById {
   '/historico': typeof HistoricoRoute
   '/ia': typeof IaRoute
   '/login': typeof LoginRoute
-  '/pacientes': typeof PacientesRoute
+  '/pacientes': typeof PacientesRouteWithChildren
   '/pendencias': typeof PendenciasRoute
   '/relatorios': typeof RelatoriosRoute
   '/sync': typeof SyncRoute
+  '/pacientes/$id': typeof PacientesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/pendencias'
     | '/relatorios'
     | '/sync'
+    | '/pacientes/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/pendencias'
     | '/relatorios'
     | '/sync'
+    | '/pacientes/$id'
   id:
     | '__root__'
     | '/'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/pendencias'
     | '/relatorios'
     | '/sync'
+    | '/pacientes/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -219,7 +231,7 @@ export interface RootRouteChildren {
   HistoricoRoute: typeof HistoricoRoute
   IaRoute: typeof IaRoute
   LoginRoute: typeof LoginRoute
-  PacientesRoute: typeof PacientesRoute
+  PacientesRoute: typeof PacientesRouteWithChildren
   PendenciasRoute: typeof PendenciasRoute
   RelatoriosRoute: typeof RelatoriosRoute
   SyncRoute: typeof SyncRoute
@@ -332,8 +344,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pacientes/$id': {
+      id: '/pacientes/$id'
+      path: '/$id'
+      fullPath: '/pacientes/$id'
+      preLoaderRoute: typeof PacientesIdRouteImport
+      parentRoute: typeof PacientesRoute
+    }
   }
 }
+
+interface PacientesRouteChildren {
+  PacientesIdRoute: typeof PacientesIdRoute
+}
+
+const PacientesRouteChildren: PacientesRouteChildren = {
+  PacientesIdRoute: PacientesIdRoute,
+}
+
+const PacientesRouteWithChildren = PacientesRoute._addFileChildren(
+  PacientesRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -347,7 +378,7 @@ const rootRouteChildren: RootRouteChildren = {
   HistoricoRoute: HistoricoRoute,
   IaRoute: IaRoute,
   LoginRoute: LoginRoute,
-  PacientesRoute: PacientesRoute,
+  PacientesRoute: PacientesRouteWithChildren,
   PendenciasRoute: PendenciasRoute,
   RelatoriosRoute: RelatoriosRoute,
   SyncRoute: SyncRoute,
