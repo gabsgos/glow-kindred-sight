@@ -121,9 +121,18 @@ export const api = {
         nomeCompleto: data.nomeCompleto ?? "Sem nome",
         telefone: data.telefone,
         cpf: data.cpf,
+        dataNascimento: data.dataNascimento,
+        endereco: data.endereco,
+        observacoes: data.observacoes,
+        aliases: data.aliases,
         valorPadraoAtendimento: data.valorPadraoAtendimento,
-        creditoDisponivel: 0,
-        ativo: true,
+        creditoDisponivel: data.creditoDisponivel ?? 0,
+        ativo: data.ativo ?? true,
+        criadoEm: new Date().toISOString(),
+        atualizadoEm: new Date().toISOString(),
+        totalAtendimentos: 0,
+        totalPago: 0,
+        totalPendente: 0,
       };
       pacientes.push(p);
       return wait(p);
