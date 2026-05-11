@@ -25,6 +25,7 @@ import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PacientesIdRouteImport } from './routes/pacientes.$id'
+import { Route as PacientesIdEditarRouteImport } from './routes/pacientes.$id.editar'
 
 const SyncRoute = SyncRouteImport.update({
   id: '/sync',
@@ -106,6 +107,11 @@ const PacientesIdRoute = PacientesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => PacientesRoute,
 } as any)
+const PacientesIdEditarRoute = PacientesIdEditarRouteImport.update({
+  id: '/editar',
+  path: '/editar',
+  getParentRoute: () => PacientesIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -123,7 +129,8 @@ export interface FileRoutesByFullPath {
   '/pendencias': typeof PendenciasRoute
   '/relatorios': typeof RelatoriosRoute
   '/sync': typeof SyncRoute
-  '/pacientes/$id': typeof PacientesIdRoute
+  '/pacientes/$id': typeof PacientesIdRouteWithChildren
+  '/pacientes/$id/editar': typeof PacientesIdEditarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -141,7 +148,8 @@ export interface FileRoutesByTo {
   '/pendencias': typeof PendenciasRoute
   '/relatorios': typeof RelatoriosRoute
   '/sync': typeof SyncRoute
-  '/pacientes/$id': typeof PacientesIdRoute
+  '/pacientes/$id': typeof PacientesIdRouteWithChildren
+  '/pacientes/$id/editar': typeof PacientesIdEditarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -160,7 +168,8 @@ export interface FileRoutesById {
   '/pendencias': typeof PendenciasRoute
   '/relatorios': typeof RelatoriosRoute
   '/sync': typeof SyncRoute
-  '/pacientes/$id': typeof PacientesIdRoute
+  '/pacientes/$id': typeof PacientesIdRouteWithChildren
+  '/pacientes/$id/editar': typeof PacientesIdEditarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/sync'
     | '/pacientes/$id'
+    | '/pacientes/$id/editar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/sync'
     | '/pacientes/$id'
+    | '/pacientes/$id/editar'
   id:
     | '__root__'
     | '/'
@@ -217,6 +228,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/sync'
     | '/pacientes/$id'
+    | '/pacientes/$id/editar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -351,15 +363,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PacientesIdRouteImport
       parentRoute: typeof PacientesRoute
     }
+    '/pacientes/$id/editar': {
+      id: '/pacientes/$id/editar'
+      path: '/editar'
+      fullPath: '/pacientes/$id/editar'
+      preLoaderRoute: typeof PacientesIdEditarRouteImport
+      parentRoute: typeof PacientesIdRoute
+    }
   }
 }
 
+interface PacientesIdRouteChildren {
+  PacientesIdEditarRoute: typeof PacientesIdEditarRoute
+}
+
+const PacientesIdRouteChildren: PacientesIdRouteChildren = {
+  PacientesIdEditarRoute: PacientesIdEditarRoute,
+}
+
+const PacientesIdRouteWithChildren = PacientesIdRoute._addFileChildren(
+  PacientesIdRouteChildren,
+)
+
 interface PacientesRouteChildren {
-  PacientesIdRoute: typeof PacientesIdRoute
+  PacientesIdRoute: typeof PacientesIdRouteWithChildren
 }
 
 const PacientesRouteChildren: PacientesRouteChildren = {
-  PacientesIdRoute: PacientesIdRoute,
+  PacientesIdRoute: PacientesIdRouteWithChildren,
 }
 
 const PacientesRouteWithChildren = PacientesRoute._addFileChildren(
@@ -386,3 +417,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
