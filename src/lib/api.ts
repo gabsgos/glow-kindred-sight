@@ -139,8 +139,18 @@ export const api = {
     },
     update: async (id: string, data: Partial<Paciente>) => {
       const idx = pacientes.findIndex((p) => p.id === id);
-      if (idx >= 0) pacientes[idx] = { ...pacientes[idx], ...data };
+      if (idx >= 0)
+        pacientes[idx] = {
+          ...pacientes[idx],
+          ...data,
+          atualizadoEm: new Date().toISOString(),
+        };
       return wait(pacientes[idx] ?? null);
+    },
+    remove: async (id: string) => {
+      const idx = pacientes.findIndex((p) => p.id === id);
+      if (idx >= 0) pacientes.splice(idx, 1);
+      return wait({ ok: idx >= 0 });
     },
     financeiro: (id: string) =>
       wait(faturamentos.filter((f) => f.pacienteId === id)),
