@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { MoreVertical } from "lucide-react";
 import {
   Dialog,
@@ -99,7 +100,14 @@ export function AppointmentModal({
                   {ativos.map((c) => (
                     <tr key={c.pacienteId} className="border-t">
                       <td className="p-3">
-                        <div className="font-medium">{c.nomeCompleto}</div>
+                        <Link
+                          to="/pacientes/$id"
+                          params={{ id: c.pacienteId }}
+                          onClick={onClose}
+                          className="font-medium text-primary hover:underline"
+                        >
+                          {c.nomeCompleto}
+                        </Link>
                         <button className="text-xs text-primary underline">
                           Adicionar evolução
                         </button>
@@ -114,7 +122,15 @@ export function AppointmentModal({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Abrir perfil do cliente</DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link
+                                to="/pacientes/$id"
+                                params={{ id: c.pacienteId }}
+                                onClick={onClose}
+                              >
+                                Abrir perfil do cliente
+                              </Link>
+                            </DropdownMenuItem>
                             <DropdownMenuItem>Remover</DropdownMenuItem>
                             <DropdownMenuItem>Remover e gerar reagendamento</DropdownMenuItem>
                             <DropdownMenuItem>Marcar como desistente</DropdownMenuItem>
