@@ -56,8 +56,11 @@ function PacienteDetail() {
               {p.telefone ?? "Sem telefone"} · Valor padrão: {brl(p.valorPadraoAtendimento)}
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Badge variant={p.ativo ? "default" : "secondary"}>{p.ativo ? "Ativo" : "Inativo"}</Badge>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/pacientes/$id/editar" params={{ id: p.id }}>Editar cadastro</Link>
+            </Button>
             <Button size="sm" variant="outline">Registrar pagamento</Button>
             <Button size="sm">Nova evolução</Button>
           </div>

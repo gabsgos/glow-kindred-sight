@@ -42,8 +42,10 @@ function PacientesPage() {
             {filtrados.length} de {items.length} pacientes
           </p>
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" /> Novo paciente
+        <Button asChild className="gap-2">
+          <Link to="/cadastro">
+            <Plus className="h-4 w-4" /> Novo paciente
+          </Link>
         </Button>
       </div>
 
