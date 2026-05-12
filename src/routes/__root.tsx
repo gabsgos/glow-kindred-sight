@@ -76,14 +76,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "fisiobot" },
+      { name: "description", content: "Web Portal Gateway provides a user interface for managing patient data, financial information, and system reports." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "fisiobot" },
+      { property: "og:description", content: "Web Portal Gateway provides a user interface for managing patient data, financial information, and system reports." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "fisiobot" },
+      { name: "twitter:description", content: "Web Portal Gateway provides a user interface for managing patient data, financial information, and system reports." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/5c510bc9-f1e9-46f1-98c2-254f0e232f78/id-preview-09ad552b--8147f2c4-ad84-4b81-9af7-c5735362c4c1.lovable.app-1778605511085.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/5c510bc9-f1e9-46f1-98c2-254f0e232f78/id-preview-09ad552b--8147f2c4-ad84-4b81-9af7-c5735362c4c1.lovable.app-1778605511085.png" },
     ],
     links: [
       {
