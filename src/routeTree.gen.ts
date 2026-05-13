@@ -25,6 +25,7 @@ import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PacientesIdRouteImport } from './routes/pacientes.$id'
+import { Route as FinanceiroCaixaRouteImport } from './routes/financeiro.caixa'
 import { Route as PacientesIdEditarRouteImport } from './routes/pacientes.$id.editar'
 
 const SyncRoute = SyncRouteImport.update({
@@ -107,6 +108,11 @@ const PacientesIdRoute = PacientesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => PacientesRoute,
 } as any)
+const FinanceiroCaixaRoute = FinanceiroCaixaRouteImport.update({
+  id: '/caixa',
+  path: '/caixa',
+  getParentRoute: () => FinanceiroRoute,
+} as any)
 const PacientesIdEditarRoute = PacientesIdEditarRouteImport.update({
   id: '/editar',
   path: '/editar',
@@ -121,7 +127,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
   '/evolucoes': typeof EvolucoesRoute
-  '/financeiro': typeof FinanceiroRoute
+  '/financeiro': typeof FinanceiroRouteWithChildren
   '/historico': typeof HistoricoRoute
   '/ia': typeof IaRoute
   '/login': typeof LoginRoute
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/pendencias': typeof PendenciasRoute
   '/relatorios': typeof RelatoriosRoute
   '/sync': typeof SyncRoute
+  '/financeiro/caixa': typeof FinanceiroCaixaRoute
   '/pacientes/$id': typeof PacientesIdRouteWithChildren
   '/pacientes/$id/editar': typeof PacientesIdEditarRoute
 }
@@ -140,7 +147,7 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
   '/evolucoes': typeof EvolucoesRoute
-  '/financeiro': typeof FinanceiroRoute
+  '/financeiro': typeof FinanceiroRouteWithChildren
   '/historico': typeof HistoricoRoute
   '/ia': typeof IaRoute
   '/login': typeof LoginRoute
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/pendencias': typeof PendenciasRoute
   '/relatorios': typeof RelatoriosRoute
   '/sync': typeof SyncRoute
+  '/financeiro/caixa': typeof FinanceiroCaixaRoute
   '/pacientes/$id': typeof PacientesIdRouteWithChildren
   '/pacientes/$id/editar': typeof PacientesIdEditarRoute
 }
@@ -160,7 +168,7 @@ export interface FileRoutesById {
   '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
   '/evolucoes': typeof EvolucoesRoute
-  '/financeiro': typeof FinanceiroRoute
+  '/financeiro': typeof FinanceiroRouteWithChildren
   '/historico': typeof HistoricoRoute
   '/ia': typeof IaRoute
   '/login': typeof LoginRoute
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/pendencias': typeof PendenciasRoute
   '/relatorios': typeof RelatoriosRoute
   '/sync': typeof SyncRoute
+  '/financeiro/caixa': typeof FinanceiroCaixaRoute
   '/pacientes/$id': typeof PacientesIdRouteWithChildren
   '/pacientes/$id/editar': typeof PacientesIdEditarRoute
 }
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/pendencias'
     | '/relatorios'
     | '/sync'
+    | '/financeiro/caixa'
     | '/pacientes/$id'
     | '/pacientes/$id/editar'
   fileRoutesByTo: FileRoutesByTo
@@ -208,6 +218,7 @@ export interface FileRouteTypes {
     | '/pendencias'
     | '/relatorios'
     | '/sync'
+    | '/financeiro/caixa'
     | '/pacientes/$id'
     | '/pacientes/$id/editar'
   id:
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/pendencias'
     | '/relatorios'
     | '/sync'
+    | '/financeiro/caixa'
     | '/pacientes/$id'
     | '/pacientes/$id/editar'
   fileRoutesById: FileRoutesById
@@ -239,7 +251,7 @@ export interface RootRouteChildren {
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   DashboardRoute: typeof DashboardRoute
   EvolucoesRoute: typeof EvolucoesRoute
-  FinanceiroRoute: typeof FinanceiroRoute
+  FinanceiroRoute: typeof FinanceiroRouteWithChildren
   HistoricoRoute: typeof HistoricoRoute
   IaRoute: typeof IaRoute
   LoginRoute: typeof LoginRoute
@@ -363,6 +375,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PacientesIdRouteImport
       parentRoute: typeof PacientesRoute
     }
+    '/financeiro/caixa': {
+      id: '/financeiro/caixa'
+      path: '/caixa'
+      fullPath: '/financeiro/caixa'
+      preLoaderRoute: typeof FinanceiroCaixaRouteImport
+      parentRoute: typeof FinanceiroRoute
+    }
     '/pacientes/$id/editar': {
       id: '/pacientes/$id/editar'
       path: '/editar'
@@ -372,6 +391,18 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface FinanceiroRouteChildren {
+  FinanceiroCaixaRoute: typeof FinanceiroCaixaRoute
+}
+
+const FinanceiroRouteChildren: FinanceiroRouteChildren = {
+  FinanceiroCaixaRoute: FinanceiroCaixaRoute,
+}
+
+const FinanceiroRouteWithChildren = FinanceiroRoute._addFileChildren(
+  FinanceiroRouteChildren,
+)
 
 interface PacientesIdRouteChildren {
   PacientesIdEditarRoute: typeof PacientesIdEditarRoute
@@ -405,7 +436,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfiguracoesRoute: ConfiguracoesRoute,
   DashboardRoute: DashboardRoute,
   EvolucoesRoute: EvolucoesRoute,
-  FinanceiroRoute: FinanceiroRoute,
+  FinanceiroRoute: FinanceiroRouteWithChildren,
   HistoricoRoute: HistoricoRoute,
   IaRoute: IaRoute,
   LoginRoute: LoginRoute,
