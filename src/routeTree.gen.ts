@@ -25,6 +25,19 @@ import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PacientesIdRouteImport } from './routes/pacientes.$id'
+import { Route as FinanceiroVendasRouteImport } from './routes/financeiro.vendas'
+import { Route as FinanceiroContasPagarRouteImport } from './routes/financeiro.contas-pagar'
+import { Route as FinanceiroContasFinanceirasRouteImport } from './routes/financeiro.contas-financeiras'
+import { Route as FinanceiroComissaoRouteImport } from './routes/financeiro.comissao'
+import { Route as FinanceiroCaixaRouteImport } from './routes/financeiro.caixa'
+import { Route as DashboardsOperacionalRouteImport } from './routes/dashboards.operacional'
+import { Route as DashboardsGerencialRouteImport } from './routes/dashboards.gerencial'
+import { Route as DashboardsCrmRouteImport } from './routes/dashboards.crm'
+import { Route as CrmOportunidadesRouteImport } from './routes/crm.oportunidades'
+import { Route as CrmLeadsRouteImport } from './routes/crm.leads'
+import { Route as CrmAtividadesRouteImport } from './routes/crm.atividades'
+import { Route as AgendaOcupacaoRouteImport } from './routes/agenda.ocupacao'
+import { Route as AgendaGradesRouteImport } from './routes/agenda.grades'
 import { Route as PacientesIdEditarRouteImport } from './routes/pacientes.$id.editar'
 
 const SyncRoute = SyncRouteImport.update({
@@ -107,6 +120,72 @@ const PacientesIdRoute = PacientesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => PacientesRoute,
 } as any)
+const FinanceiroVendasRoute = FinanceiroVendasRouteImport.update({
+  id: '/vendas',
+  path: '/vendas',
+  getParentRoute: () => FinanceiroRoute,
+} as any)
+const FinanceiroContasPagarRoute = FinanceiroContasPagarRouteImport.update({
+  id: '/contas-pagar',
+  path: '/contas-pagar',
+  getParentRoute: () => FinanceiroRoute,
+} as any)
+const FinanceiroContasFinanceirasRoute =
+  FinanceiroContasFinanceirasRouteImport.update({
+    id: '/contas-financeiras',
+    path: '/contas-financeiras',
+    getParentRoute: () => FinanceiroRoute,
+  } as any)
+const FinanceiroComissaoRoute = FinanceiroComissaoRouteImport.update({
+  id: '/comissao',
+  path: '/comissao',
+  getParentRoute: () => FinanceiroRoute,
+} as any)
+const FinanceiroCaixaRoute = FinanceiroCaixaRouteImport.update({
+  id: '/caixa',
+  path: '/caixa',
+  getParentRoute: () => FinanceiroRoute,
+} as any)
+const DashboardsOperacionalRoute = DashboardsOperacionalRouteImport.update({
+  id: '/dashboards/operacional',
+  path: '/dashboards/operacional',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardsGerencialRoute = DashboardsGerencialRouteImport.update({
+  id: '/dashboards/gerencial',
+  path: '/dashboards/gerencial',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardsCrmRoute = DashboardsCrmRouteImport.update({
+  id: '/dashboards/crm',
+  path: '/dashboards/crm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmOportunidadesRoute = CrmOportunidadesRouteImport.update({
+  id: '/crm/oportunidades',
+  path: '/crm/oportunidades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmLeadsRoute = CrmLeadsRouteImport.update({
+  id: '/crm/leads',
+  path: '/crm/leads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmAtividadesRoute = CrmAtividadesRouteImport.update({
+  id: '/crm/atividades',
+  path: '/crm/atividades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgendaOcupacaoRoute = AgendaOcupacaoRouteImport.update({
+  id: '/ocupacao',
+  path: '/ocupacao',
+  getParentRoute: () => AgendaRoute,
+} as any)
+const AgendaGradesRoute = AgendaGradesRouteImport.update({
+  id: '/grades',
+  path: '/grades',
+  getParentRoute: () => AgendaRoute,
+} as any)
 const PacientesIdEditarRoute = PacientesIdEditarRouteImport.update({
   id: '/editar',
   path: '/editar',
@@ -116,12 +195,12 @@ const PacientesIdEditarRoute = PacientesIdEditarRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/agenda': typeof AgendaRoute
+  '/agenda': typeof AgendaRouteWithChildren
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
   '/evolucoes': typeof EvolucoesRoute
-  '/financeiro': typeof FinanceiroRoute
+  '/financeiro': typeof FinanceiroRouteWithChildren
   '/historico': typeof HistoricoRoute
   '/ia': typeof IaRoute
   '/login': typeof LoginRoute
@@ -129,18 +208,31 @@ export interface FileRoutesByFullPath {
   '/pendencias': typeof PendenciasRoute
   '/relatorios': typeof RelatoriosRoute
   '/sync': typeof SyncRoute
+  '/agenda/grades': typeof AgendaGradesRoute
+  '/agenda/ocupacao': typeof AgendaOcupacaoRoute
+  '/crm/atividades': typeof CrmAtividadesRoute
+  '/crm/leads': typeof CrmLeadsRoute
+  '/crm/oportunidades': typeof CrmOportunidadesRoute
+  '/dashboards/crm': typeof DashboardsCrmRoute
+  '/dashboards/gerencial': typeof DashboardsGerencialRoute
+  '/dashboards/operacional': typeof DashboardsOperacionalRoute
+  '/financeiro/caixa': typeof FinanceiroCaixaRoute
+  '/financeiro/comissao': typeof FinanceiroComissaoRoute
+  '/financeiro/contas-financeiras': typeof FinanceiroContasFinanceirasRoute
+  '/financeiro/contas-pagar': typeof FinanceiroContasPagarRoute
+  '/financeiro/vendas': typeof FinanceiroVendasRoute
   '/pacientes/$id': typeof PacientesIdRouteWithChildren
   '/pacientes/$id/editar': typeof PacientesIdEditarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/agenda': typeof AgendaRoute
+  '/agenda': typeof AgendaRouteWithChildren
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
   '/evolucoes': typeof EvolucoesRoute
-  '/financeiro': typeof FinanceiroRoute
+  '/financeiro': typeof FinanceiroRouteWithChildren
   '/historico': typeof HistoricoRoute
   '/ia': typeof IaRoute
   '/login': typeof LoginRoute
@@ -148,6 +240,19 @@ export interface FileRoutesByTo {
   '/pendencias': typeof PendenciasRoute
   '/relatorios': typeof RelatoriosRoute
   '/sync': typeof SyncRoute
+  '/agenda/grades': typeof AgendaGradesRoute
+  '/agenda/ocupacao': typeof AgendaOcupacaoRoute
+  '/crm/atividades': typeof CrmAtividadesRoute
+  '/crm/leads': typeof CrmLeadsRoute
+  '/crm/oportunidades': typeof CrmOportunidadesRoute
+  '/dashboards/crm': typeof DashboardsCrmRoute
+  '/dashboards/gerencial': typeof DashboardsGerencialRoute
+  '/dashboards/operacional': typeof DashboardsOperacionalRoute
+  '/financeiro/caixa': typeof FinanceiroCaixaRoute
+  '/financeiro/comissao': typeof FinanceiroComissaoRoute
+  '/financeiro/contas-financeiras': typeof FinanceiroContasFinanceirasRoute
+  '/financeiro/contas-pagar': typeof FinanceiroContasPagarRoute
+  '/financeiro/vendas': typeof FinanceiroVendasRoute
   '/pacientes/$id': typeof PacientesIdRouteWithChildren
   '/pacientes/$id/editar': typeof PacientesIdEditarRoute
 }
@@ -155,12 +260,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/agenda': typeof AgendaRoute
+  '/agenda': typeof AgendaRouteWithChildren
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
   '/evolucoes': typeof EvolucoesRoute
-  '/financeiro': typeof FinanceiroRoute
+  '/financeiro': typeof FinanceiroRouteWithChildren
   '/historico': typeof HistoricoRoute
   '/ia': typeof IaRoute
   '/login': typeof LoginRoute
@@ -168,6 +273,19 @@ export interface FileRoutesById {
   '/pendencias': typeof PendenciasRoute
   '/relatorios': typeof RelatoriosRoute
   '/sync': typeof SyncRoute
+  '/agenda/grades': typeof AgendaGradesRoute
+  '/agenda/ocupacao': typeof AgendaOcupacaoRoute
+  '/crm/atividades': typeof CrmAtividadesRoute
+  '/crm/leads': typeof CrmLeadsRoute
+  '/crm/oportunidades': typeof CrmOportunidadesRoute
+  '/dashboards/crm': typeof DashboardsCrmRoute
+  '/dashboards/gerencial': typeof DashboardsGerencialRoute
+  '/dashboards/operacional': typeof DashboardsOperacionalRoute
+  '/financeiro/caixa': typeof FinanceiroCaixaRoute
+  '/financeiro/comissao': typeof FinanceiroComissaoRoute
+  '/financeiro/contas-financeiras': typeof FinanceiroContasFinanceirasRoute
+  '/financeiro/contas-pagar': typeof FinanceiroContasPagarRoute
+  '/financeiro/vendas': typeof FinanceiroVendasRoute
   '/pacientes/$id': typeof PacientesIdRouteWithChildren
   '/pacientes/$id/editar': typeof PacientesIdEditarRoute
 }
@@ -189,6 +307,19 @@ export interface FileRouteTypes {
     | '/pendencias'
     | '/relatorios'
     | '/sync'
+    | '/agenda/grades'
+    | '/agenda/ocupacao'
+    | '/crm/atividades'
+    | '/crm/leads'
+    | '/crm/oportunidades'
+    | '/dashboards/crm'
+    | '/dashboards/gerencial'
+    | '/dashboards/operacional'
+    | '/financeiro/caixa'
+    | '/financeiro/comissao'
+    | '/financeiro/contas-financeiras'
+    | '/financeiro/contas-pagar'
+    | '/financeiro/vendas'
     | '/pacientes/$id'
     | '/pacientes/$id/editar'
   fileRoutesByTo: FileRoutesByTo
@@ -208,6 +339,19 @@ export interface FileRouteTypes {
     | '/pendencias'
     | '/relatorios'
     | '/sync'
+    | '/agenda/grades'
+    | '/agenda/ocupacao'
+    | '/crm/atividades'
+    | '/crm/leads'
+    | '/crm/oportunidades'
+    | '/dashboards/crm'
+    | '/dashboards/gerencial'
+    | '/dashboards/operacional'
+    | '/financeiro/caixa'
+    | '/financeiro/comissao'
+    | '/financeiro/contas-financeiras'
+    | '/financeiro/contas-pagar'
+    | '/financeiro/vendas'
     | '/pacientes/$id'
     | '/pacientes/$id/editar'
   id:
@@ -227,6 +371,19 @@ export interface FileRouteTypes {
     | '/pendencias'
     | '/relatorios'
     | '/sync'
+    | '/agenda/grades'
+    | '/agenda/ocupacao'
+    | '/crm/atividades'
+    | '/crm/leads'
+    | '/crm/oportunidades'
+    | '/dashboards/crm'
+    | '/dashboards/gerencial'
+    | '/dashboards/operacional'
+    | '/financeiro/caixa'
+    | '/financeiro/comissao'
+    | '/financeiro/contas-financeiras'
+    | '/financeiro/contas-pagar'
+    | '/financeiro/vendas'
     | '/pacientes/$id'
     | '/pacientes/$id/editar'
   fileRoutesById: FileRoutesById
@@ -234,12 +391,12 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
-  AgendaRoute: typeof AgendaRoute
+  AgendaRoute: typeof AgendaRouteWithChildren
   CadastroRoute: typeof CadastroRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   DashboardRoute: typeof DashboardRoute
   EvolucoesRoute: typeof EvolucoesRoute
-  FinanceiroRoute: typeof FinanceiroRoute
+  FinanceiroRoute: typeof FinanceiroRouteWithChildren
   HistoricoRoute: typeof HistoricoRoute
   IaRoute: typeof IaRoute
   LoginRoute: typeof LoginRoute
@@ -247,6 +404,12 @@ export interface RootRouteChildren {
   PendenciasRoute: typeof PendenciasRoute
   RelatoriosRoute: typeof RelatoriosRoute
   SyncRoute: typeof SyncRoute
+  CrmAtividadesRoute: typeof CrmAtividadesRoute
+  CrmLeadsRoute: typeof CrmLeadsRoute
+  CrmOportunidadesRoute: typeof CrmOportunidadesRoute
+  DashboardsCrmRoute: typeof DashboardsCrmRoute
+  DashboardsGerencialRoute: typeof DashboardsGerencialRoute
+  DashboardsOperacionalRoute: typeof DashboardsOperacionalRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -363,6 +526,97 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PacientesIdRouteImport
       parentRoute: typeof PacientesRoute
     }
+    '/financeiro/vendas': {
+      id: '/financeiro/vendas'
+      path: '/vendas'
+      fullPath: '/financeiro/vendas'
+      preLoaderRoute: typeof FinanceiroVendasRouteImport
+      parentRoute: typeof FinanceiroRoute
+    }
+    '/financeiro/contas-pagar': {
+      id: '/financeiro/contas-pagar'
+      path: '/contas-pagar'
+      fullPath: '/financeiro/contas-pagar'
+      preLoaderRoute: typeof FinanceiroContasPagarRouteImport
+      parentRoute: typeof FinanceiroRoute
+    }
+    '/financeiro/contas-financeiras': {
+      id: '/financeiro/contas-financeiras'
+      path: '/contas-financeiras'
+      fullPath: '/financeiro/contas-financeiras'
+      preLoaderRoute: typeof FinanceiroContasFinanceirasRouteImport
+      parentRoute: typeof FinanceiroRoute
+    }
+    '/financeiro/comissao': {
+      id: '/financeiro/comissao'
+      path: '/comissao'
+      fullPath: '/financeiro/comissao'
+      preLoaderRoute: typeof FinanceiroComissaoRouteImport
+      parentRoute: typeof FinanceiroRoute
+    }
+    '/financeiro/caixa': {
+      id: '/financeiro/caixa'
+      path: '/caixa'
+      fullPath: '/financeiro/caixa'
+      preLoaderRoute: typeof FinanceiroCaixaRouteImport
+      parentRoute: typeof FinanceiroRoute
+    }
+    '/dashboards/operacional': {
+      id: '/dashboards/operacional'
+      path: '/dashboards/operacional'
+      fullPath: '/dashboards/operacional'
+      preLoaderRoute: typeof DashboardsOperacionalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboards/gerencial': {
+      id: '/dashboards/gerencial'
+      path: '/dashboards/gerencial'
+      fullPath: '/dashboards/gerencial'
+      preLoaderRoute: typeof DashboardsGerencialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboards/crm': {
+      id: '/dashboards/crm'
+      path: '/dashboards/crm'
+      fullPath: '/dashboards/crm'
+      preLoaderRoute: typeof DashboardsCrmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/oportunidades': {
+      id: '/crm/oportunidades'
+      path: '/crm/oportunidades'
+      fullPath: '/crm/oportunidades'
+      preLoaderRoute: typeof CrmOportunidadesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/leads': {
+      id: '/crm/leads'
+      path: '/crm/leads'
+      fullPath: '/crm/leads'
+      preLoaderRoute: typeof CrmLeadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/atividades': {
+      id: '/crm/atividades'
+      path: '/crm/atividades'
+      fullPath: '/crm/atividades'
+      preLoaderRoute: typeof CrmAtividadesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agenda/ocupacao': {
+      id: '/agenda/ocupacao'
+      path: '/ocupacao'
+      fullPath: '/agenda/ocupacao'
+      preLoaderRoute: typeof AgendaOcupacaoRouteImport
+      parentRoute: typeof AgendaRoute
+    }
+    '/agenda/grades': {
+      id: '/agenda/grades'
+      path: '/grades'
+      fullPath: '/agenda/grades'
+      preLoaderRoute: typeof AgendaGradesRouteImport
+      parentRoute: typeof AgendaRoute
+    }
     '/pacientes/$id/editar': {
       id: '/pacientes/$id/editar'
       path: '/editar'
@@ -372,6 +626,39 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AgendaRouteChildren {
+  AgendaGradesRoute: typeof AgendaGradesRoute
+  AgendaOcupacaoRoute: typeof AgendaOcupacaoRoute
+}
+
+const AgendaRouteChildren: AgendaRouteChildren = {
+  AgendaGradesRoute: AgendaGradesRoute,
+  AgendaOcupacaoRoute: AgendaOcupacaoRoute,
+}
+
+const AgendaRouteWithChildren =
+  AgendaRoute._addFileChildren(AgendaRouteChildren)
+
+interface FinanceiroRouteChildren {
+  FinanceiroCaixaRoute: typeof FinanceiroCaixaRoute
+  FinanceiroComissaoRoute: typeof FinanceiroComissaoRoute
+  FinanceiroContasFinanceirasRoute: typeof FinanceiroContasFinanceirasRoute
+  FinanceiroContasPagarRoute: typeof FinanceiroContasPagarRoute
+  FinanceiroVendasRoute: typeof FinanceiroVendasRoute
+}
+
+const FinanceiroRouteChildren: FinanceiroRouteChildren = {
+  FinanceiroCaixaRoute: FinanceiroCaixaRoute,
+  FinanceiroComissaoRoute: FinanceiroComissaoRoute,
+  FinanceiroContasFinanceirasRoute: FinanceiroContasFinanceirasRoute,
+  FinanceiroContasPagarRoute: FinanceiroContasPagarRoute,
+  FinanceiroVendasRoute: FinanceiroVendasRoute,
+}
+
+const FinanceiroRouteWithChildren = FinanceiroRoute._addFileChildren(
+  FinanceiroRouteChildren,
+)
 
 interface PacientesIdRouteChildren {
   PacientesIdEditarRoute: typeof PacientesIdEditarRoute
@@ -400,12 +687,12 @@ const PacientesRouteWithChildren = PacientesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
-  AgendaRoute: AgendaRoute,
+  AgendaRoute: AgendaRouteWithChildren,
   CadastroRoute: CadastroRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   DashboardRoute: DashboardRoute,
   EvolucoesRoute: EvolucoesRoute,
-  FinanceiroRoute: FinanceiroRoute,
+  FinanceiroRoute: FinanceiroRouteWithChildren,
   HistoricoRoute: HistoricoRoute,
   IaRoute: IaRoute,
   LoginRoute: LoginRoute,
@@ -413,6 +700,12 @@ const rootRouteChildren: RootRouteChildren = {
   PendenciasRoute: PendenciasRoute,
   RelatoriosRoute: RelatoriosRoute,
   SyncRoute: SyncRoute,
+  CrmAtividadesRoute: CrmAtividadesRoute,
+  CrmLeadsRoute: CrmLeadsRoute,
+  CrmOportunidadesRoute: CrmOportunidadesRoute,
+  DashboardsCrmRoute: DashboardsCrmRoute,
+  DashboardsGerencialRoute: DashboardsGerencialRoute,
+  DashboardsOperacionalRoute: DashboardsOperacionalRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

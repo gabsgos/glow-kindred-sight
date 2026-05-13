@@ -2,8 +2,11 @@ import {
   adminStatus,
   agenda,
   auditoria,
+  caixas,
+  contasFinanceiras,
   evolucoes,
   faturamentos,
+  lancamentosCaixa,
   pacientes,
   pendencias,
   profissionais,
@@ -14,6 +17,8 @@ import type {
   ComandoIaResposta,
   Evolucao,
   Faturamento,
+  LancamentoCaixa,
+  MetodoPagamento,
   Paciente,
   Pendencia,
 } from "./types";
@@ -292,3 +297,45 @@ export const api = {
 
   profissionais: () => wait(profissionais),
 };
+
+// ---- caixa
+export const caixaApi = {
+  contas: () => wait(contasFinanceiras),
+  caixaAtual: () => wait(caixas.find((c) => c.situacao === "aberto") ?? null),
+  listCaixas: () => wait([...caixas].reverse()),
+  lancamentos: (caixaId: string) =>
+    wait(
+      [...lancamentosCaixa]
+        .filter((l) => l.caixaId === caixaId)
+        .sort((a, b) => (a.data < b.data ? 1 : -1)),
+    ),
+  addLancamento: async (input: Omit<LancamentoCaixa, "id">) => {
+    const novo: LancamentoCaixa = { ...input, id: `lc_${Date.now()}` };
+    lancamentosCaixa.unshift(novo);
+    return wait(novo);
+  },
+  fecharCaixa: async (id: string) => {
+    const c = caixas.find((x) => x.id === id);
+    if (c) {
+      c.situacao = "fechado";
+      c.dataFechamento = new Date().toISOString();
+    }
+    return wait(c);
+  },
+  abrirCaixa: async (input: { responsavel: string; contaId: string; saldoInicial: number }) => {
+    const conta = contasFinanceiras.find((c) => c.id === input.contaId);
+    const novo = {
+      id: `caixa_${Date.now()}`,
+      responsavel: input.responsavel,
+      contaId: input.contaId,
+      contaNome: conta?.nome ?? "—",
+      dataAbertura: new Date().toISOString(),
+      saldoInicial: input.saldoInicial,
+      situacao: "aberto" as const,
+    };
+    caixas.push(novo);
+    return wait(novo);
+  },
+};
+
+export type { MetodoPagamento };

@@ -141,3 +141,41 @@ export type AdminStatus = {
   ultimoErro?: string;
   build: string;
 };
+
+export type ContaFinanceira = {
+  id: string;
+  nome: string;
+  tipo: "caixa" | "banco" | "cartao";
+  saldo: number;
+};
+
+export type MetodoPagamento =
+  | "Dinheiro"
+  | "C. Crédito"
+  | "C. Débito"
+  | "Cheque"
+  | "Depósito bancário"
+  | "Pix";
+
+export type LancamentoCaixa = {
+  id: string;
+  caixaId: string;
+  data: string; // ISO
+  origem: string; // "Contas a receber", "Avulso", etc.
+  metodo: MetodoPagamento;
+  tipo: "entrada" | "saida" | "transferencia";
+  valor: number;
+  descricao?: string;
+  pacienteId?: string;
+};
+
+export type Caixa = {
+  id: string;
+  responsavel: string;
+  contaId: string;
+  contaNome: string;
+  dataAbertura: string; // ISO
+  dataFechamento?: string;
+  saldoInicial: number;
+  situacao: "aberto" | "fechado";
+};
