@@ -323,3 +323,35 @@ export function corDoServico(servico: string): string {
       return "var(--service-fisio)";
   }
 }
+
+export const contasFinanceiras: ContaFinanceira[] = [
+  { id: "cf_001", nome: "Caixinha", tipo: "caixa", saldo: 130152 },
+  { id: "cf_002", nome: "Banco Itaú", tipo: "banco", saldo: 48230.5 },
+  { id: "cf_003", nome: "Cartão Stone", tipo: "cartao", saldo: 2280.24 },
+];
+
+export const caixas: Caixa[] = [
+  {
+    id: "caixa_001",
+    responsavel: "CW REHAB",
+    contaId: "cf_001",
+    contaNome: "Caixinha",
+    dataAbertura: "2026-05-08T17:14:00",
+    saldoInicial: 0,
+    situacao: "aberto",
+  },
+];
+
+export const lancamentosCaixa: LancamentoCaixa[] = [
+  { id: "lc_001", caixaId: "caixa_001", data: "2026-05-05T13:55:00", origem: "Contas a receber", metodo: "Dinheiro", tipo: "entrada", valor: 800, pacienteId: "pac_001" },
+  { id: "lc_002", caixaId: "caixa_001", data: "2026-05-05T13:40:00", origem: "Contas a receber", metodo: "Dinheiro", tipo: "entrada", valor: 2400, pacienteId: "pac_002" },
+  { id: "lc_003", caixaId: "caixa_001", data: "2026-05-05T13:37:00", origem: "Contas a receber", metodo: "Dinheiro", tipo: "entrada", valor: 2100, pacienteId: "pac_003" },
+  { id: "lc_004", caixaId: "caixa_001", data: "2026-05-05T13:29:00", origem: "Contas a receber", metodo: "Dinheiro", tipo: "entrada", valor: 2400, pacienteId: "pac_004" },
+  { id: "lc_005", caixaId: "caixa_001", data: "2026-05-05T13:27:00", origem: "Contas a receber", metodo: "Dinheiro", tipo: "entrada", valor: 800, pacienteId: "pac_001" },
+  { id: "lc_006", caixaId: "caixa_001", data: "2026-05-05T13:25:00", origem: "Contas a receber", metodo: "Dinheiro", tipo: "entrada", valor: 800, pacienteId: "pac_002" },
+  { id: "lc_007", caixaId: "caixa_001", data: "2026-05-05T13:22:00", origem: "Contas a receber", metodo: "Dinheiro", tipo: "entrada", valor: 750, pacienteId: "pac_003" },
+  { id: "lc_008", caixaId: "caixa_001", data: "2026-05-05T13:19:00", origem: "Contas a receber", metodo: "Dinheiro", tipo: "entrada", valor: 1600, pacienteId: "pac_004" },
+  { id: "lc_009", caixaId: "caixa_001", data: "2026-05-04T09:35:00", origem: "Contas a receber", metodo: "C. Crédito", tipo: "entrada", valor: 1280.24, pacienteId: "pac_001" },
+  { id: "lc_010", caixaId: "caixa_001", data: "2026-05-04T09:35:00", origem: "Contas a receber", metodo: "C. Crédito", tipo: "entrada", valor: 1000, pacienteId: "pac_002" },
+  { id: "lc_011", caixaId: "caixa_001", data: "2026-04-08T09:06:00", origem: "Contas a receber", metodo: "Dinheiro", tipo: "entrada", valor: 1800, pacienteId: "pac_003" },
+];
