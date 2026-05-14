@@ -25,7 +25,7 @@ import { api } from "@/lib/api";
 import type { Faturamento, Paciente } from "@/lib/types";
 
 export const Route = createFileRoute("/financeiro")({
-  head: () => ({ meta: [{ title: "Financeiro — FisioBot" }] }),
+  head: () => ({ meta: [{ title: "Contas a receber — FisioBot" }] }),
   component: FinanceiroPage,
 });
 
@@ -75,9 +75,9 @@ function FinanceiroPage() {
     <div className="space-y-6 p-4 md:p-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Financeiro</h1>
+          <h1 className="text-2xl font-semibold">Contas a receber</h1>
           <p className="text-sm text-muted-foreground">
-            Atendimentos faturados, créditos e pagamentos.
+            Cobranças de pacientes, créditos e quitação de atendimentos.
           </p>
         </div>
       </div>
