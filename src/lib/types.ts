@@ -179,3 +179,46 @@ export type Caixa = {
   saldoInicial: number;
   situacao: "aberto" | "fechado";
 };
+
+export type ContaPagar = {
+  id: string;
+  descricao: string;
+  categoria: string; // Aluguel, Insumos, Salário, Energia, etc.
+  fornecedor?: string;
+  valor: number;
+  vencimento: string; // YYYY-MM-DD
+  pago: boolean;
+  dataPagamento?: string;
+  contaId?: string;
+  recorrente?: boolean;
+};
+
+export type Venda = {
+  id: string;
+  pacienteId: string;
+  pacienteNome: string;
+  pacote: string; // "10 sessões Fisioterapia"
+  quantidadeSessoes: number;
+  valorTotal: number;
+  desconto: number;
+  valorFinal: number;
+  formaPagamento: MetodoPagamento;
+  parcelas: number;
+  data: string; // YYYY-MM-DD
+  vendedorId?: string;
+  vendedorNome?: string;
+  status: "ativa" | "cancelada" | "concluida";
+};
+
+export type Comissao = {
+  id: string;
+  profissionalId: string;
+  profissionalNome: string;
+  referencia: string; // YYYY-MM
+  atendimentos: number;
+  baseCalculo: number;
+  percentual: number;
+  valor: number;
+  status: "pendente" | "paga";
+  dataPagamento?: string;
+};
