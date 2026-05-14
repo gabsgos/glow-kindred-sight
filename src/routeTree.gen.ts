@@ -25,6 +25,8 @@ import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PacientesIdRouteImport } from './routes/pacientes.$id'
+import { Route as FinanceiroContasPagarRouteImport } from './routes/financeiro.contas-pagar'
+import { Route as FinanceiroContasFinanceirasRouteImport } from './routes/financeiro.contas-financeiras'
 import { Route as FinanceiroCaixaRouteImport } from './routes/financeiro.caixa'
 import { Route as DashboardsOperacionalRouteImport } from './routes/dashboards.operacional'
 import { Route as DashboardsGerencialRouteImport } from './routes/dashboards.gerencial'
@@ -116,6 +118,17 @@ const PacientesIdRoute = PacientesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => PacientesRoute,
 } as any)
+const FinanceiroContasPagarRoute = FinanceiroContasPagarRouteImport.update({
+  id: '/contas-pagar',
+  path: '/contas-pagar',
+  getParentRoute: () => FinanceiroRoute,
+} as any)
+const FinanceiroContasFinanceirasRoute =
+  FinanceiroContasFinanceirasRouteImport.update({
+    id: '/contas-financeiras',
+    path: '/contas-financeiras',
+    getParentRoute: () => FinanceiroRoute,
+  } as any)
 const FinanceiroCaixaRoute = FinanceiroCaixaRouteImport.update({
   id: '/caixa',
   path: '/caixa',
@@ -192,6 +205,8 @@ export interface FileRoutesByFullPath {
   '/dashboards/gerencial': typeof DashboardsGerencialRoute
   '/dashboards/operacional': typeof DashboardsOperacionalRoute
   '/financeiro/caixa': typeof FinanceiroCaixaRoute
+  '/financeiro/contas-financeiras': typeof FinanceiroContasFinanceirasRoute
+  '/financeiro/contas-pagar': typeof FinanceiroContasPagarRoute
   '/pacientes/$id': typeof PacientesIdRouteWithChildren
   '/pacientes/$id/editar': typeof PacientesIdEditarRoute
 }
@@ -220,6 +235,8 @@ export interface FileRoutesByTo {
   '/dashboards/gerencial': typeof DashboardsGerencialRoute
   '/dashboards/operacional': typeof DashboardsOperacionalRoute
   '/financeiro/caixa': typeof FinanceiroCaixaRoute
+  '/financeiro/contas-financeiras': typeof FinanceiroContasFinanceirasRoute
+  '/financeiro/contas-pagar': typeof FinanceiroContasPagarRoute
   '/pacientes/$id': typeof PacientesIdRouteWithChildren
   '/pacientes/$id/editar': typeof PacientesIdEditarRoute
 }
@@ -249,6 +266,8 @@ export interface FileRoutesById {
   '/dashboards/gerencial': typeof DashboardsGerencialRoute
   '/dashboards/operacional': typeof DashboardsOperacionalRoute
   '/financeiro/caixa': typeof FinanceiroCaixaRoute
+  '/financeiro/contas-financeiras': typeof FinanceiroContasFinanceirasRoute
+  '/financeiro/contas-pagar': typeof FinanceiroContasPagarRoute
   '/pacientes/$id': typeof PacientesIdRouteWithChildren
   '/pacientes/$id/editar': typeof PacientesIdEditarRoute
 }
@@ -279,6 +298,8 @@ export interface FileRouteTypes {
     | '/dashboards/gerencial'
     | '/dashboards/operacional'
     | '/financeiro/caixa'
+    | '/financeiro/contas-financeiras'
+    | '/financeiro/contas-pagar'
     | '/pacientes/$id'
     | '/pacientes/$id/editar'
   fileRoutesByTo: FileRoutesByTo
@@ -307,6 +328,8 @@ export interface FileRouteTypes {
     | '/dashboards/gerencial'
     | '/dashboards/operacional'
     | '/financeiro/caixa'
+    | '/financeiro/contas-financeiras'
+    | '/financeiro/contas-pagar'
     | '/pacientes/$id'
     | '/pacientes/$id/editar'
   id:
@@ -335,6 +358,8 @@ export interface FileRouteTypes {
     | '/dashboards/gerencial'
     | '/dashboards/operacional'
     | '/financeiro/caixa'
+    | '/financeiro/contas-financeiras'
+    | '/financeiro/contas-pagar'
     | '/pacientes/$id'
     | '/pacientes/$id/editar'
   fileRoutesById: FileRoutesById
@@ -477,6 +502,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PacientesIdRouteImport
       parentRoute: typeof PacientesRoute
     }
+    '/financeiro/contas-pagar': {
+      id: '/financeiro/contas-pagar'
+      path: '/contas-pagar'
+      fullPath: '/financeiro/contas-pagar'
+      preLoaderRoute: typeof FinanceiroContasPagarRouteImport
+      parentRoute: typeof FinanceiroRoute
+    }
+    '/financeiro/contas-financeiras': {
+      id: '/financeiro/contas-financeiras'
+      path: '/contas-financeiras'
+      fullPath: '/financeiro/contas-financeiras'
+      preLoaderRoute: typeof FinanceiroContasFinanceirasRouteImport
+      parentRoute: typeof FinanceiroRoute
+    }
     '/financeiro/caixa': {
       id: '/financeiro/caixa'
       path: '/caixa'
@@ -565,10 +604,14 @@ const AgendaRouteWithChildren =
 
 interface FinanceiroRouteChildren {
   FinanceiroCaixaRoute: typeof FinanceiroCaixaRoute
+  FinanceiroContasFinanceirasRoute: typeof FinanceiroContasFinanceirasRoute
+  FinanceiroContasPagarRoute: typeof FinanceiroContasPagarRoute
 }
 
 const FinanceiroRouteChildren: FinanceiroRouteChildren = {
   FinanceiroCaixaRoute: FinanceiroCaixaRoute,
+  FinanceiroContasFinanceirasRoute: FinanceiroContasFinanceirasRoute,
+  FinanceiroContasPagarRoute: FinanceiroContasPagarRoute,
 }
 
 const FinanceiroRouteWithChildren = FinanceiroRoute._addFileChildren(
