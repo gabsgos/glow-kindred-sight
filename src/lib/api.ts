@@ -17,7 +17,6 @@ import {
 } from "./mocks";
 import type {
   AgendaSlot,
-  Comissao,
   ComandoIaResposta,
   ContaFinanceira,
   ContaPagar,
