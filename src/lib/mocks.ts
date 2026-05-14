@@ -3,7 +3,9 @@ import type {
   AgendaSlot,
   AuditoriaItem,
   Caixa,
+  Comissao,
   ContaFinanceira,
+  ContaPagar,
   Evolucao,
   Faturamento,
   LancamentoCaixa,
@@ -11,6 +13,7 @@ import type {
   Pendencia,
   SyncItem,
   TipoServico,
+  Venda,
 } from "./types";
 
 export const profissionais = [
@@ -354,4 +357,30 @@ export const lancamentosCaixa: LancamentoCaixa[] = [
   { id: "lc_009", caixaId: "caixa_001", data: "2026-05-04T09:35:00", origem: "Contas a receber", metodo: "C. Crédito", tipo: "entrada", valor: 1280.24, pacienteId: "pac_001" },
   { id: "lc_010", caixaId: "caixa_001", data: "2026-05-04T09:35:00", origem: "Contas a receber", metodo: "C. Crédito", tipo: "entrada", valor: 1000, pacienteId: "pac_002" },
   { id: "lc_011", caixaId: "caixa_001", data: "2026-04-08T09:06:00", origem: "Contas a receber", metodo: "Dinheiro", tipo: "entrada", valor: 1800, pacienteId: "pac_003" },
+];
+
+export const contasPagar: ContaPagar[] = [
+  { id: "cp_001", descricao: "Aluguel da clínica — Maio", categoria: "Aluguel", fornecedor: "Imobiliária Centro", valor: 4800, vencimento: "2026-05-10", pago: false, contaId: "cf_002", recorrente: true },
+  { id: "cp_002", descricao: "Conta de energia — Abril", categoria: "Utilidades", fornecedor: "Enel", valor: 612.45, vencimento: "2026-05-12", pago: false, contaId: "cf_002" },
+  { id: "cp_003", descricao: "Insumos (gel, esparadrapo, etc.)", categoria: "Insumos", fornecedor: "Distribuidora Vida", valor: 320.9, vencimento: "2026-05-15", pago: false, contaId: "cf_001" },
+  { id: "cp_004", descricao: "Salário — Ana Cristini", categoria: "Folha", fornecedor: "Ana Cristini Lins Fernandes", valor: 5200, vencimento: "2026-05-05", pago: true, dataPagamento: "2026-05-05", contaId: "cf_002", recorrente: true },
+  { id: "cp_005", descricao: "Internet/Telefone", categoria: "Utilidades", fornecedor: "Vivo", valor: 219.9, vencimento: "2026-05-20", pago: false, contaId: "cf_002", recorrente: true },
+  { id: "cp_006", descricao: "Manutenção macas", categoria: "Manutenção", fornecedor: "Tec Hospitalar", valor: 480, vencimento: "2026-04-28", pago: true, dataPagamento: "2026-04-28", contaId: "cf_001" },
+];
+
+export const vendas: Venda[] = [
+  { id: "vd_001", pacienteId: "pac_001", pacienteNome: "Gabriel Albuquerque Guimaraes", pacote: "10 sessões — Fisioterapia", quantidadeSessoes: 10, valorTotal: 2000, desconto: 200, valorFinal: 1800, formaPagamento: "Pix", parcelas: 1, data: "2026-04-15", vendedorId: "prof_001", vendedorNome: "Ana Cristini Lins Fernandes", status: "ativa" },
+  { id: "vd_002", pacienteId: "pac_002", pacienteNome: "Gustavo Hideki Lima Ota", pacote: "5 sessões — Preparação Física", quantidadeSessoes: 5, valorTotal: 900, desconto: 0, valorFinal: 900, formaPagamento: "C. Crédito", parcelas: 3, data: "2026-04-20", vendedorId: "prof_002", vendedorNome: "Cayo Uehara Lance", status: "ativa" },
+  { id: "vd_003", pacienteId: "pac_003", pacienteNome: "Marcos Rocha", pacote: "20 sessões — Fisioterapia", quantidadeSessoes: 20, valorTotal: 4000, desconto: 400, valorFinal: 3600, formaPagamento: "C. Débito", parcelas: 1, data: "2026-03-10", vendedorId: "prof_003", vendedorNome: "Cirilo Mendes", status: "concluida" },
+  { id: "vd_004", pacienteId: "pac_004", pacienteNome: "Michelle Rossini", pacote: "10 sessões — Fisioterapia Sábado", quantidadeSessoes: 10, valorTotal: 2400, desconto: 0, valorFinal: 2400, formaPagamento: "Dinheiro", parcelas: 1, data: "2026-05-02", vendedorId: "prof_001", vendedorNome: "Ana Cristini Lins Fernandes", status: "ativa" },
+];
+
+export const comissoes: Comissao[] = [
+  { id: "cm_001", profissionalId: "prof_001", profissionalNome: "Ana Cristini Lins Fernandes", referencia: "2026-04", atendimentos: 42, baseCalculo: 8400, percentual: 30, valor: 2520, status: "paga", dataPagamento: "2026-05-05" },
+  { id: "cm_002", profissionalId: "prof_002", profissionalNome: "Cayo Uehara Lance", referencia: "2026-04", atendimentos: 28, baseCalculo: 5040, percentual: 30, valor: 1512, status: "paga", dataPagamento: "2026-05-05" },
+  { id: "cm_003", profissionalId: "prof_003", profissionalNome: "Cirilo Mendes", referencia: "2026-04", atendimentos: 35, baseCalculo: 7000, percentual: 30, valor: 2100, status: "paga", dataPagamento: "2026-05-05" },
+  { id: "cm_004", profissionalId: "prof_001", profissionalNome: "Ana Cristini Lins Fernandes", referencia: "2026-05", atendimentos: 18, baseCalculo: 3600, percentual: 30, valor: 1080, status: "pendente" },
+  { id: "cm_005", profissionalId: "prof_002", profissionalNome: "Cayo Uehara Lance", referencia: "2026-05", atendimentos: 12, baseCalculo: 2160, percentual: 30, valor: 648, status: "pendente" },
+  { id: "cm_006", profissionalId: "prof_003", profissionalNome: "Cirilo Mendes", referencia: "2026-05", atendimentos: 15, baseCalculo: 3000, percentual: 30, valor: 900, status: "pendente" },
+  { id: "cm_007", profissionalId: "prof_004", profissionalNome: "William Souza", referencia: "2026-05", atendimentos: 10, baseCalculo: 1800, percentual: 30, valor: 540, status: "pendente" },
 ];

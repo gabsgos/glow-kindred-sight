@@ -3,7 +3,9 @@ import {
   agenda,
   auditoria,
   caixas,
+  comissoes,
   contasFinanceiras,
+  contasPagar,
   evolucoes,
   faturamentos,
   lancamentosCaixa,
@@ -11,16 +13,20 @@ import {
   pendencias,
   profissionais,
   sync,
+  vendas,
 } from "./mocks";
 import type {
   AgendaSlot,
   ComandoIaResposta,
+  ContaFinanceira,
+  ContaPagar,
   Evolucao,
   Faturamento,
   LancamentoCaixa,
   MetodoPagamento,
   Paciente,
   Pendencia,
+  Venda,
 } from "./types";
 
 const wait = <T,>(value: T, ms = 220): Promise<T> =>
@@ -301,6 +307,21 @@ export const api = {
 // ---- caixa
 export const caixaApi = {
   contas: () => wait(contasFinanceiras),
+  addConta: async (input: Omit<ContaFinanceira, "id">) => {
+    const novo: ContaFinanceira = { ...input, id: `cf_${Date.now()}` };
+    contasFinanceiras.push(novo);
+    return wait(novo);
+  },
+  updateConta: async (id: string, input: Partial<ContaFinanceira>) => {
+    const idx = contasFinanceiras.findIndex((c) => c.id === id);
+    if (idx >= 0) contasFinanceiras[idx] = { ...contasFinanceiras[idx], ...input };
+    return wait(contasFinanceiras[idx] ?? null);
+  },
+  removeConta: async (id: string) => {
+    const idx = contasFinanceiras.findIndex((c) => c.id === id);
+    if (idx >= 0) contasFinanceiras.splice(idx, 1);
+    return wait({ ok: idx >= 0 });
+  },
   caixaAtual: () => wait(caixas.find((c) => c.situacao === "aberto") ?? null),
   listCaixas: () => wait([...caixas].reverse()),
   lancamentos: (caixaId: string) =>
@@ -335,6 +356,62 @@ export const caixaApi = {
     };
     caixas.push(novo);
     return wait(novo);
+  },
+};
+
+// ---- contas a pagar
+export const contasPagarApi = {
+  list: () => wait([...contasPagar]),
+  create: async (input: Omit<ContaPagar, "id">) => {
+    const novo: ContaPagar = { ...input, id: `cp_${Date.now()}` };
+    contasPagar.push(novo);
+    return wait(novo);
+  },
+  update: async (id: string, input: Partial<ContaPagar>) => {
+    const idx = contasPagar.findIndex((c) => c.id === id);
+    if (idx >= 0) contasPagar[idx] = { ...contasPagar[idx], ...input };
+    return wait(contasPagar[idx] ?? null);
+  },
+  remove: async (id: string) => {
+    const idx = contasPagar.findIndex((c) => c.id === id);
+    if (idx >= 0) contasPagar.splice(idx, 1);
+    return wait({ ok: idx >= 0 });
+  },
+  marcarPaga: async (id: string, dataPagamento?: string) => {
+    const c = contasPagar.find((x) => x.id === id);
+    if (c) {
+      c.pago = true;
+      c.dataPagamento = dataPagamento ?? new Date().toISOString().slice(0, 10);
+    }
+    return wait(c);
+  },
+};
+
+// ---- vendas
+export const vendasApi = {
+  list: () => wait([...vendas].sort((a, b) => b.data.localeCompare(a.data))),
+  create: async (input: Omit<Venda, "id">) => {
+    const novo: Venda = { ...input, id: `vd_${Date.now()}` };
+    vendas.unshift(novo);
+    return wait(novo);
+  },
+  cancelar: async (id: string) => {
+    const v = vendas.find((x) => x.id === id);
+    if (v) v.status = "cancelada";
+    return wait(v);
+  },
+};
+
+// ---- comissão
+export const comissaoApi = {
+  list: () => wait([...comissoes]),
+  marcarPaga: async (id: string) => {
+    const c = comissoes.find((x) => x.id === id);
+    if (c) {
+      c.status = "paga";
+      c.dataPagamento = new Date().toISOString().slice(0, 10);
+    }
+    return wait(c);
   },
 };
 
