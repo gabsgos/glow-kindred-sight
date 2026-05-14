@@ -3,7 +3,9 @@ import type {
   AgendaSlot,
   AuditoriaItem,
   Caixa,
+  Comissao,
   ContaFinanceira,
+  ContaPagar,
   Evolucao,
   Faturamento,
   LancamentoCaixa,
@@ -11,6 +13,7 @@ import type {
   Pendencia,
   SyncItem,
   TipoServico,
+  Venda,
 } from "./types";
 
 export const profissionais = [
