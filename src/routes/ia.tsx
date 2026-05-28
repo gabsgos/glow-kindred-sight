@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Send, Sparkles, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
 
 import { api } from "@/lib/api";
+import { asArray, asText } from "@/lib/safe";
 import type { ComandoIaResposta } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/ia")({
-  head: () => ({ meta: [{ title: "IA / Comando rápido — FisioBot" }] }),
+  head: () => ({ meta: [{ title: "IA / Comando rápido - FisioBot" }] }),
   component: IaPage,
 });
 
@@ -32,13 +33,16 @@ function IaPage() {
     const c = (cmd ?? texto).trim();
     if (!c) return;
     setLoading(true);
-    const resp = await api.ia.comando(c);
-    setHistorico((h) => [
-      { id: `cmd_${Date.now()}`, comando: c, resp, ts: new Date().toISOString() },
-      ...h,
-    ]);
-    setTexto("");
-    setLoading(false);
+    try {
+      const resp = await api.ia.comando(c);
+      setHistorico((h) => [
+        { id: `cmd_${Date.now()}`, comando: c, resp, ts: new Date().toISOString() },
+        ...asArray(h),
+      ]);
+      setTexto("");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -48,13 +52,17 @@ function IaPage() {
           <Sparkles className="h-5 w-5 text-primary" /> IA / Comando rápido
         </h1>
         <p className="text-sm text-muted-foreground">
-          Digite linguagem natural ou comandos de debug com <code className="rounded bg-muted px-1">#</code>.
+          Digite linguagem natural ou comandos de debug com{" "}
+          <code className="rounded bg-muted px-1">#</code>.
         </p>
       </div>
 
       <Card className="p-3">
         <form
-          onSubmit={(e) => { e.preventDefault(); enviar(); }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void enviar();
+          }}
           className="flex gap-2"
         >
           <Input
@@ -69,7 +77,13 @@ function IaPage() {
         </form>
         <div className="mt-3 flex flex-wrap gap-1">
           {SUGESTOES.map((s) => (
-            <Button key={s} variant="outline" size="sm" onClick={() => enviar(s)} disabled={loading}>
+            <Button
+              key={s}
+              variant="outline"
+              size="sm"
+              onClick={() => void enviar(s)}
+              disabled={loading}
+            >
               {s}
             </Button>
           ))}
@@ -85,21 +99,25 @@ function IaPage() {
         {historico.map((item) => (
           <Card key={item.id} className="space-y-2 p-3">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span className="font-mono">{item.comando}</span>
+              <span className="font-mono">{asText(item.comando)}</span>
               <span>{new Date(item.ts).toLocaleTimeString("pt-BR")}</span>
             </div>
             <div className="flex items-start gap-2">
               <StatusIcon status={item.resp.status} />
               <div className="flex-1">
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  {item.resp.intent}
-                  <Badge variant="outline" className="text-xs">{item.resp.status}</Badge>
+                  {asText(item.resp.intent)}
+                  <Badge variant="outline" className="text-xs">
+                    {asText(item.resp.status)}
+                  </Badge>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">{item.resp.mensagem}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{asText(item.resp.mensagem)}</p>
                 {item.resp.pendencia?.opcoes && (
                   <div className="mt-2 flex flex-wrap gap-1">
-                    {item.resp.pendencia.opcoes.map((o) => (
-                      <Button key={o.id} size="sm" variant="outline">{o.label}</Button>
+                    {asArray(item.resp.pendencia.opcoes).map((o) => (
+                      <Button key={o.id} size="sm" variant="outline">
+                        {asText(o.label)}
+                      </Button>
                     ))}
                   </div>
                 )}

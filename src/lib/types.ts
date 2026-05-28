@@ -18,11 +18,7 @@ export type Paciente = {
   totalPago?: number;
 };
 
-export type SituacaoCliente =
-  | "reservado"
-  | "concluido"
-  | "cancelado"
-  | "desistente";
+export type SituacaoCliente = "reservado" | "concluido" | "cancelado" | "desistente";
 
 export type OrigemCliente = "manual" | "matricula" | "ia" | "reagendamento";
 
@@ -32,6 +28,11 @@ export type AgendaCliente = {
   situacao: SituacaoCliente;
   origem: OrigemCliente;
   temEvolucao: boolean;
+  atendimentoId?: string;
+  evolucao?: string;
+  valorAtendimento?: number;
+  statusFinanceiro?: StatusFinanceiro;
+  faturamentoId?: string;
 };
 
 export type StatusSlot = "aberto" | "concluido" | "cancelado";
@@ -57,6 +58,10 @@ export type AgendaSlot = {
   clientes: AgendaCliente[];
   observacao?: string;
   temPendencia?: boolean;
+  valorAtendimento?: number;
+  statusFinanceiro?: StatusFinanceiro;
+  evolucao?: string;
+  podeEditar?: boolean;
 };
 
 export type Evolucao = {
@@ -221,4 +226,29 @@ export type Comissao = {
   valor: number;
   status: "pendente" | "paga";
   dataPagamento?: string;
+};
+
+export type AuthUser = {
+  internalUserId: string;
+  login: string;
+  nomeCompleto: string;
+  role: string;
+  status: string;
+};
+
+export type AuthSession = {
+  ok: boolean;
+  authRequired: boolean;
+  authenticated: boolean;
+  user: AuthUser | null;
+};
+
+export type LoginResponse = {
+  ok: boolean;
+  authenticated: boolean;
+  user?: AuthUser | null;
+  next?: "code";
+  login?: string;
+  message?: string;
+  error?: string;
 };

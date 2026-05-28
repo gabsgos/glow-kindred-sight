@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { PagePlaceholder } from "@/components/common/PagePlaceholder";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/sync")({
-  head: () => ({ meta: [{ title: "Sincronização — FisioBot" }] }),
-  component: () => <PagePlaceholder title="Sincronização" description="Tela prevista no pipeline FisioBot." />,
+  beforeLoad: () => {
+    throw redirect({ to: "/dashboard" });
+  },
 });

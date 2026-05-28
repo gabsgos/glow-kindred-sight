@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table";
 import { PaymentModal } from "@/components/financeiro/PaymentModal";
 import { api } from "@/lib/api";
+import { asArray, asNumber, asSearchTerm, asText, formatCurrency, matchesText } from "@/lib/safe";
 import type { Faturamento, Paciente } from "@/lib/types";
 
 export const Route = createFileRoute("/financeiro")({
@@ -29,8 +30,7 @@ export const Route = createFileRoute("/financeiro")({
   component: FinanceiroPage,
 });
 
-const BRL = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const BRL = formatCurrency;
 
 function FinanceiroPage() {
   const [faturamentos, setFaturamentos] = useState<Faturamento[]>([]);
@@ -41,10 +41,9 @@ function FinanceiroPage() {
 
   async function load() {
     const pacs = await api.pacientes.list();
-    setPacientes(pacs);
-    const all: Faturamento[] = [];
-    for (const p of pacs) all.push(...(await api.pacientes.financeiro(p.id)));
-    setFaturamentos(all);
+    setPacientes(asArray(pacs));
+    const all = await api.pacientes.financeiro("");
+    setFaturamentos(asArray(all));
   }
 
   useEffect(() => {
@@ -52,24 +51,34 @@ function FinanceiroPage() {
   }, []);
 
   const kpis = useMemo(() => {
-    const pendente = faturamentos
+    const safeFaturamentos = asArray(faturamentos);
+    const safePacientes = asArray(pacientes);
+    const pendente = safeFaturamentos
       .filter((f) => f.statusFinanceiro === "pendente")
-      .reduce((s, f) => s + f.valorAtendimento, 0);
-    const pago = faturamentos
+      .reduce((s, f) => s + asNumber(f.valorAtendimento), 0);
+    const pago = safeFaturamentos
       .filter((f) => f.statusFinanceiro === "pago")
-      .reduce((s, f) => s + f.valorAtendimento, 0);
-    const credito = pacientes.reduce((s, p) => s + p.creditoDisponivel, 0);
-    const qtdPend = faturamentos.filter((f) => f.statusFinanceiro === "pendente").length;
+      .reduce((s, f) => s + asNumber(f.valorAtendimento), 0);
+    const credito = safePacientes.reduce((s, p) => s + asNumber(p.creditoDisponivel), 0);
+    const qtdPend = safeFaturamentos.filter((f) => f.statusFinanceiro === "pendente").length;
     return { pendente, pago, credito, qtdPend };
   }, [faturamentos, pacientes]);
 
   const visiveis = useMemo(() => {
-    const t = busca.toLowerCase().trim();
-    return faturamentos
+    const t = asSearchTerm(busca);
+    return asArray(faturamentos)
       .filter((f) => (filtro === "todos" ? true : f.statusFinanceiro === filtro))
-      .filter((f) => (t ? f.nomeCompleto.toLowerCase().includes(t) : true))
-      .sort((a, b) => b.data.localeCompare(a.data));
+      .filter((f) => (t ? matchesText(f.nomeCompleto, t) : true))
+      .sort((a, b) => String(b.data ?? "").localeCompare(String(a.data ?? "")));
   }, [faturamentos, filtro, busca]);
+
+  const pacientesVisiveis = useMemo(
+    () =>
+      asSearchTerm(busca)
+        ? asArray(pacientes).filter((p) => matchesText(p.nomeCompleto, busca))
+        : asArray(pacientes),
+    [pacientes, busca],
+  );
 
   return (
     <div className="space-y-6 p-4 md:p-8">
@@ -105,7 +114,7 @@ function FinanceiroPage() {
         <KpiCard
           icon={<CreditCard className="size-4" />}
           label="Pacientes com pendência"
-          value={String(pacientes.filter((p) => (p.totalPendente ?? 0) > 0).length)}
+          value={String(asArray(pacientes).filter((p) => asNumber(p.totalPendente) > 0).length)}
         />
       </div>
 
@@ -122,15 +131,15 @@ function FinanceiroPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
-          {pacientes.map((p) => (
+          {pacientesVisiveis.map((p) => (
             <div
               key={p.id}
               className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
             >
               <div>
-                <div className="font-medium">{p.nomeCompleto}</div>
+                <div className="font-medium">{asText(p.nomeCompleto) || "Paciente sem nome"}</div>
                 <div className="text-xs text-muted-foreground">
-                  Pendente: {BRL(p.totalPendente ?? 0)} · Crédito: {BRL(p.creditoDisponivel)}
+                  Pendente: {BRL(p.totalPendente)} - Crédito: {BRL(p.creditoDisponivel)}
                 </div>
               </div>
               <Button size="sm" onClick={() => setPagModal(p)}>
@@ -169,8 +178,8 @@ function FinanceiroPage() {
             <TableBody>
               {visiveis.map((f) => (
                 <TableRow key={f.id}>
-                  <TableCell className="whitespace-nowrap">{f.data}</TableCell>
-                  <TableCell>{f.nomeCompleto}</TableCell>
+                  <TableCell className="whitespace-nowrap">{asText(f.data)}</TableCell>
+                  <TableCell>{asText(f.nomeCompleto) || "Paciente sem nome"}</TableCell>
                   <TableCell className="text-right">{BRL(f.valorAtendimento)}</TableCell>
                   <TableCell>
                     <Badge
@@ -187,7 +196,7 @@ function FinanceiroPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {f.formaPagamento ?? "—"}
+                    {asText(f.formaPagamento) || "-"}
                   </TableCell>
                 </TableRow>
               ))}

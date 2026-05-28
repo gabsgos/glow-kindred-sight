@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PagePlaceholder } from "@/components/common/PagePlaceholder";
+import { FisioBotLogin } from "./app-login";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Entrar — FisioBot" }] }),
-  component: () => <PagePlaceholder title="Entrar" description="Tela prevista no pipeline FisioBot." />,
+  head: () => ({ meta: [{ title: "Entrar - FisioBot" }] }),
+  component: FisioBotLogin,
 });

@@ -1,9 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { PagePlaceholder } from "@/components/common/PagePlaceholder";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/dashboards/gerencial")({
-  head: () => ({ meta: [{ title: "Dashboard Gerencial — FisioBot" }] }),
-  component: () => (
-    <PagePlaceholder title="Dashboard Gerencial" description="KPIs estratégicos: LTV, Churn, CAC, Inadimplência." />
-  ),
+  beforeLoad: () => {
+    throw redirect({ to: "/dashboard" });
+  },
 });

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Input Smoke CSS - FisioBot</title>
+    <link rel="stylesheet" href="/app.css" />
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        background: hsl(var(--background));
+        color: hsl(var(--foreground));
+      }
+
+      main {
+        max-width: 640px;
+        margin: 0 auto;
+      }
+
+      .smoke-card {
+        display: grid;
+        gap: 16px;
+        border: 1px solid hsl(var(--border));
+        border-radius: 8px;
+        background: hsl(var(--card));
+        padding: 20px;
+      }
+
+      label {
+        display: grid;
+        gap: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Input Smoke CSS</h1>
+      <p>HTML simples com o CSS atual do build tablet.</p>
+      <form class="smoke-card">
+        <label>
+          Texto
+          <input class="border-input bg-background h-10 rounded-md border px-3 py-2 text-base" name="text" type="text" autocomplete="off" />
+        </label>
+        <label>
+          Senha
+          <input class="border-input bg-background h-10 rounded-md border px-3 py-2 text-base" name="password" type="password" autocomplete="off" />
+        </label>
+        <label>
+          Observacao
+          <textarea class="border-input bg-background min-h-24 rounded-md border px-3 py-2 text-base" name="notes" rows="4"></textarea>
+        </label>
+        <label>
+          Opcao
+          <select class="border-input bg-background h-10 rounded-md border px-3 py-2 text-base" name="option">
+            <option>Agenda</option>
+            <option>Pacientes</option>
+            <option>Evolucoes</option>
+          </select>
+        </label>
+      </form>
+    </main>
+  </body>
+</html>

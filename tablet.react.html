@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>FisioBot React</title>
+    <script>
+      (() => {
+        const params = new URLSearchParams(window.location.search);
+        const requested = params.get("route") || "/dashboard";
+        const target = requested.startsWith("/") && !requested.startsWith("//") ? requested : "/dashboard";
+        window.history.replaceState(null, "", target);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/tablet-main.tsx"></script>
+  </body>
+</html>

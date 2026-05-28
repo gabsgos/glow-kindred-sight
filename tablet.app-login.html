@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Entrar - FisioBot</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f7fb;
+        --card: #ffffff;
+        --text: #1f2430;
+        --muted: #667085;
+        --border: #dfe3ee;
+        --primary: #6f2cf4;
+        --primary-dark: #5b20d2;
+        --danger: #b42318;
+        --danger-bg: #fff1f0;
+        --ok: #067647;
+        --ok-bg: #ecfdf3;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      body {
+        -webkit-text-size-adjust: 100%;
+      }
+
+      main {
+        min-height: 100vh;
+        min-height: 100svh;
+        display: grid;
+        grid-template-columns: minmax(360px, 0.9fr) minmax(440px, 1.1fr);
+      }
+
+      .panel {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px clamp(20px, 5vw, 48px);
+        background: var(--card);
+        border-right: 1px solid var(--border);
+      }
+
+      .box {
+        width: 100%;
+        max-width: 430px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 28px;
+      }
+
+      .brand-mark {
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        display: grid;
+        place-items: center;
+        background: var(--primary);
+        color: #fff;
+        font-weight: 800;
+      }
+
+      .brand-title {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.2;
+        font-weight: 700;
+      }
+
+      .brand-subtitle,
+      .hint,
+      .side p {
+        color: var(--muted);
+      }
+
+      .brand-subtitle {
+        margin-top: 2px;
+        font-size: 12px;
+      }
+
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--card);
+        box-shadow: 0 8px 24px rgba(31, 36, 48, 0.06);
+        padding: 24px;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1.18;
+      }
+
+      .hint {
+        margin: 10px 0 24px;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      form {
+        display: grid;
+        gap: 16px;
+      }
+
+      label {
+        display: grid;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      input[type="text"],
+      input[type="password"] {
+        width: 100%;
+        height: 46px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--text);
+        padding: 10px 12px;
+        font-size: 16px;
+        line-height: 24px;
+        outline: none;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+      }
+
+      input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(111, 44, 244, 0.16);
+      }
+
+      .check-row {
+        display: flex;
+        grid-template-columns: none;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted);
+        font-weight: 500;
+      }
+
+      .check-row input {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--primary);
+      }
+
+      button,
+      .link-button {
+        min-height: 46px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button {
+        width: 100%;
+        color: #fff;
+        background: var(--primary);
+      }
+
+      button:hover,
+      button:focus {
+        background: var(--primary-dark);
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.72;
+      }
+
+      .link {
+        text-align: center;
+        color: var(--primary);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .link:hover,
+      .link:focus {
+        text-decoration: underline;
+      }
+
+      .notice {
+        display: none;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        padding: 10px 12px;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .notice.error {
+        display: block;
+        color: var(--danger);
+        border-color: #fecdca;
+        background: var(--danger-bg);
+      }
+
+      .notice.success {
+        display: block;
+        color: var(--ok);
+        border-color: #abefc6;
+        background: var(--ok-bg);
+      }
+
+      .side {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        padding: 48px;
+      }
+
+      .side-inner {
+        max-width: 680px;
+      }
+
+      .side h1 {
+        margin: 0;
+        max-width: 680px;
+        font-size: clamp(36px, 4.2vw, 52px);
+        line-height: 1.06;
+      }
+
+      .side p {
+        max-width: 560px;
+        font-size: 15px;
+        line-height: 1.65;
+      }
+
+      .features {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 30px;
+      }
+
+      .feature {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fff;
+        padding: 16px;
+      }
+
+      .feature strong {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 14px;
+      }
+
+      .feature span {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      @media (max-width: 860px) {
+        main {
+          display: block;
+        }
+
+        .panel {
+          min-height: 100vh;
+          min-height: 100svh;
+          align-items: flex-start;
+          padding: max(22px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
+          border-right: 0;
+        }
+
+        .box {
+          max-width: none;
+        }
+
+        .card {
+          padding: 20px;
+        }
+
+        h2 {
+          font-size: 26px;
+        }
+
+        .side {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="panel" aria-label="Login FisioBot">
+        <div class="box">
+          <div class="brand">
+            <div class="brand-mark" aria-hidden="true">F</div>
+            <div>
+              <p class="brand-title">FisioBot</p>
+              <div class="brand-subtitle">cockpit clinico</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Entrar</h2>
+            <p class="hint">Acesse agenda, pacientes, evolucoes e financeiro com sua conta do FisioBot.</p>
+            <div id="notice" class="notice" role="status" aria-live="polite"></div>
+            <form id="login-form" autocomplete="off" novalidate>
+              <label>
+                Usuario
+                <input id="login" name="login" type="text" inputmode="text" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+              </label>
+              <label>
+                Senha
+                <input id="secret" name="secret" type="password" autocomplete="current-password" required />
+              </label>
+              <label class="check-row">
+                <input id="remember" name="remember" type="checkbox" checked />
+                Manter este dispositivo autorizado
+              </label>
+              <button id="submit" type="submit">Entrar no sistema</button>
+              <a class="link" href="/recover">Recuperar senha</a>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section class="side" aria-hidden="true">
+        <div class="side-inner">
+          <h1>Gestao clinica protegida para a rotina do consultorio.</h1>
+          <p>A interface web usa a sessao do backend FisioBot antes de liberar dados de agenda, pacientes, evolucoes e financeiro.</p>
+          <div class="features">
+            <div class="feature"><strong>Agenda</strong><span>Atendimentos e status do dia.</span></div>
+            <div class="feature"><strong>Pacientes</strong><span>Cadastro e historico clinico.</span></div>
+            <div class="feature"><strong>Financeiro</strong><span>Caixa e valores pendentes.</span></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (() => {
+        const form = document.getElementById("login-form");
+        const loginInput = document.getElementById("login");
+        const secretInput = document.getElementById("secret");
+        const rememberInput = document.getElementById("remember");
+        const submit = document.getElementById("submit");
+        const notice = document.getElementById("notice");
+        const params = new URLSearchParams(window.location.search);
+        const prefillLogin = (params.get("login") || "").trim().toLowerCase();
+        if (prefillLogin) loginInput.value = prefillLogin;
+
+        function safeRedirect() {
+          const requested = params.get("redirect") || "/dashboard";
+          if (!requested.startsWith("/") || requested.startsWith("//")) return "/dashboard";
+          return requested;
+        }
+
+        function showNotice(kind, text) {
+          notice.className = "notice " + kind;
+          notice.textContent = text;
+        }
+
+        async function sendJson(path, body) {
+          const response = await fetch(path, {
+            method: "POST",
+            credentials: "include",
+            headers: { Accept: "application/json", "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(payload.message || "Falha de comunicacao.");
+          return payload;
+        }
+
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const login = loginInput.value.trim().toLowerCase();
+          const secret = secretInput.value;
+          if (!login || !secret) {
+            showNotice("error", "Informe login e senha.");
+            return;
+          }
+          submit.disabled = true;
+          submit.textContent = "Entrando...";
+          notice.className = "notice";
+          notice.textContent = "";
+          try {
+            const response = await sendJson("/api/web/login", {
+              login,
+              secret,
+              rememberDevice: rememberInput.checked,
+            });
+            if (response.authenticated) {
+              window.location.assign(safeRedirect());
+              return;
+            }
+            if (response.next === "code") {
+              sessionStorage.setItem("fisiobot.pendingLogin", response.login || login);
+              sessionStorage.setItem("fisiobot.pendingMessage", response.message || "Codigo enviado.");
+              window.location.assign("/app-login-code?redirect=" + encodeURIComponent(safeRedirect()));
+              return;
+            }
+            showNotice("error", response.message || "Nao foi possivel entrar.");
+          } catch (err) {
+            showNotice("error", err instanceof Error ? err.message : "Nao foi possivel entrar.");
+          } finally {
+            submit.disabled = false;
+            submit.textContent = "Entrar no sistema";
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

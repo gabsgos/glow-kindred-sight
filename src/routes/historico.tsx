@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
+import { asArray, asSearchTerm, asText, matchesText } from "@/lib/safe";
 import type { AuditoriaItem } from "@/lib/types";
 
 export const Route = createFileRoute("/historico")({
@@ -19,34 +20,44 @@ function HistoricoPage() {
   const [filtro, setFiltro] = useState<"todos" | "sucesso" | "erro" | "pendente">("todos");
 
   useEffect(() => {
-    void api.auditoria.list().then(setItems);
+    void api.auditoria
+      .list()
+      .then((nextItems) => setItems(asArray(nextItems)))
+      .catch(() => setItems([]));
   }, []);
 
   const filtered = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    return items
+    const term = asSearchTerm(q);
+    return asArray(items)
       .filter((i) => filtro === "todos" || i.status === filtro)
       .filter(
         (i) =>
           !term ||
-          i.mensagem.toLowerCase().includes(term) ||
-          i.intent.toLowerCase().includes(term) ||
-          i.usuario.toLowerCase().includes(term),
+          matchesText(i.mensagem, term) ||
+          matchesText(i.intent, term) ||
+          matchesText(i.usuario, term),
       )
-      .sort((a, b) => b.dataHora.localeCompare(a.dataHora));
+      .sort((a, b) => asText(b.dataHora).localeCompare(asText(a.dataHora)));
   }, [items, q, filtro]);
 
   return (
     <div className="p-6 space-y-4">
       <header>
         <h1 className="text-2xl font-semibold">Histórico e auditoria</h1>
-        <p className="text-sm text-muted-foreground">Registro completo de ações e comandos executados.</p>
+        <p className="text-sm text-muted-foreground">
+          Registro completo de ações e comandos executados.
+        </p>
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar mensagem, intent ou usuário..." className="pl-8" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar mensagem, intent ou usuário..."
+            className="pl-8"
+          />
         </div>
         <Tabs value={filtro} onValueChange={(v) => setFiltro(v as typeof filtro)}>
           <TabsList>
@@ -59,23 +70,29 @@ function HistoricoPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">{filtered.length} eventos</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">{filtered.length} eventos</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-2">
-          {filtered.length === 0 && <p className="text-sm text-muted-foreground">Nenhum evento encontrado.</p>}
+          {filtered.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhum evento encontrado.</p>
+          )}
           {filtered.map((a) => (
             <div key={a.id} className="flex items-start gap-3 rounded-md border p-3">
               <StatusIcon status={a.status} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-sm">{a.intent}</span>
-                  <Badge variant="outline" className="text-xs">{a.origem}</Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {a.origem}
+                  </Badge>
                   <span className="text-xs text-muted-foreground">{a.usuario}</span>
                 </div>
                 <div className="text-sm mt-1 truncate">{a.mensagem}</div>
                 <div className="text-xs text-muted-foreground mt-0.5">{a.resultado}</div>
               </div>
               <div className="text-xs text-muted-foreground whitespace-nowrap">
-                {new Date(a.dataHora).toLocaleString("pt-BR")}
+                {asText(a.dataHora) ? new Date(a.dataHora).toLocaleString("pt-BR") : "-"}
               </div>
             </div>
           ))}

@@ -4,6 +4,7 @@ import { Mic, Square, Save, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "@/lib/api";
+import { asArray, asText } from "@/lib/safe";
 import type { Evolucao, Paciente } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/select";
 
 export const Route = createFileRoute("/evolucoes")({
-  head: () => ({ meta: [{ title: "Evoluções — FisioBot" }] }),
+  head: () => ({ meta: [{ title: "Evoluções - FisioBot" }] }),
   component: EvolucoesPage,
 });
 
@@ -35,11 +36,20 @@ function EvolucoesPage() {
   const tickRef = useRef<number | null>(null);
 
   useEffect(() => {
-    api.pacientes.list().then(setPacientes);
-    api.evolucoes.list().then(setEvos);
+    void Promise.allSettled([api.pacientes.list(), api.evolucoes.list()]).then(
+      ([pacientesResult, evolucoesResult]) => {
+        setPacientes(pacientesResult.status === "fulfilled" ? asArray(pacientesResult.value) : []);
+        setEvos(evolucoesResult.status === "fulfilled" ? asArray(evolucoesResult.value) : []);
+      },
+    );
   }, []);
 
-  useEffect(() => () => { if (tickRef.current) window.clearInterval(tickRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (tickRef.current) window.clearInterval(tickRef.current);
+    },
+    [],
+  );
 
   function startRec() {
     setEstado("gravando");
@@ -50,10 +60,10 @@ function EvolucoesPage() {
   function stopRec() {
     if (tickRef.current) window.clearInterval(tickRef.current);
     setEstado("transcrevendo");
-    setTimeout(() => {
-      setTexto((t) =>
-        (t ? t + "\n" : "") +
-        "Paciente realizou exercícios de fortalecimento e mobilidade. Boa evolução do quadro álgico.",
+    window.setTimeout(() => {
+      setTexto(
+        (current) =>
+          `${current ? `${current}\n` : ""}Paciente realizou exercícios de fortalecimento e mobilidade. Boa evolução do quadro álgico.`,
       );
       setConduta("Manter protocolo. Reavaliar em 1 semana.");
       setEstado("pronto");
@@ -66,7 +76,7 @@ function EvolucoesPage() {
       toast.error("Selecione um paciente e escreva a evolução.");
       return;
     }
-    const pac = pacientes.find((p) => p.id === pacienteId);
+    const pac = asArray(pacientes).find((p) => p.id === pacienteId);
     const novo = await api.evolucoes.create({
       pacienteId,
       pacienteNome: pac?.nomeCompleto,
@@ -75,7 +85,7 @@ function EvolucoesPage() {
       data: new Date().toISOString().slice(0, 10),
       profissionalNome: "Cayo Uehara Lance",
     });
-    setEvos((arr) => [novo, ...arr]);
+    setEvos((arr) => [novo, ...asArray(arr)]);
     setTexto("");
     setConduta("");
     setEstado("ocioso");
@@ -97,10 +107,14 @@ function EvolucoesPage() {
           <div className="flex flex-wrap items-center gap-2">
             <div className="min-w-[220px] flex-1">
               <Select value={pacienteId} onValueChange={setPacienteId}>
-                <SelectTrigger><SelectValue placeholder="Selecionar paciente" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar paciente" />
+                </SelectTrigger>
                 <SelectContent>
-                  {pacientes.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.nomeCompleto}</SelectItem>
+                  {asArray(pacientes).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {asText(p.nomeCompleto) || "Paciente sem nome"}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -123,7 +137,7 @@ function EvolucoesPage() {
 
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
-              {estado === "transcrevendo" ? "Transcrevendo áudio…" : "Pronto para salvar"}
+              {estado === "transcrevendo" ? "Transcrevendo áudio..." : "Pronto para salvar"}
             </span>
             <Button onClick={salvar} className="gap-2">
               <Save className="h-4 w-4" /> Salvar evolução
@@ -134,13 +148,15 @@ function EvolucoesPage() {
 
       <div className="space-y-2">
         <h2 className="text-sm font-medium text-muted-foreground">Últimas evoluções</h2>
-        {evos.map((e) => (
+        {asArray(evos).map((e) => (
           <Card key={e.id} className="p-3">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{e.pacienteNome}</span>
-              <span>{e.data}</span>
+              <span className="font-medium text-foreground">
+                {asText(e.pacienteNome) || "Paciente sem nome"}
+              </span>
+              <span>{asText(e.data)}</span>
             </div>
-            <p className="mt-1 line-clamp-3 text-sm">{e.texto}</p>
+            <p className="mt-1 line-clamp-3 text-sm">{asText(e.texto)}</p>
           </Card>
         ))}
       </div>
@@ -149,26 +165,40 @@ function EvolucoesPage() {
 }
 
 function AudioButton({
-  estado, duracao, onStart, onStop,
-}: { estado: EstadoAudio; duracao: number; onStart: () => void; onStop: () => void }) {
+  estado,
+  duracao,
+  onStart,
+  onStop,
+}: {
+  estado: EstadoAudio;
+  duracao: number;
+  onStart: () => void;
+  onStop: () => void;
+}) {
   if (estado === "gravando") {
     return (
       <Button variant="destructive" onClick={onStop} className="gap-2">
-        <Square className="h-4 w-4" /> Parar {String(Math.floor(duracao / 60)).padStart(2, "0")}:{String(duracao % 60).padStart(2, "0")}
+        <Square className="h-4 w-4" /> Parar {String(Math.floor(duracao / 60)).padStart(2, "0")}:
+        {String(duracao % 60).padStart(2, "0")}
       </Button>
     );
   }
   if (estado === "transcrevendo") {
     return (
       <Button disabled className="gap-2">
-        <Loader2 className="h-4 w-4 animate-spin" /> Transcrevendo…
+        <Loader2 className="h-4 w-4 animate-spin" /> Transcrevendo...
       </Button>
     );
   }
   return (
     <Button variant="outline" onClick={onStart} className="gap-2">
       <Mic className="h-4 w-4" /> Gravar áudio
-      {estado === "pronto" && <Badge className="ml-1 gap-1"><Sparkles className="h-3 w-3" />ok</Badge>}
+      {estado === "pronto" && (
+        <Badge className="ml-1 gap-1">
+          <Sparkles className="h-3 w-3" />
+          ok
+        </Badge>
+      )}
     </Button>
   );
 }

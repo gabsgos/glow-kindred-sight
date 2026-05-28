@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Input Smoke Auth JS - FisioBot</title>
+    <link rel="stylesheet" href="/app.css" />
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        background: hsl(var(--background));
+        color: hsl(var(--foreground));
+      }
+
+      main {
+        max-width: 640px;
+        margin: 0 auto;
+      }
+
+      .smoke-card {
+        display: grid;
+        gap: 16px;
+        border: 1px solid hsl(var(--border));
+        border-radius: 8px;
+        background: hsl(var(--card));
+        padding: 20px;
+      }
+
+      label {
+        display: grid;
+        gap: 8px;
+      }
+
+      pre {
+        min-height: 120px;
+        max-height: 240px;
+        overflow: auto;
+        border: 1px solid hsl(var(--border));
+        border-radius: 8px;
+        padding: 12px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Input Smoke Auth JS</h1>
+      <p>HTML simples com CSS atual e script isolado do fluxo de login.</p>
+      <form id="auth-smoke-form" class="smoke-card">
+        <label>
+          Usuario
+          <input id="login" class="border-input bg-background h-10 rounded-md border px-3 py-2 text-base" name="login" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" />
+        </label>
+        <label>
+          Senha
+          <input id="secret" class="border-input bg-background h-10 rounded-md border px-3 py-2 text-base" name="secret" type="password" autocomplete="current-password" />
+        </label>
+        <label>
+          Observacao
+          <textarea id="notes" class="border-input bg-background min-h-24 rounded-md border px-3 py-2 text-base" name="notes" rows="4"></textarea>
+        </label>
+        <button class="h-10 rounded-md px-4 py-2" type="submit">Testar script</button>
+      </form>
+      <h2>Eventos</h2>
+      <pre id="event-log">aguardando foco...</pre>
+    </main>
+    <script src="/auth-smoke.js"></script>
+  </body>
+</html>

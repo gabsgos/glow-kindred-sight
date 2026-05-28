@@ -1,9 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { PagePlaceholder } from "@/components/common/PagePlaceholder";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/agenda/grades")({
-  head: () => ({ meta: [{ title: "Grades de horários — FisioBot" }] }),
-  component: () => (
-    <PagePlaceholder title="Grades de horários" description="Grades semanais por profissional/serviço." />
-  ),
+  beforeLoad: () => {
+    throw redirect({ to: "/agenda" });
+  },
 });

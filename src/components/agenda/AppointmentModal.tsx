@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { MoreVertical } from "lucide-react";
+import { AlertCircle, CalendarClock, FileText, Receipt, UserRound } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,165 +11,226 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AgendaSlot } from "@/lib/types";
+import { asArray, asText } from "@/lib/safe";
+
+function money(value?: number) {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value ?? 0);
+}
+
+function statusLabel(status: string) {
+  if (status === "concluido") return "Evoluido";
+  if (status === "cancelado") return "Cancelado";
+  return "Aberto";
+}
 
 export function AppointmentModal({
   slot,
   open,
   onClose,
-  onConcluir,
   onCancelar,
+  onReagendar,
 }: {
   slot: AgendaSlot | null;
   open: boolean;
   onClose: () => void;
-  onConcluir: () => void;
-  onCancelar: () => void;
+  onCancelar: () => Promise<void> | void;
+  onReagendar: (input: {
+    data: string;
+    horaInicio: string;
+    horaFim?: string;
+  }) => Promise<void> | void;
 }) {
-  const [tab, setTab] = useState("clientes");
+  const [tab, setTab] = useState("detalhes");
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [newDate, setNewDate] = useState("");
+  const [newStart, setNewStart] = useState("");
+  const [newEnd, setNewEnd] = useState("");
+
+  const patient = asArray(slot?.clientes)[0];
+  const hasEvolution = Boolean(slot?.evolucao || patient?.temEvolucao);
+  const canEdit = Boolean(slot?.podeEditar ?? (slot?.status === "aberto" && !hasEvolution));
+
+  useEffect(() => {
+    if (!slot) return;
+    setNewDate(slot.data);
+    setNewStart(slot.horaInicio);
+    setNewEnd(slot.horaFim);
+    setRescheduleOpen(false);
+  }, [slot]);
+
   if (!slot) return null;
-  const ocupacao = slot.capacidadeIlimitada
-    ? `${slot.ocupacao} / ∞`
-    : `${slot.ocupacao} / ${slot.capacidade ?? 0}`;
-  const cancelados = slot.clientes.filter(
-    (c) => c.situacao === "cancelado" || c.situacao === "desistente",
-  );
-  const ativos = slot.clientes.filter(
-    (c) => c.situacao !== "cancelado" && c.situacao !== "desistente",
-  );
+
+  const pendingBilling = slot.statusFinanceiro === "pendente" || slot.temPendencia;
+  const evolutionText = slot.evolucao || patient?.evolucao || "";
+
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-3xl">
+    <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
+      <DialogContent className="max-h-[92vh] max-w-3xl overflow-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between gap-3">
-            <DialogTitle className="text-xl">{slot.servico}</DialogTitle>
-            <Button variant="link" size="sm">ALTERAR</Button>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 pt-2 text-sm text-muted-foreground">
-            <span>{slot.data.split("-").reverse().join("/")}</span>
-            <span>{slot.horaInicio} às {slot.horaFim}</span>
-            <Button variant="link" size="sm" className="ml-auto">HISTÓRICO</Button>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 pt-2 text-sm">
-            <Badge variant="outline" className="border-success text-success">Aberto</Badge>
-            <span className="font-medium">{slot.servico.toUpperCase()}</span>
-            <span className="text-muted-foreground">{slot.profissionalNome}</span>
-            <span className="ml-auto rounded bg-muted px-2 py-0.5 text-xs font-semibold">
-              {ocupacao}
-            </span>
+          <div className="flex flex-wrap items-start justify-between gap-3 pr-7">
+            <div>
+              <DialogTitle className="text-xl">{patient?.nomeCompleto || slot.servico}</DialogTitle>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <CalendarClock className="h-4 w-4" />
+                <span>{asText(slot.data).split("-").reverse().join("/")}</span>
+                <span>
+                  {slot.horaInicio} as {slot.horaFim}
+                </span>
+                <span>{slot.profissionalNome || "FisioBot"}</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={slot.status === "cancelado" ? "destructive" : "secondary"}>
+                {statusLabel(slot.status)}
+              </Badge>
+              {pendingBilling && (
+                <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100">
+                  Faturamento pendente
+                </Badge>
+              )}
+            </div>
           </div>
         </DialogHeader>
 
+        <div className="grid gap-3 sm:grid-cols-3">
+          <InfoCard
+            icon={<Receipt className="h-4 w-4" />}
+            label="Valor"
+            value={money(slot.valorAtendimento || patient?.valorAtendimento)}
+          />
+          <InfoCard
+            icon={<AlertCircle className="h-4 w-4" />}
+            label="Financeiro"
+            value={slot.statusFinanceiro || patient?.statusFinanceiro || "pendente"}
+          />
+          <InfoCard
+            icon={<FileText className="h-4 w-4" />}
+            label="Evolucao"
+            value={hasEvolution ? "registrada" : "nao registrada"}
+          />
+        </div>
+
         <Tabs value={tab} onValueChange={setTab} className="mt-2">
-          <TabsList>
-            <TabsTrigger value="clientes">Clientes / Leads ({ativos.length})</TabsTrigger>
-            <TabsTrigger value="cancelados">
-              Cancelados / Desistentes ({cancelados.length})
+          <TabsList className="w-full justify-start overflow-x-auto">
+            <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
+            <TabsTrigger value="evolucao">Evolucao</TabsTrigger>
+            <TabsTrigger value="reagendar" disabled={!canEdit}>
+              Reagendar
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="clientes" className="space-y-3">
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm">Adicionar cliente com contrato</Button>
-              <Button size="sm" variant="outline">Adicionar lead</Button>
-              <Button size="sm" variant="outline">Adicionar cliente especial</Button>
-            </div>
+
+          <TabsContent value="detalhes" className="space-y-3">
             <div className="rounded-md border">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
-                  <tr>
-                    <th className="p-3">Nome</th>
-                    <th className="p-3">Situação</th>
-                    <th className="p-3">Origem</th>
-                    <th className="p-3 w-10"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ativos.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="p-6 text-center text-muted-foreground">
-                        Nenhum cliente neste atendimento.
-                      </td>
-                    </tr>
+              <div className="grid gap-3 p-4 sm:grid-cols-[1fr_auto]">
+                <div>
+                  <div className="mb-1 flex items-center gap-2 text-sm font-semibold">
+                    <UserRound className="h-4 w-4 text-primary" />
+                    Paciente
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {patient?.nomeCompleto || "Sem paciente vinculado"}
+                  </p>
+                  {slot.observacao && (
+                    <p className="mt-2 text-sm text-muted-foreground">{slot.observacao}</p>
                   )}
-                  {ativos.map((c) => (
-                    <tr key={c.pacienteId} className="border-t">
-                      <td className="p-3">
-                        <Link
-                          to="/pacientes/$id"
-                          params={{ id: c.pacienteId }}
-                          onClick={onClose}
-                          className="font-medium text-primary hover:underline"
-                        >
-                          {c.nomeCompleto}
-                        </Link>
-                        <button className="text-xs text-primary underline">
-                          Adicionar evolução
-                        </button>
-                      </td>
-                      <td className="p-3 capitalize">{c.situacao}</td>
-                      <td className="p-3 capitalize">{c.origem}</td>
-                      <td className="p-3">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link
-                                to="/pacientes/$id"
-                                params={{ id: c.pacienteId }}
-                                onClick={onClose}
-                              >
-                                Abrir perfil do cliente
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>Remover</DropdownMenuItem>
-                            <DropdownMenuItem>Remover e gerar reagendamento</DropdownMenuItem>
-                            <DropdownMenuItem>Marcar como desistente</DropdownMenuItem>
-                            <DropdownMenuItem>Histórico</DropdownMenuItem>
-                            <DropdownMenuItem>Adicionar evolução</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                </div>
+                {patient?.pacienteId && (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/pacientes/$id" params={{ id: patient.pacienteId }} onClick={onClose}>
+                      Ver paciente
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </div>
+            {!canEdit && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                Cancelamento e reagendamento ficam bloqueados quando o atendimento ja tem evolucao
+                registrada.
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="evolucao">
+            <div className="min-h-[160px] rounded-md border bg-muted/20 p-4 text-sm leading-6">
+              {evolutionText || "Nenhuma evolucao registrada para este atendimento."}
             </div>
           </TabsContent>
-          <TabsContent value="cancelados">
-            <div className="rounded-md border p-6 text-center text-sm text-muted-foreground">
-              {cancelados.length === 0
-                ? "Nenhum cancelamento ou desistência."
-                : cancelados.map((c) => c.nomeCompleto).join(", ")}
+
+          <TabsContent value="reagendar" className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="space-y-1 text-sm">
+                <span className="font-medium">Data</span>
+                <Input
+                  type="date"
+                  value={newDate}
+                  onChange={(event) => setNewDate(event.target.value)}
+                />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="font-medium">Inicio</span>
+                <Input
+                  type="time"
+                  value={newStart}
+                  onChange={(event) => setNewStart(event.target.value)}
+                />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="font-medium">Fim</span>
+                <Input
+                  type="time"
+                  value={newEnd}
+                  onChange={(event) => setNewEnd(event.target.value)}
+                />
+              </label>
             </div>
+            <Button
+              type="button"
+              onClick={() => onReagendar({ data: newDate, horaInicio: newStart, horaFim: newEnd })}
+              disabled={!newDate || !newStart}
+            >
+              Confirmar reagendamento
+            </Button>
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="mt-4 flex-row justify-between sm:justify-between">
-          <Button variant="destructive" onClick={onCancelar}>Cancelar aula</Button>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={onClose}>Fechar</Button>
-            <Button
-              onClick={onConcluir}
-              style={{ backgroundColor: "var(--success)", color: "var(--success-foreground)" }}
-            >
-              Concluir aula
+        <DialogFooter className="mt-4 gap-2 sm:justify-between">
+          <Button variant="destructive" onClick={onCancelar} disabled={!canEdit}>
+            Cancelar atendimento
+          </Button>
+          <div className="flex flex-wrap gap-2">
+            {canEdit && !rescheduleOpen && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setTab("reagendar");
+                  setRescheduleOpen(true);
+                }}
+              >
+                Reagendar
+              </Button>
+            )}
+            <Button variant="ghost" onClick={onClose}>
+              Fechar
             </Button>
           </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function InfoCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-background p-3">
+      <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+        {icon}
+        {label}
+      </div>
+      <div className="text-sm font-semibold capitalize">{value}</div>
+    </div>
   );
 }

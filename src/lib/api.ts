@@ -17,57 +17,203 @@ import {
 } from "./mocks";
 import type {
   AgendaSlot,
+  AuthSession,
   ComandoIaResposta,
   ContaFinanceira,
   ContaPagar,
   Evolucao,
   Faturamento,
   LancamentoCaixa,
+  LoginResponse,
   MetodoPagamento,
   Paciente,
   Pendencia,
   Venda,
 } from "./types";
+import { asArray, asNumber, asSearchTerm, matchesText } from "./safe";
 
-const wait = <T,>(value: T, ms = 220): Promise<T> =>
+const wait = <T>(value: T, ms = 220): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), ms));
 
+const API_BASE = (import.meta.env.VITE_FISIOBOT_API_BASE ?? "").replace(/\/$/, "");
+const USE_BACKEND_DB = import.meta.env.VITE_FISIOBOT_USE_BACKEND === "1";
+const API_TIMEOUT_MS = Number(import.meta.env.VITE_FISIOBOT_API_TIMEOUT_MS ?? 10_000);
+const MOCK_USER = {
+  internalUserId: "mock-web-user",
+  login: "mock.web",
+  nomeCompleto: "FisioBot Mock",
+  role: "admin",
+  status: "ativo",
+};
+
+class BackendAuthError extends Error {
+  constructor() {
+    super("auth_required");
+    this.name = "BackendAuthError";
+  }
+}
+
+async function requestWithTimeout(input: RequestInfo | URL, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("Tempo esgotado ao consultar o servidor.");
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeout);
+  }
+}
+
+async function fetchJson<T>(path: string): Promise<T> {
+  const response = await requestWithTimeout(`${API_BASE}${path}`, {
+    credentials: "include",
+    headers: { Accept: "application/json" },
+  });
+  if (response.status === 401) {
+    const errorBody = await response.json().catch(() => null);
+    if (errorBody?.error === "auth_required") throw new BackendAuthError();
+    throw new Error(errorBody?.message || `GET ${path} -> ${response.status}`);
+  }
+  if (!response.ok) throw new Error(`GET ${path} -> ${response.status}`);
+  return response.json() as Promise<T>;
+}
+
+async function sendJson<T>(
+  path: string,
+  method: "POST" | "PATCH" | "DELETE",
+  body?: unknown,
+): Promise<T> {
+  const response = await requestWithTimeout(`${API_BASE}${path}`, {
+    method,
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    if (response.status === 401 && errorBody?.error === "auth_required")
+      throw new BackendAuthError();
+    throw new Error(errorBody?.message || `${method} ${path} -> ${response.status}`);
+  }
+  return response.json() as Promise<T>;
+}
+
+async function withBackend<T>(request: () => Promise<T>, fallback: () => Promise<T>): Promise<T> {
+  if (!USE_BACKEND_DB) return fallback();
+  try {
+    return await request();
+  } catch (error) {
+    if (error instanceof BackendAuthError) throw error;
+    return fallback();
+  }
+}
+
 export const api = {
+  auth: {
+    session: () =>
+      USE_BACKEND_DB
+        ? fetchJson<AuthSession>("/api/web/session")
+        : wait({ ok: true, authRequired: false, authenticated: true, user: MOCK_USER }),
+    login: (input: { login: string; secret: string; rememberDevice: boolean }) =>
+      USE_BACKEND_DB
+        ? sendJson<LoginResponse>("/api/web/login", "POST", input)
+        : wait({ ok: true, authenticated: true, user: MOCK_USER, login: input.login }),
+    loginCode: (input: { login: string; verificationCode: string }) =>
+      USE_BACKEND_DB
+        ? sendJson<LoginResponse>("/api/web/login/code", "POST", input)
+        : wait({ ok: true, authenticated: true, user: MOCK_USER, login: input.login }),
+    logout: () =>
+      USE_BACKEND_DB
+        ? sendJson<{ ok: boolean; authenticated: false }>("/api/web/logout", "POST")
+        : wait({ ok: true, authenticated: false as const }),
+  },
+
   // ---- agenda
   agenda: {
-    list: (inicio?: string, fim?: string) => {
-      const items = agenda.filter((s) => {
-        if (inicio && s.data < inicio) return false;
-        if (fim && s.data > fim) return false;
-        return true;
-      });
-      return wait(items);
-    },
-    getSlot: (id: string) => wait(agenda.find((s) => s.id === id) ?? null),
-    concluir: async (id: string) => {
-      const slot = agenda.find((s) => s.id === id);
-      if (slot) {
-        slot.status = "concluido";
-        slot.clientes.forEach((c) => (c.situacao = "concluido"));
-      }
-      return wait(slot);
-    },
-    cancelar: async (id: string) => {
-      const slot = agenda.find((s) => s.id === id);
-      if (slot) slot.status = "cancelado";
-      return wait(slot);
-    },
+    list: (inicio?: string, fim?: string) =>
+      withBackend(
+        () => {
+          const params = new URLSearchParams();
+          if (inicio) params.set("inicio", inicio);
+          if (fim) params.set("fim", fim);
+          return fetchJson<AgendaSlot[]>(`/api/web/agenda${params.toString() ? `?${params}` : ""}`);
+        },
+        () => {
+          const items = agenda.filter((s) => {
+            if (inicio && s.data < inicio) return false;
+            if (fim && s.data > fim) return false;
+            return true;
+          });
+          return wait(items);
+        },
+      ),
+    getSlot: (id: string) =>
+      withBackend(
+        async () => {
+          const slots = await fetchJson<AgendaSlot[]>("/api/web/agenda");
+          return slots.find((s) => s.id === id) ?? null;
+        },
+        () => wait(agenda.find((s) => s.id === id) ?? null),
+      ),
+    concluir: async (id: string) =>
+      withBackend(
+        () =>
+          sendJson<AgendaSlot | null>(`/api/web/agenda/${encodeURIComponent(id)}/concluir`, "POST"),
+        async () => {
+          const slot = agenda.find((s) => s.id === id);
+          if (slot) {
+            slot.status = "concluido";
+            asArray(slot.clientes).forEach((c) => (c.situacao = "concluido"));
+          }
+          return wait(slot);
+        },
+      ),
+    cancelar: async (id: string) =>
+      withBackend(
+        () =>
+          sendJson<AgendaSlot | null>(`/api/web/agenda/${encodeURIComponent(id)}/cancelar`, "POST"),
+        async () => {
+          const slot = agenda.find((s) => s.id === id);
+          if (slot) slot.status = "cancelado";
+          return wait(slot);
+        },
+      ),
+    reagendar: async (id: string, input: { data: string; horaInicio: string; horaFim?: string }) =>
+      withBackend(
+        () =>
+          sendJson<AgendaSlot | null>(
+            `/api/web/agenda/${encodeURIComponent(id)}/reagendar`,
+            "POST",
+            input,
+          ),
+        async () => {
+          const slot = agenda.find((s) => s.id === id);
+          if (slot && !asArray(slot.clientes).some((c) => c.temEvolucao)) {
+            slot.data = input.data;
+            slot.horaInicio = input.horaInicio;
+            slot.horaFim = input.horaFim ?? slot.horaFim;
+          }
+          return wait(slot ?? null);
+        },
+      ),
     removerCliente: async (slotId: string, pacienteId: string) => {
       const slot = agenda.find((s) => s.id === slotId);
       if (slot) {
-        slot.clientes = slot.clientes.filter((c) => c.pacienteId !== pacienteId);
+        slot.clientes = asArray(slot.clientes).filter((c) => c.pacienteId !== pacienteId);
         slot.ocupacao = slot.clientes.length;
       }
       return wait(slot);
     },
     marcarDesistente: async (slotId: string, pacienteId: string) => {
       const slot = agenda.find((s) => s.id === slotId);
-      const cli = slot?.clientes.find((c) => c.pacienteId === pacienteId);
+      const cli = asArray(slot?.clientes).find((c) => c.pacienteId === pacienteId);
       if (cli) cli.situacao = "desistente";
       return wait(slot);
     },
@@ -108,85 +254,125 @@ export const api = {
       agenda.push(slot);
       return wait(slot);
     },
-    buscarHorarios: async () => wait(agenda.filter((s) => (s.capacidadeIlimitada ? true : s.ocupacao < (s.capacidade ?? 0)))),
+    buscarHorarios: async () =>
+      wait(agenda.filter((s) => (s.capacidadeIlimitada ? true : s.ocupacao < (s.capacidade ?? 0)))),
   },
 
   // ---- pacientes
   pacientes: {
-    list: (q?: string) => {
-      const term = q?.toLowerCase().trim();
-      const items = term
-        ? pacientes.filter(
-            (p) =>
-              p.nomeCompleto.toLowerCase().includes(term) ||
-              p.telefone?.includes(term) ||
-              p.cpf?.includes(term),
-          )
-        : pacientes;
-      return wait(items);
-    },
-    get: (id: string) => wait(pacientes.find((p) => p.id === id) ?? null),
-    create: async (data: Partial<Paciente>) => {
-      const p: Paciente = {
-        id: `pac_${Date.now()}`,
-        nomeCompleto: data.nomeCompleto ?? "Sem nome",
-        telefone: data.telefone,
-        cpf: data.cpf,
-        dataNascimento: data.dataNascimento,
-        endereco: data.endereco,
-        observacoes: data.observacoes,
-        aliases: data.aliases,
-        valorPadraoAtendimento: data.valorPadraoAtendimento,
-        creditoDisponivel: data.creditoDisponivel ?? 0,
-        ativo: data.ativo ?? true,
-        criadoEm: new Date().toISOString(),
-        atualizadoEm: new Date().toISOString(),
-        totalAtendimentos: 0,
-        totalPago: 0,
-        totalPendente: 0,
-      };
-      pacientes.push(p);
-      return wait(p);
-    },
-    update: async (id: string, data: Partial<Paciente>) => {
-      const idx = pacientes.findIndex((p) => p.id === id);
-      if (idx >= 0)
-        pacientes[idx] = {
-          ...pacientes[idx],
-          ...data,
-          atualizadoEm: new Date().toISOString(),
-        };
-      return wait(pacientes[idx] ?? null);
-    },
-    remove: async (id: string) => {
-      const idx = pacientes.findIndex((p) => p.id === id);
-      if (idx >= 0) pacientes.splice(idx, 1);
-      return wait({ ok: idx >= 0 });
-    },
+    list: (q?: string) =>
+      withBackend(
+        () => fetchJson<Paciente[]>(`/api/web/pacientes${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+        () => {
+          const term = asSearchTerm(q);
+          const items = term
+            ? pacientes.filter(
+                (p) =>
+                  matchesText(p.nomeCompleto, term) ||
+                  matchesText(p.telefone, term) ||
+                  matchesText(p.cpf, term),
+              )
+            : pacientes;
+          return wait(items);
+        },
+      ),
+    get: (id: string) =>
+      withBackend(
+        () => fetchJson<Paciente | null>(`/api/web/pacientes/${encodeURIComponent(id)}`),
+        () => wait(pacientes.find((p) => p.id === id) ?? null),
+      ),
+    create: async (data: Partial<Paciente>) =>
+      withBackend(
+        () => sendJson<Paciente>("/api/web/pacientes", "POST", data),
+        async () => {
+          const p: Paciente = {
+            id: `pac_${Date.now()}`,
+            nomeCompleto: data.nomeCompleto ?? "Sem nome",
+            telefone: data.telefone,
+            cpf: data.cpf,
+            dataNascimento: data.dataNascimento,
+            endereco: data.endereco,
+            observacoes: data.observacoes,
+            aliases: data.aliases,
+            valorPadraoAtendimento: data.valorPadraoAtendimento,
+            creditoDisponivel: data.creditoDisponivel ?? 0,
+            ativo: data.ativo ?? true,
+            criadoEm: new Date().toISOString(),
+            atualizadoEm: new Date().toISOString(),
+            totalAtendimentos: 0,
+            totalPago: 0,
+            totalPendente: 0,
+          };
+          pacientes.push(p);
+          return wait(p);
+        },
+      ),
+    update: async (id: string, data: Partial<Paciente>) =>
+      withBackend(
+        () =>
+          sendJson<Paciente | null>(`/api/web/pacientes/${encodeURIComponent(id)}`, "PATCH", data),
+        async () => {
+          const idx = pacientes.findIndex((p) => p.id === id);
+          if (idx >= 0)
+            pacientes[idx] = {
+              ...pacientes[idx],
+              ...data,
+              atualizadoEm: new Date().toISOString(),
+            };
+          return wait(pacientes[idx] ?? null);
+        },
+      ),
+    remove: async (id: string) =>
+      withBackend(
+        () => sendJson<{ ok: boolean }>(`/api/web/pacientes/${encodeURIComponent(id)}`, "DELETE"),
+        async () => {
+          const idx = pacientes.findIndex((p) => p.id === id);
+          if (idx >= 0) pacientes.splice(idx, 1);
+          return wait({ ok: idx >= 0 });
+        },
+      ),
     financeiro: (id: string) =>
-      wait(faturamentos.filter((f) => f.pacienteId === id)),
-    evolucoes: (id: string) => wait(evolucoes.filter((e) => e.pacienteId === id)),
+      withBackend(
+        () =>
+          id
+            ? fetchJson<Faturamento[]>(`/api/web/pacientes/${encodeURIComponent(id)}/financeiro`)
+            : fetchJson<Faturamento[]>("/api/web/financeiro"),
+        () => wait(id ? faturamentos.filter((f) => f.pacienteId === id) : faturamentos),
+      ),
+    evolucoes: (id: string) =>
+      withBackend(
+        () => fetchJson<Evolucao[]>(`/api/web/pacientes/${encodeURIComponent(id)}/evolucoes`),
+        () => wait(evolucoes.filter((e) => e.pacienteId === id)),
+      ),
   },
 
   // ---- evolucoes
   evolucoes: {
-    list: () => wait(evolucoes),
-    create: async (data: Partial<Evolucao>) => {
-      const e: Evolucao = {
-        id: `evo_${Date.now()}`,
-        pacienteId: data.pacienteId ?? "",
-        pacienteNome: data.pacienteNome,
-        atendimentoId: data.atendimentoId,
-        data: data.data ?? new Date().toISOString().slice(0, 10),
-        texto: data.texto ?? "",
-        conduta: data.conduta,
-        queixa: data.queixa,
-        profissionalNome: data.profissionalNome,
-        criadoEm: new Date().toISOString(),
-      };
-      evolucoes.unshift(e);
-      return wait(e);
-    },
+    list: () =>
+      withBackend(
+        () => fetchJson<Evolucao[]>("/api/web/evolucoes"),
+        () => wait(evolucoes),
+      ),
+    create: async (data: Partial<Evolucao>) =>
+      withBackend(
+        () => sendJson<Evolucao>("/api/web/evolucoes", "POST", data),
+        async () => {
+          const e: Evolucao = {
+            id: `evo_${Date.now()}`,
+            pacienteId: data.pacienteId ?? "",
+            pacienteNome: data.pacienteNome,
+            atendimentoId: data.atendimentoId,
+            data: data.data ?? new Date().toISOString().slice(0, 10),
+            texto: data.texto ?? "",
+            conduta: data.conduta,
+            queixa: data.queixa,
+            profissionalNome: data.profissionalNome,
+            criadoEm: new Date().toISOString(),
+          };
+          evolucoes.unshift(e);
+          return wait(e);
+        },
+      ),
   },
 
   // ---- pagamentos
@@ -214,7 +400,11 @@ export const api = {
         excedente: restante,
       });
     },
-    porQuantidade: async (input: { pacienteId: string; quantidade: number; formaPagamento: string }) => {
+    porQuantidade: async (input: {
+      pacienteId: string;
+      quantidade: number;
+      formaPagamento: string;
+    }) => {
       const pac = pacientes.find((p) => p.id === input.pacienteId);
       const pendentes = faturamentos
         .filter((f) => f.pacienteId === input.pacienteId && f.statusFinanceiro === "pendente")
@@ -247,7 +437,7 @@ export const api = {
   // ---- IA
   ia: {
     comando: async (texto: string): Promise<ComandoIaResposta> => {
-      const t = texto.toLowerCase();
+      const t = asSearchTerm(texto);
       if (t.startsWith("#")) {
         return wait({
           intent: "debug",
@@ -294,7 +484,7 @@ export const api = {
   auditoria: { list: () => wait(auditoria) },
   sync: {
     status: () => wait(sync),
-    refresh: async () => wait({ ok: true }),
+    refresh: async () => wait({ ok: false, reason: "sheets_sync_disabled" }),
   },
   admin: {
     status: () => wait(adminStatus),
@@ -351,7 +541,7 @@ export const caixaApi = {
       contaId: input.contaId,
       contaNome: conta?.nome ?? "—",
       dataAbertura: new Date().toISOString(),
-      saldoInicial: input.saldoInicial,
+      saldoInicial: asNumber(input.saldoInicial),
       situacao: "aberto" as const,
     };
     caixas.push(novo);

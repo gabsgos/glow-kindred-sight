@@ -43,6 +43,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { caixaApi } from "@/lib/api";
+import { asArray, asNumber, asText, formatCurrency, formatDecimal } from "@/lib/safe";
 import type { Caixa, ContaFinanceira, LancamentoCaixa, MetodoPagamento } from "@/lib/types";
 
 export const Route = createFileRoute("/financeiro/caixa")({
@@ -50,11 +51,11 @@ export const Route = createFileRoute("/financeiro/caixa")({
   component: CaixaPage,
 });
 
-const brl = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const brl = formatCurrency;
 
 const fmtData = (iso: string) => {
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return asText(iso) || "-";
   return `${d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" })} ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
 };
 
@@ -78,8 +79,8 @@ function CaixaPage() {
   const refresh = async () => {
     const c = await caixaApi.caixaAtual();
     setCaixa(c);
-    setContas(await caixaApi.contas());
-    if (c) setLanc(await caixaApi.lancamentos(c.id));
+    setContas(asArray(await caixaApi.contas()));
+    if (c) setLanc(asArray(await caixaApi.lancamentos(c.id)));
     else setLanc([]);
   };
 
@@ -89,28 +90,30 @@ function CaixaPage() {
 
   const totais = useMemo(() => {
     const grupo = (m: MetodoPagamento) =>
-      lanc
+      asArray(lanc)
         .filter((l) => l.tipo === "entrada" && l.metodo === m)
-        .reduce((s, l) => s + l.valor, 0);
+        .reduce((s, l) => s + asNumber(l.valor), 0);
     const dinheiro = grupo("Dinheiro");
     const credito = grupo("C. Crédito");
     const debito = grupo("C. Débito");
     const cheque = grupo("Cheque");
     const deposito = grupo("Depósito bancário") + grupo("Pix");
     const entradas = dinheiro + credito + debito + cheque + deposito;
-    const saidas = lanc.filter((l) => l.tipo === "saida").reduce((s, l) => s + l.valor, 0);
-    const saldoTotal = (caixa?.saldoInicial ?? 0) + entradas - saidas;
+    const saidas = asArray(lanc)
+      .filter((l) => l.tipo === "saida")
+      .reduce((s, l) => s + asNumber(l.valor), 0);
+    const saldoTotal = asNumber(caixa?.saldoInicial) + entradas - saidas;
     return { dinheiro, credito, debito, cheque, deposito, entradas, saidas, saldoTotal };
   }, [lanc, caixa]);
 
-  const paginas = Math.max(1, Math.ceil(lanc.length / porPagina));
-  const slice = lanc.slice((pagina - 1) * porPagina, pagina * porPagina);
+  const paginas = Math.max(1, Math.ceil(asArray(lanc).length / porPagina));
+  const slice = asArray(lanc).slice((pagina - 1) * porPagina, pagina * porPagina);
 
   const exportCsv = () => {
     const linhas = [
       ["Data", "Origem", "Método", "Tipo", "Valor"].join(";"),
-      ...lanc.map((l) =>
-        [fmtData(l.data), l.origem, l.metodo, l.tipo, l.valor.toFixed(2)].join(";"),
+      ...asArray(lanc).map((l) =>
+        [fmtData(l.data), l.origem, l.metodo, l.tipo, formatDecimal(l.valor, 2)].join(";"),
       ),
     ].join("\n");
     const blob = new Blob([linhas], { type: "text/csv;charset=utf-8" });
@@ -143,7 +146,12 @@ function CaixaPage() {
           <Button size="sm" variant="secondary" onClick={() => setModal("saida")} disabled={!caixa}>
             <ArrowUpFromLine className="mr-1 h-4 w-4" /> Saída
           </Button>
-          <Button size="sm" variant="secondary" onClick={() => setModal("transferencia")} disabled={!caixa}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setModal("transferencia")}
+            disabled={!caixa}
+          >
             <ArrowLeftRight className="mr-1 h-4 w-4" /> Transferência
           </Button>
           <Button size="sm" variant="outline" onClick={exportCsv}>
@@ -171,9 +179,7 @@ function CaixaPage() {
               </Linha>
               <Linha label="Responsável">{caixa?.responsavel ?? "—"}</Linha>
               <Linha label="Conta financeira">{caixa?.contaNome ?? "—"}</Linha>
-              <Linha label="Data de abertura">
-                {caixa ? fmtData(caixa.dataAbertura) : "—"}
-              </Linha>
+              <Linha label="Data de abertura">{caixa ? fmtData(caixa.dataAbertura) : "—"}</Linha>
               <Linha label="Saldo inicial em dinheiro">
                 <span className="font-medium">{brl(caixa?.saldoInicial ?? 0)}</span>
               </Linha>
@@ -193,7 +199,12 @@ function CaixaPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1.5 p-4 pt-0 text-sm">
-              <MetodoLinha icon={Banknote} cor="text-success" label="Dinheiro" valor={totais.dinheiro} />
+              <MetodoLinha
+                icon={Banknote}
+                cor="text-success"
+                label="Dinheiro"
+                valor={totais.dinheiro}
+              />
               <MetodoLinha icon={CreditCard} label="C. Crédito" valor={totais.credito} />
               <MetodoLinha icon={CreditCard} label="C. Débito" valor={totais.debito} />
               <MetodoLinha icon={Receipt} label="Cheque" valor={totais.cheque} />
@@ -213,7 +224,9 @@ function CaixaPage() {
           <Card>
             <CardContent className="flex items-center justify-between p-4">
               <span className="text-sm text-muted-foreground">Dinheiro em caixa</span>
-              <span className="font-semibold">{brl(totais.dinheiro + (caixa?.saldoInicial ?? 0))}</span>
+              <span className="font-semibold">
+                {brl(totais.dinheiro + (caixa?.saldoInicial ?? 0))}
+              </span>
             </CardContent>
           </Card>
           <Card className="border-primary/40">
@@ -246,7 +259,10 @@ function CaixaPage() {
               <TableBody>
                 {slice.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
+                    <TableCell
+                      colSpan={5}
+                      className="py-10 text-center text-sm text-muted-foreground"
+                    >
                       Sem lançamentos.
                     </TableCell>
                   </TableRow>
@@ -266,7 +282,11 @@ function CaixaPage() {
                               : "text-muted-foreground"
                         }
                       >
-                        {l.tipo === "entrada" ? "Entrada" : l.tipo === "saida" ? "Saída" : "Transferência"}
+                        {l.tipo === "entrada"
+                          ? "Entrada"
+                          : l.tipo === "saida"
+                            ? "Saída"
+                            : "Transferência"}
                       </span>
                     </TableCell>
                     <TableCell className="text-right font-medium">{brl(l.valor)}</TableCell>
@@ -278,22 +298,49 @@ function CaixaPage() {
             <div className="flex flex-wrap items-center justify-end gap-3 border-t p-3 text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
                 <span>Exibir</span>
-                <Select value={String(porPagina)} onValueChange={(v) => { setPorPagina(Number(v)); setPagina(1); }}>
-                  <SelectTrigger className="h-7 w-20"><SelectValue /></SelectTrigger>
+                <Select
+                  value={String(porPagina)}
+                  onValueChange={(v) => {
+                    setPorPagina(Number(v));
+                    setPagina(1);
+                  }}
+                >
+                  <SelectTrigger className="h-7 w-20">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {[10, 25, 50, 100].map((n) => (
-                      <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                      <SelectItem key={n} value={String(n)}>
+                        {n}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <span>
-                {(pagina - 1) * porPagina + 1}–{Math.min(pagina * porPagina, lanc.length)} de {lanc.length}
+                {(pagina - 1) * porPagina + 1}–{Math.min(pagina * porPagina, lanc.length)} de{" "}
+                {lanc.length}
               </span>
               <div className="flex items-center gap-1">
-                <Button variant="outline" size="sm" disabled={pagina === 1} onClick={() => setPagina(pagina - 1)}>‹</Button>
-                <span className="px-2">{pagina}/{paginas}</span>
-                <Button variant="outline" size="sm" disabled={pagina === paginas} onClick={() => setPagina(pagina + 1)}>›</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pagina === 1}
+                  onClick={() => setPagina(pagina - 1)}
+                >
+                  ‹
+                </Button>
+                <span className="px-2">
+                  {pagina}/{paginas}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pagina === paginas}
+                  onClick={() => setPagina(pagina + 1)}
+                >
+                  ›
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -305,14 +352,20 @@ function CaixaPage() {
         tipo={(modal as "entrada" | "saida" | "transferencia") ?? "entrada"}
         caixaId={caixa?.id}
         onClose={() => setModal(null)}
-        onSaved={() => { setModal(null); void refresh(); }}
+        onSaved={() => {
+          setModal(null);
+          void refresh();
+        }}
       />
 
       <AbrirCaixaModal
         open={modal === "abrir"}
         contas={contas}
         onClose={() => setModal(null)}
-        onSaved={() => { setModal(null); void refresh(); }}
+        onSaved={() => {
+          setModal(null);
+          void refresh();
+        }}
       />
     </div>
   );
@@ -377,7 +430,7 @@ function LancamentoModal({
   }, [open, tipo]);
 
   const salvar = async () => {
-    const v = Number(valor.replace(",", "."));
+    const v = asNumber(valor);
     if (!caixaId || !v || v <= 0) {
       toast.error("Informe um valor válido.");
       return;
@@ -395,7 +448,8 @@ function LancamentoModal({
     onSaved();
   };
 
-  const titulo = tipo === "entrada" ? "Nova entrada" : tipo === "saida" ? "Nova saída" : "Transferência";
+  const titulo =
+    tipo === "entrada" ? "Nova entrada" : tipo === "saida" ? "Nova saída" : "Transferência";
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -406,15 +460,24 @@ function LancamentoModal({
         <div className="grid gap-3">
           <div className="grid gap-1.5">
             <Label>Valor</Label>
-            <Input value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" inputMode="decimal" />
+            <Input
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              placeholder="0,00"
+              inputMode="decimal"
+            />
           </div>
           <div className="grid gap-1.5">
             <Label>Método</Label>
             <Select value={metodo} onValueChange={(v) => setMetodo(v as MetodoPagamento)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {METODOS.map((m) => (
-                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -425,11 +488,17 @@ function LancamentoModal({
           </div>
           <div className="grid gap-1.5">
             <Label>Descrição</Label>
-            <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Opcional" />
+            <Input
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              placeholder="Opcional"
+            />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
           <Button onClick={salvar}>Salvar</Button>
         </DialogFooter>
       </DialogContent>
@@ -461,7 +530,7 @@ function AbrirCaixaModal({
     await caixaApi.abrirCaixa({
       responsavel,
       contaId,
-      saldoInicial: Number(saldoInicial.replace(",", ".")) || 0,
+      saldoInicial: asNumber(saldoInicial),
     });
     toast.success("Caixa aberto.");
     onSaved();
@@ -481,21 +550,31 @@ function AbrirCaixaModal({
           <div className="grid gap-1.5">
             <Label>Conta financeira</Label>
             <Select value={contaId} onValueChange={setContaId}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {contas.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.nome}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-1.5">
             <Label>Saldo inicial em dinheiro</Label>
-            <Input value={saldoInicial} onChange={(e) => setSaldoInicial(e.target.value)} inputMode="decimal" />
+            <Input
+              value={saldoInicial}
+              onChange={(e) => setSaldoInicial(e.target.value)}
+              inputMode="decimal"
+            />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
           <Button onClick={salvar}>Abrir</Button>
         </DialogFooter>
       </DialogContent>

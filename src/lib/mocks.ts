@@ -284,33 +284,18 @@ export const auditoria: AuditoriaItem[] = [
 ];
 
 export const sync: SyncItem[] = [
-  {
-    id: "sync_001",
-    tipo: "atendimento",
-    criadoEm: "2026-05-07T08:14:01Z",
-    tentativas: 0,
-    status: "pendente",
-  },
-  {
-    id: "sync_002",
-    tipo: "pagamento",
-    criadoEm: "2026-05-07T08:12:11Z",
-    tentativas: 1,
-    ultimoErro: "Timeout Google Sheets",
-    status: "erro",
-  },
 ];
 
 export const adminStatus: AdminStatus = {
   ramLivreMb: 1240,
   swapLivreMb: 2048,
-  filaSync: 2,
+  filaSync: 0,
   modoContexto: "normal",
   whisper: "ok",
   llm: "ok",
-  googleSheets: "erro",
+  googleSheets: "off",
   n8n: "ok",
-  ultimoErro: "Timeout Google Sheets em sync_002",
+  ultimoErro: "",
   build: "0.1.108",
 };
 

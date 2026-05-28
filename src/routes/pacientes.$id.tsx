@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CreditCard, FileText, Wallet, CalendarDays } from "lucide-react";
 
 import { api } from "@/lib/api";
+import { asArray, asBoolean, asNumber, asText, formatCurrency } from "@/lib/safe";
 import type { Evolucao, Faturamento, Paciente } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,12 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/pacientes/$id")({
-  head: () => ({ meta: [{ title: "Paciente — FisioBot" }] }),
+  head: () => ({ meta: [{ title: "Paciente - FisioBot" }] }),
   component: PacienteDetail,
 });
 
-const brl = (v?: number) =>
-  (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const brl = formatCurrency;
 
 function PacienteDetail() {
   const { id } = Route.useParams();
@@ -24,44 +24,78 @@ function PacienteDetail() {
   const [evos, setEvos] = useState<Evolucao[]>([]);
 
   useEffect(() => {
-    api.pacientes.get(id).then(setP);
-    api.pacientes.financeiro(id).then(setFats);
-    api.pacientes.evolucoes(id).then(setEvos);
+    let active = true;
+    void Promise.allSettled([
+      api.pacientes.get(id),
+      api.pacientes.financeiro(id),
+      api.pacientes.evolucoes(id),
+    ]).then(([pacienteResult, financeiroResult, evolucoesResult]) => {
+      if (!active) return;
+      setP(pacienteResult.status === "fulfilled" ? pacienteResult.value : null);
+      setFats(financeiroResult.status === "fulfilled" ? asArray(financeiroResult.value) : []);
+      setEvos(evolucoesResult.status === "fulfilled" ? asArray(evolucoesResult.value) : []);
+    });
+    return () => {
+      active = false;
+    };
   }, [id]);
 
-  if (!p) {
-    return <div className="p-6 text-sm text-muted-foreground">Carregando…</div>;
-  }
+  const kpis = useMemo(
+    () => [
+      {
+        label: "Crédito",
+        value: brl(p?.creditoDisponivel),
+        icon: CreditCard,
+        tone: "text-success",
+      },
+      { label: "Pendente", value: brl(p?.totalPendente), icon: Wallet, tone: "text-warning" },
+      { label: "Pago total", value: brl(p?.totalPago), icon: FileText, tone: "text-foreground" },
+      {
+        label: "Atendimentos",
+        value: String(asNumber(p?.totalAtendimentos)),
+        icon: CalendarDays,
+        tone: "text-foreground",
+      },
+    ],
+    [p],
+  );
 
-  const kpis = [
-    { label: "Crédito", value: brl(p.creditoDisponivel), icon: CreditCard, tone: "text-success" },
-    { label: "Pendente", value: brl(p.totalPendente), icon: Wallet, tone: "text-warning" },
-    { label: "Pago total", value: brl(p.totalPago), icon: FileText, tone: "text-foreground" },
-    { label: "Atendimentos", value: String(p.totalAtendimentos ?? 0), icon: CalendarDays, tone: "text-foreground" },
-  ];
+  if (!p) {
+    return <div className="p-6 text-sm text-muted-foreground">Carregando...</div>;
+  }
 
   return (
     <div className="space-y-4 p-4 md:p-6">
       <div className="flex items-center gap-2">
         <Button asChild variant="ghost" size="sm" className="gap-1">
-          <Link to="/pacientes"><ArrowLeft className="h-4 w-4" /> Voltar</Link>
+          <Link to="/pacientes">
+            <ArrowLeft className="h-4 w-4" /> Voltar
+          </Link>
         </Button>
       </div>
 
       <Card className="p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{p.nomeCompleto}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {asText(p.nomeCompleto) || "Paciente sem nome"}
+            </h1>
             <div className="mt-1 text-sm text-muted-foreground">
-              {p.telefone ?? "Sem telefone"} · Valor padrão: {brl(p.valorPadraoAtendimento)}
+              {asText(p.telefone) || "Sem telefone"} - Valor padrão: {brl(p.valorPadraoAtendimento)}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge variant={p.ativo ? "default" : "secondary"}>{p.ativo ? "Ativo" : "Inativo"}</Badge>
+            <Badge variant={asBoolean(p.ativo) ? "default" : "secondary"}>
+              {asBoolean(p.ativo) ? "Ativo" : "Inativo"}
+            </Badge>
             <Button asChild size="sm" variant="outline">
-              <Link to="/pacientes/$id/editar" params={{ id: p.id }}>Editar cadastro</Link>
+              <Link to="/pacientes/$id/editar" params={{ id: p.id }}>
+                Editar cadastro
+              </Link>
             </Button>
-            <Button size="sm" variant="outline">Registrar pagamento</Button>
+            <Button size="sm" variant="outline">
+              Registrar pagamento
+            </Button>
             <Button size="sm">Nova evolução</Button>
           </div>
         </div>
@@ -86,34 +120,42 @@ function PacienteDetail() {
         </TabsList>
 
         <TabsContent value="evolucoes" className="space-y-2">
-          {evos.length === 0 && (
+          {asArray(evos).length === 0 && (
             <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
               Nenhuma evolução registrada.
             </div>
           )}
-          {evos.map((e) => (
+          {asArray(evos).map((e) => (
             <Card key={e.id} className="p-4">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>{e.data} · {e.profissionalNome}</span>
+                <span>
+                  {asText(e.data)} - {asText(e.profissionalNome)}
+                </span>
               </div>
-              <p className="mt-2 text-sm">{e.texto}</p>
-              {e.conduta && <p className="mt-2 text-sm"><b>Conduta:</b> {e.conduta}</p>}
+              <p className="mt-2 text-sm">{asText(e.texto)}</p>
+              {e.conduta && (
+                <p className="mt-2 text-sm">
+                  <b>Conduta:</b> {asText(e.conduta)}
+                </p>
+              )}
             </Card>
           ))}
         </TabsContent>
 
         <TabsContent value="financeiro" className="space-y-2">
-          {fats.length === 0 && (
+          {asArray(fats).length === 0 && (
             <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
               Nenhum lançamento financeiro.
             </div>
           )}
-          {fats.map((f) => (
+          {asArray(fats).map((f) => (
             <Card key={f.id} className="flex items-center justify-between p-3">
               <div>
-                <div className="text-sm font-medium">{f.data} · {brl(f.valorAtendimento)}</div>
+                <div className="text-sm font-medium">
+                  {asText(f.data)} - {brl(f.valorAtendimento)}
+                </div>
                 <div className="text-xs text-muted-foreground">
-                  {f.formaPagamento ? `Pago via ${f.formaPagamento}` : "Sem pagamento"}
+                  {f.formaPagamento ? `Pago via ${asText(f.formaPagamento)}` : "Sem pagamento"}
                 </div>
               </div>
               <Badge
@@ -125,7 +167,7 @@ function PacienteDetail() {
                       : ""
                 }
               >
-                {f.statusFinanceiro}
+                {asText(f.statusFinanceiro)}
               </Badge>
             </Card>
           ))}
@@ -134,15 +176,34 @@ function PacienteDetail() {
         <TabsContent value="dados">
           <Card className="p-4 text-sm">
             <dl className="grid gap-2 sm:grid-cols-2">
-              <div><dt className="text-muted-foreground">Telefone</dt><dd>{p.telefone ?? "—"}</dd></div>
-              <div><dt className="text-muted-foreground">CPF</dt><dd>{p.cpf ?? "—"}</dd></div>
-              <div><dt className="text-muted-foreground">Nascimento</dt><dd>{p.dataNascimento ?? "—"}</dd></div>
-              <div><dt className="text-muted-foreground">Endereço</dt><dd>{p.endereco ?? "—"}</dd></div>
-              <div className="sm:col-span-2"><dt className="text-muted-foreground">Observações</dt><dd>{p.observacoes ?? "—"}</dd></div>
+              <Info label="Telefone">{asText(p.telefone) || "-"}</Info>
+              <Info label="CPF">{asText(p.cpf) || "-"}</Info>
+              <Info label="Nascimento">{asText(p.dataNascimento) || "-"}</Info>
+              <Info label="Endereço">{asText(p.endereco) || "-"}</Info>
+              <Info label="Observações" className="sm:col-span-2">
+                {asText(p.observacoes) || "-"}
+              </Info>
             </dl>
           </Card>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function Info({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={className}>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd>{children}</dd>
     </div>
   );
 }

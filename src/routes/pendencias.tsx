@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
@@ -7,10 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { api } from "@/lib/api";
+import { asArray, asText } from "@/lib/safe";
 import type { Pendencia } from "@/lib/types";
 
 export const Route = createFileRoute("/pendencias")({
-  head: () => ({ meta: [{ title: "Pendências — FisioBot" }] }),
+  head: () => ({ meta: [{ title: "Pendências - FisioBot" }] }),
   component: PendenciasPage,
 });
 
@@ -20,7 +21,7 @@ function PendenciasPage() {
   const [cancelar, setCancelar] = useState<Pendencia | null>(null);
 
   async function load() {
-    setItems(await api.pendencias.list());
+    setItems(asArray(await api.pendencias.list()));
   }
 
   useEffect(() => {
@@ -41,7 +42,10 @@ function PendenciasPage() {
     void load();
   }
 
-  const visiveis = items.filter((p) => (filtro === "abertas" ? p.status === "aberta" : true));
+  const visiveis = useMemo(
+    () => asArray(items).filter((p) => (filtro === "abertas" ? p.status === "aberta" : true)),
+    [items, filtro],
+  );
 
   return (
     <div className="space-y-6 p-4 md:p-8">
@@ -84,27 +88,29 @@ function PendenciasPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <AlertTriangle className="size-4 text-amber-500" />
-                    {p.tipo.replace(/_/g, " ")}
+                    {asText(p.tipo).replace(/_/g, " ") || "Pendência"}
                   </CardTitle>
                   <StatusBadge status={p.status} />
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-sm">{p.descricao}</p>
+                <p className="text-sm">{asText(p.descricao)}</p>
                 {p.pacienteNome && (
-                  <p className="text-xs text-muted-foreground">Paciente: {p.pacienteNome}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Paciente: {asText(p.pacienteNome)}
+                  </p>
                 )}
                 {p.status === "aberta" && (
                   <div className="flex flex-wrap gap-2 pt-1">
-                    {p.opcoes && p.opcoes.length > 0 ? (
-                      p.opcoes.map((op) => (
+                    {asArray(p.opcoes).length > 0 ? (
+                      asArray(p.opcoes).map((op) => (
                         <Button
                           key={op.id}
                           size="sm"
                           variant="outline"
                           onClick={() => confirmar(p, op.id)}
                         >
-                          {op.label}
+                          {asText(op.label)}
                         </Button>
                       ))
                     ) : (

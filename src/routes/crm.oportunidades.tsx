@@ -1,9 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { PagePlaceholder } from "@/components/common/PagePlaceholder";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/crm/oportunidades")({
-  head: () => ({ meta: [{ title: "Oportunidades — FisioBot" }] }),
-  component: () => (
-    <PagePlaceholder title="Oportunidades" description="Funil de vendas (Kanban)." />
-  ),
+  beforeLoad: () => {
+    throw redirect({ to: "/dashboard" });
+  },
 });

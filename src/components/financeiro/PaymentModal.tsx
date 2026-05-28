@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
+import { asNumber, asText, formatCurrency } from "@/lib/safe";
 import type { Paciente } from "@/lib/types";
 
 type Props = {
@@ -54,7 +55,7 @@ export function PaymentModal({ open, onOpenChange, paciente, onDone }: Props) {
     setLoading(true);
     try {
       if (modo === "valor") {
-        const v = Number(valor);
+        const v = asNumber(valor);
         if (!v || v <= 0) {
           toast.error("Informe um valor válido.");
           setLoading(false);
@@ -66,10 +67,10 @@ export function PaymentModal({ open, onOpenChange, paciente, onDone }: Props) {
           formaPagamento: forma,
         });
         toast.success(
-          `${r.quitados.length} atendimento(s) quitado(s).${r.excedente ? ` Crédito atualizado: R$ ${r.creditoFinal.toFixed(2)}` : ""}`,
+          `${r.quitados.length} atendimento(s) quitado(s).${r.excedente ? ` Crédito atualizado: ${formatCurrency(r.creditoFinal)}` : ""}`,
         );
       } else {
-        const q = Number(quantidade);
+        const q = asNumber(quantidade);
         if (!q || q <= 0) {
           toast.error("Informe uma quantidade válida.");
           setLoading(false);
@@ -97,7 +98,8 @@ export function PaymentModal({ open, onOpenChange, paciente, onDone }: Props) {
         <DialogHeader>
           <DialogTitle>Registrar pagamento</DialogTitle>
           <DialogDescription>
-            {paciente.nomeCompleto} · Crédito atual: R$ {paciente.creditoDisponivel.toFixed(2)}
+            {asText(paciente.nomeCompleto)} - Crédito atual:{" "}
+            {formatCurrency(paciente.creditoDisponivel)}
           </DialogDescription>
         </DialogHeader>
 
@@ -159,7 +161,7 @@ export function PaymentModal({ open, onOpenChange, paciente, onDone }: Props) {
             Cancelar
           </Button>
           <Button onClick={handleConfirmar} disabled={loading}>
-            {loading ? "Processando…" : "Confirmar pagamento"}
+            {loading ? "Processando..." : "Confirmar pagamento"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, Check, Trash2, AlertCircle, CheckCircle2, Calendar as CalendarIcon } from "lucide-react";
+import {
+  Plus,
+  Check,
+  Trash2,
+  AlertCircle,
+  CheckCircle2,
+  Calendar as CalendarIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +36,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { contasPagarApi, caixaApi } from "@/lib/api";
+import { asArray, asNumber, asSearchTerm, asText, formatCurrency, matchesText } from "@/lib/safe";
 import type { ContaFinanceira, ContaPagar } from "@/lib/types";
 
 export const Route = createFileRoute("/financeiro/contas-pagar")({
@@ -36,10 +44,18 @@ export const Route = createFileRoute("/financeiro/contas-pagar")({
   component: ContasPagarPage,
 });
 
-const BRL = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const BRL = formatCurrency;
 
-const CATEGORIAS = ["Aluguel", "Utilidades", "Insumos", "Folha", "Manutenção", "Marketing", "Impostos", "Outros"];
+const CATEGORIAS = [
+  "Aluguel",
+  "Utilidades",
+  "Insumos",
+  "Folha",
+  "Manutenção",
+  "Marketing",
+  "Impostos",
+  "Outros",
+];
 
 function ContasPagarPage() {
   const [items, setItems] = useState<ContaPagar[]>([]);
@@ -49,8 +65,8 @@ function ContasPagarPage() {
   const [modal, setModal] = useState(false);
 
   async function load() {
-    setItems(await contasPagarApi.list());
-    setContas(await caixaApi.contas());
+    setItems(asArray(await contasPagarApi.list()));
+    setContas(asArray(await caixaApi.contas()));
   }
   useEffect(() => {
     void load();
@@ -59,8 +75,8 @@ function ContasPagarPage() {
   const today = new Date().toISOString().slice(0, 10);
 
   const visiveis = useMemo(() => {
-    const t = busca.toLowerCase().trim();
-    return items
+    const t = asSearchTerm(busca);
+    return asArray(items)
       .filter((c) => {
         if (filtro === "pendentes") return !c.pago;
         if (filtro === "pagas") return c.pago;
@@ -69,19 +85,25 @@ function ContasPagarPage() {
       })
       .filter((c) =>
         t
-          ? c.descricao.toLowerCase().includes(t) ||
-            c.fornecedor?.toLowerCase().includes(t) ||
-            c.categoria.toLowerCase().includes(t)
+          ? matchesText(c.descricao, t) ||
+            matchesText(c.fornecedor, t) ||
+            matchesText(c.categoria, t)
           : true,
       )
-      .sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+      .sort((a, b) => asText(a.vencimento).localeCompare(asText(b.vencimento)));
   }, [items, filtro, busca, today]);
 
   const kpis = useMemo(() => {
-    const pendente = items.filter((c) => !c.pago).reduce((s, c) => s + c.valor, 0);
-    const pago = items.filter((c) => c.pago).reduce((s, c) => s + c.valor, 0);
-    const vencidas = items.filter((c) => !c.pago && c.vencimento < today);
-    return { pendente, pago, qtdVencidas: vencidas.length, valorVencido: vencidas.reduce((s, c) => s + c.valor, 0) };
+    const safeItems = asArray(items);
+    const pendente = safeItems.filter((c) => !c.pago).reduce((s, c) => s + asNumber(c.valor), 0);
+    const pago = safeItems.filter((c) => c.pago).reduce((s, c) => s + asNumber(c.valor), 0);
+    const vencidas = safeItems.filter((c) => !c.pago && asText(c.vencimento) < today);
+    return {
+      pendente,
+      pago,
+      qtdVencidas: vencidas.length,
+      valorVencido: vencidas.reduce((s, c) => s + asNumber(c.valor), 0),
+    };
   }, [items, today]);
 
   return (
@@ -99,10 +121,30 @@ function ContasPagarPage() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-4">
-        <KpiCard icon={<AlertCircle className="size-4" />} label="A pagar" value={BRL(kpis.pendente)} tone="warn" />
-        <KpiCard icon={<CheckCircle2 className="size-4" />} label="Pagas" value={BRL(kpis.pago)} tone="success" />
-        <KpiCard icon={<CalendarIcon className="size-4" />} label="Vencidas" value={String(kpis.qtdVencidas)} tone="warn" hint={BRL(kpis.valorVencido)} />
-        <KpiCard icon={<CheckCircle2 className="size-4" />} label="Total registros" value={String(items.length)} />
+        <KpiCard
+          icon={<AlertCircle className="size-4" />}
+          label="A pagar"
+          value={BRL(kpis.pendente)}
+          tone="warn"
+        />
+        <KpiCard
+          icon={<CheckCircle2 className="size-4" />}
+          label="Pagas"
+          value={BRL(kpis.pago)}
+          tone="success"
+        />
+        <KpiCard
+          icon={<CalendarIcon className="size-4" />}
+          label="Vencidas"
+          value={String(kpis.qtdVencidas)}
+          tone="warn"
+          hint={BRL(kpis.valorVencido)}
+        />
+        <KpiCard
+          icon={<CheckCircle2 className="size-4" />}
+          label="Total registros"
+          value={String(items.length)}
+        />
       </div>
 
       <Card>
@@ -146,21 +188,29 @@ function ContasPagarPage() {
                 const venc = !c.pago && c.vencimento < today;
                 return (
                   <TableRow key={c.id}>
-                    <TableCell className={`whitespace-nowrap ${venc ? "text-amber-600 font-medium" : ""}`}>
+                    <TableCell
+                      className={`whitespace-nowrap ${venc ? "text-amber-600 font-medium" : ""}`}
+                    >
                       {c.vencimento}
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">{c.descricao}</div>
-                      {c.recorrente && <div className="text-xs text-muted-foreground">recorrente</div>}
+                      {c.recorrente && (
+                        <div className="text-xs text-muted-foreground">recorrente</div>
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{c.categoria}</TableCell>
                     <TableCell className="text-muted-foreground">{c.fornecedor ?? "—"}</TableCell>
                     <TableCell className="text-right">{BRL(c.valor)}</TableCell>
                     <TableCell>
                       {c.pago ? (
-                        <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">paga</Badge>
+                        <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+                          paga
+                        </Badge>
                       ) : venc ? (
-                        <Badge className="bg-amber-500 text-white hover:bg-amber-500">vencida</Badge>
+                        <Badge className="bg-amber-500 text-white hover:bg-amber-500">
+                          vencida
+                        </Badge>
                       ) : (
                         <Badge variant="secondary">pendente</Badge>
                       )}
@@ -206,12 +256,7 @@ function ContasPagarPage() {
         </CardContent>
       </Card>
 
-      <NovaDespesaModal
-        open={modal}
-        onOpenChange={setModal}
-        contas={contas}
-        onCreated={load}
-      />
+      <NovaDespesaModal open={modal} onOpenChange={setModal} contas={contas} onCreated={load} />
     </div>
   );
 }
@@ -240,7 +285,7 @@ function NovaDespesaModal({
       descricao,
       categoria,
       fornecedor: fornecedor || undefined,
-      valor: Number(valor),
+      valor: asNumber(valor),
       vencimento,
       pago: false,
       contaId: contaId || undefined,
@@ -267,10 +312,14 @@ function NovaDespesaModal({
             <div className="grid gap-1">
               <Label>Categoria</Label>
               <Select value={categoria} onValueChange={setCategoria}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {CATEGORIAS.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -283,19 +332,32 @@ function NovaDespesaModal({
           <div className="grid gap-3 md:grid-cols-3">
             <div className="grid gap-1">
               <Label>Valor</Label>
-              <Input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} />
+              <Input
+                type="number"
+                step="0.01"
+                value={valor}
+                onChange={(e) => setValor(e.target.value)}
+              />
             </div>
             <div className="grid gap-1">
               <Label>Vencimento</Label>
-              <Input type="date" value={vencimento} onChange={(e) => setVencimento(e.target.value)} />
+              <Input
+                type="date"
+                value={vencimento}
+                onChange={(e) => setVencimento(e.target.value)}
+              />
             </div>
             <div className="grid gap-1">
               <Label>Conta</Label>
               <Select value={contaId} onValueChange={setContaId}>
-                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
                 <SelectContent>
                   {contas.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nome}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -303,7 +365,9 @@ function NovaDespesaModal({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
           <Button onClick={salvar}>Salvar</Button>
         </DialogFooter>
       </DialogContent>
@@ -325,7 +389,13 @@ function KpiCard({
   tone?: "success" | "warn" | "info";
 }) {
   const toneClass =
-    tone === "success" ? "text-emerald-600" : tone === "warn" ? "text-amber-600" : tone === "info" ? "text-sky-600" : "text-foreground";
+    tone === "success"
+      ? "text-emerald-600"
+      : tone === "warn"
+        ? "text-amber-600"
+        : tone === "info"
+          ? "text-sky-600"
+          : "text-foreground";
   return (
     <Card>
       <CardContent className="p-4">

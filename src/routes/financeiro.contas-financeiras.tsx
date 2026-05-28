@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Plus, Trash2, Wallet, Landmark, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,15 +20,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { caixaApi } from "@/lib/api";
+import { asArray, asNumber, asText, formatCurrency } from "@/lib/safe";
 import type { ContaFinanceira } from "@/lib/types";
 
 export const Route = createFileRoute("/financeiro/contas-financeiras")({
-  head: () => ({ meta: [{ title: "Contas financeiras — FisioBot" }] }),
+  head: () => ({ meta: [{ title: "Contas financeiras - FisioBot" }] }),
   component: ContasFinanceirasPage,
 });
 
-const BRL = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const BRL = formatCurrency;
 
 const TIPO_ICONE: Record<ContaFinanceira["tipo"], React.ComponentType<{ className?: string }>> = {
   caixa: Wallet,
@@ -41,13 +41,13 @@ function ContasFinanceirasPage() {
   const [modal, setModal] = useState(false);
 
   async function load() {
-    setContas(await caixaApi.contas());
+    setContas(asArray(await caixaApi.contas()));
   }
   useEffect(() => {
     void load();
   }, []);
 
-  const total = contas.reduce((s, c) => s + c.saldo, 0);
+  const total = useMemo(() => asArray(contas).reduce((s, c) => s + asNumber(c.saldo), 0), [contas]);
 
   return (
     <div className="space-y-6 p-4 md:p-8">
@@ -71,14 +71,14 @@ function ContasFinanceirasPage() {
       </Card>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {contas.map((c) => {
-          const Icon = TIPO_ICONE[c.tipo];
+        {asArray(contas).map((c) => {
+          const Icon = TIPO_ICONE[c.tipo] ?? Wallet;
           return (
             <Card key={c.id}>
               <CardHeader className="flex flex-row items-center justify-between gap-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Icon className="size-4 text-muted-foreground" />
-                  {c.nome}
+                  {asText(c.nome) || "Conta sem nome"}
                 </CardTitle>
                 <Button
                   size="sm"
@@ -92,7 +92,7 @@ function ContasFinanceirasPage() {
                 </Button>
               </CardHeader>
               <CardContent className="space-y-1">
-                <div className="text-xs text-muted-foreground capitalize">{c.tipo}</div>
+                <div className="text-xs text-muted-foreground capitalize">{asText(c.tipo)}</div>
                 <div className="text-2xl font-semibold">{BRL(c.saldo)}</div>
               </CardContent>
             </Card>
@@ -120,7 +120,7 @@ function NovaContaModal({
 
   async function salvar() {
     if (!nome) return;
-    await caixaApi.addConta({ nome, tipo, saldo: Number(saldo) });
+    await caixaApi.addConta({ nome, tipo, saldo: asNumber(saldo) });
     onOpenChange(false);
     setNome("");
     setSaldo("0");
@@ -142,7 +142,9 @@ function NovaContaModal({
             <div className="grid gap-1">
               <Label>Tipo</Label>
               <Select value={tipo} onValueChange={(v) => setTipo(v as ContaFinanceira["tipo"])}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="caixa">Caixa</SelectItem>
                   <SelectItem value="banco">Banco</SelectItem>
@@ -152,12 +154,19 @@ function NovaContaModal({
             </div>
             <div className="grid gap-1">
               <Label>Saldo inicial</Label>
-              <Input type="number" step="0.01" value={saldo} onChange={(e) => setSaldo(e.target.value)} />
+              <Input
+                type="number"
+                step="0.01"
+                value={saldo}
+                onChange={(e) => setSaldo(e.target.value)}
+              />
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
           <Button onClick={salvar}>Salvar</Button>
         </DialogFooter>
       </DialogContent>

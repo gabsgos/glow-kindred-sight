@@ -8,15 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { asArray, asNumber, asText, formatCurrency, matchesText } from "@/lib/safe";
 
 export const Route = createFileRoute("/pacientes")({
   head: () => ({ meta: [{ title: "Pacientes — FisioBot" }] }),
   component: PacientesPage,
 });
-
-function brl(v?: number) {
-  return (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 function PacientesPage() {
   const [q, setQ] = useState("");
@@ -24,14 +21,31 @@ function PacientesPage() {
   const [items, setItems] = useState<Paciente[]>([]);
 
   useEffect(() => {
-    api.pacientes.list(q).then(setItems);
-  }, [q]);
+    let active = true;
+    api.pacientes
+      .list()
+      .then((nextItems) => {
+        if (active) setItems(asArray(nextItems));
+      })
+      .catch(() => {
+        if (active) setItems([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filtrados = useMemo(() => {
-    if (filtro === "credito") return items.filter((p) => p.creditoDisponivel > 0);
-    if (filtro === "pendente") return items.filter((p) => (p.totalPendente ?? 0) > 0);
-    return items;
-  }, [items, filtro]);
+    const base = q
+      ? items.filter(
+          (p) =>
+            matchesText(p.nomeCompleto, q) || matchesText(p.telefone, q) || matchesText(p.cpf, q),
+        )
+      : items;
+    if (filtro === "credito") return base.filter((p) => asNumber(p.creditoDisponivel) > 0);
+    if (filtro === "pendente") return base.filter((p) => asNumber(p.totalPendente) > 0);
+    return base;
+  }, [items, filtro, q]);
 
   return (
     <div className="space-y-4 p-4 md:p-6">
@@ -79,24 +93,27 @@ function PacientesPage() {
             <Card className="p-4 transition-colors hover:bg-accent/40">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="truncate font-medium">{p.nomeCompleto}</div>
+                  <div className="truncate font-medium">
+                    {asText(p.nomeCompleto) || "Paciente sem nome"}
+                  </div>
                   <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                    <Phone className="h-3 w-3" /> {p.telefone ?? "—"}
+                    <Phone className="h-3 w-3" /> {asText(p.telefone) || "-"}
                   </div>
                 </div>
-                {p.creditoDisponivel > 0 && (
+                {asNumber(p.creditoDisponivel) > 0 && (
                   <Badge className="bg-success text-success-foreground">
-                    <CreditCard className="mr-1 h-3 w-3" /> {brl(p.creditoDisponivel)}
+                    <CreditCard className="mr-1 h-3 w-3" /> {formatCurrency(p.creditoDisponivel)}
                   </Badge>
                 )}
               </div>
               <div className="mt-3 flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">
-                  {p.totalAtendimentos ?? 0} atend. · último {p.ultimoAtendimento ?? "—"}
+                  {asNumber(p.totalAtendimentos)} atend. - último{" "}
+                  {asText(p.ultimoAtendimento) || "-"}
                 </span>
-                {(p.totalPendente ?? 0) > 0 && (
+                {asNumber(p.totalPendente) > 0 && (
                   <span className="flex items-center gap-1 text-warning">
-                    <AlertCircle className="h-3 w-3" /> {brl(p.totalPendente)}
+                    <AlertCircle className="h-3 w-3" /> {formatCurrency(p.totalPendente)}
                   </span>
                 )}
               </div>

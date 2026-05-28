@@ -20,44 +20,56 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { comissaoApi } from "@/lib/api";
+import { asArray, asNumber, asText, formatCurrency } from "@/lib/safe";
 import type { Comissao } from "@/lib/types";
 
 export const Route = createFileRoute("/financeiro/comissao")({
-  head: () => ({ meta: [{ title: "Comissão — FisioBot" }] }),
+  head: () => ({ meta: [{ title: "Comissão - FisioBot" }] }),
   component: ComissaoPage,
 });
 
-const BRL = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const BRL = formatCurrency;
 
 function ComissaoPage() {
   const [items, setItems] = useState<Comissao[]>([]);
   const [referencia, setReferencia] = useState<string>("todos");
 
   async function load() {
-    setItems(await comissaoApi.list());
+    setItems(asArray(await comissaoApi.list()));
   }
   useEffect(() => {
     void load();
   }, []);
 
   const referencias = useMemo(
-    () => Array.from(new Set(items.map((c) => c.referencia))).sort().reverse(),
+    () =>
+      Array.from(new Set(asArray(items).map((c) => asText(c.referencia))))
+        .filter(Boolean)
+        .sort()
+        .reverse(),
     [items],
   );
 
   const visiveis = useMemo(() => {
-    return items
-      .filter((c) => (referencia === "todos" ? true : c.referencia === referencia))
-      .sort((a, b) => (a.referencia + a.profissionalNome).localeCompare(b.referencia + b.profissionalNome))
+    return asArray(items)
+      .filter((c) => (referencia === "todos" ? true : asText(c.referencia) === referencia))
+      .sort((a, b) =>
+        `${asText(a.referencia)}${asText(a.profissionalNome)}`.localeCompare(
+          `${asText(b.referencia)}${asText(b.profissionalNome)}`,
+        ),
+      )
       .reverse();
   }, [items, referencia]);
 
   const kpis = useMemo(() => {
-    const pendente = visiveis.filter((c) => c.status === "pendente").reduce((s, c) => s + c.valor, 0);
-    const pago = visiveis.filter((c) => c.status === "paga").reduce((s, c) => s + c.valor, 0);
-    const profs = new Set(visiveis.map((c) => c.profissionalId)).size;
-    const atend = visiveis.reduce((s, c) => s + c.atendimentos, 0);
+    const pendente = visiveis
+      .filter((c) => c.status === "pendente")
+      .reduce((s, c) => s + asNumber(c.valor), 0);
+    const pago = visiveis
+      .filter((c) => c.status === "paga")
+      .reduce((s, c) => s + asNumber(c.valor), 0);
+    const profs = new Set(visiveis.map((c) => asText(c.profissionalId))).size;
+    const atend = visiveis.reduce((s, c) => s + asNumber(c.atendimentos), 0);
     return { pendente, pago, profs, atend };
   }, [visiveis]);
 
@@ -77,17 +89,37 @@ function ComissaoPage() {
           <SelectContent>
             <SelectItem value="todos">Todos os meses</SelectItem>
             {referencias.map((r) => (
-              <SelectItem key={r} value={r}>{r}</SelectItem>
+              <SelectItem key={r} value={r}>
+                {r}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
       <div className="grid gap-3 md:grid-cols-4">
-        <KpiCard icon={<TrendingUp className="size-4" />} label="A pagar" value={BRL(kpis.pendente)} tone="warn" />
-        <KpiCard icon={<Check className="size-4" />} label="Pago" value={BRL(kpis.pago)} tone="success" />
-        <KpiCard icon={<Users className="size-4" />} label="Profissionais" value={String(kpis.profs)} />
-        <KpiCard icon={<CalendarIcon className="size-4" />} label="Atendimentos" value={String(kpis.atend)} />
+        <KpiCard
+          icon={<TrendingUp className="size-4" />}
+          label="A pagar"
+          value={BRL(kpis.pendente)}
+          tone="warn"
+        />
+        <KpiCard
+          icon={<Check className="size-4" />}
+          label="Pago"
+          value={BRL(kpis.pago)}
+          tone="success"
+        />
+        <KpiCard
+          icon={<Users className="size-4" />}
+          label="Profissionais"
+          value={String(kpis.profs)}
+        />
+        <KpiCard
+          icon={<CalendarIcon className="size-4" />}
+          label="Atendimentos"
+          value={String(kpis.atend)}
+        />
       </div>
 
       <Card>
@@ -111,11 +143,11 @@ function ComissaoPage() {
             <TableBody>
               {visiveis.map((c) => (
                 <TableRow key={c.id}>
-                  <TableCell>{c.referencia}</TableCell>
-                  <TableCell>{c.profissionalNome}</TableCell>
-                  <TableCell className="text-right">{c.atendimentos}</TableCell>
+                  <TableCell>{asText(c.referencia)}</TableCell>
+                  <TableCell>{asText(c.profissionalNome)}</TableCell>
+                  <TableCell className="text-right">{asNumber(c.atendimentos)}</TableCell>
                   <TableCell className="text-right">{BRL(c.baseCalculo)}</TableCell>
-                  <TableCell className="text-right">{c.percentual}%</TableCell>
+                  <TableCell className="text-right">{asNumber(c.percentual)}%</TableCell>
                   <TableCell className="text-right font-medium">{BRL(c.valor)}</TableCell>
                   <TableCell>
                     <Badge
@@ -125,7 +157,7 @@ function ComissaoPage() {
                           : "bg-amber-500 text-white hover:bg-amber-500"
                       }
                     >
-                      {c.status}
+                      {asText(c.status)}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -171,7 +203,13 @@ function KpiCard({
   tone?: "success" | "warn" | "info";
 }) {
   const toneClass =
-    tone === "success" ? "text-emerald-600" : tone === "warn" ? "text-amber-600" : tone === "info" ? "text-sky-600" : "text-foreground";
+    tone === "success"
+      ? "text-emerald-600"
+      : tone === "warn"
+        ? "text-amber-600"
+        : tone === "info"
+          ? "text-sky-600"
+          : "text-foreground";
   return (
     <Card>
       <CardContent className="p-4">

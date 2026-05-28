@@ -1,29 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import {
+  BarChart3,
   Calendar,
-  Home,
-  Users,
+  ChevronDown,
   ClipboardList,
   DollarSign,
-  AlertTriangle,
-  Sparkles,
-  History,
-  BarChart3,
-  Settings,
-  Wrench,
-  Activity,
-  ChevronDown,
+  Home,
   Keyboard,
-  TrendingUp,
-  CreditCard,
-  Wallet,
-  ShoppingCart,
-  UserPlus,
-  Target,
-  PhoneCall,
-  CalendarRange,
-  PieChart,
+  Users,
 } from "lucide-react";
 
 import {
@@ -53,65 +38,22 @@ type NavGroup =
   | { kind: "group"; title: string; icon: React.ComponentType<{ className?: string }>; items: NavItem[] };
 
 const principal: NavGroup[] = [
-  { kind: "item", item: { title: "Início", url: "/dashboard", icon: Home } },
-  {
-    kind: "group",
-    title: "Dashboards",
-    icon: TrendingUp,
-    items: [
-      { title: "Gerencial", url: "/dashboards/gerencial", icon: PieChart },
-      { title: "Operacional", url: "/dashboards/operacional", icon: Activity },
-      { title: "CRM", url: "/dashboards/crm", icon: Target },
-    ],
-  },
+  { kind: "item", item: { title: "Inicio", url: "/dashboard", icon: Home } },
   { kind: "item", item: { title: "Pacientes", url: "/pacientes", icon: Users } },
-  {
-    kind: "group",
-    title: "CRM",
-    icon: UserPlus,
-    items: [
-      { title: "Leads", url: "/crm/leads", icon: UserPlus },
-      { title: "Oportunidades", url: "/crm/oportunidades", icon: Target },
-      { title: "Atividades", url: "/crm/atividades", icon: PhoneCall },
-    ],
-  },
   {
     kind: "group",
     title: "Agenda",
     icon: Calendar,
-    items: [
-      { title: "Agenda", url: "/agenda", icon: Calendar },
-      { title: "Grades de horários", url: "/agenda/grades", icon: CalendarRange },
-      { title: "Ocupação", url: "/agenda/ocupacao", icon: Activity },
-    ],
+    items: [{ title: "Agenda", url: "/agenda", icon: Calendar }],
   },
-  { kind: "item", item: { title: "Evoluções", url: "/evolucoes", icon: ClipboardList } },
+  { kind: "item", item: { title: "Evolucoes", url: "/evolucoes", icon: ClipboardList } },
   {
     kind: "group",
     title: "Financeiro",
     icon: DollarSign,
-    items: [
-      { title: "Caixa", url: "/financeiro/caixa", icon: Keyboard },
-      { title: "Comissão", url: "/financeiro/comissao", icon: TrendingUp },
-      { title: "Contas a pagar", url: "/financeiro/contas-pagar", icon: DollarSign },
-      { title: "Contas a receber", url: "/financeiro", icon: DollarSign },
-      { title: "Contas financeiras", url: "/financeiro/contas-financeiras", icon: Wallet },
-      { title: "Vendas", url: "/financeiro/vendas", icon: ShoppingCart },
-    ],
+    items: [{ title: "Caixa", url: "/financeiro/caixa", icon: Keyboard }],
   },
-  { kind: "item", item: { title: "Relatórios", url: "/relatorios", icon: BarChart3 } },
-];
-
-const operacao: NavGroup[] = [
-  { kind: "item", item: { title: "IA / Comando", url: "/ia", icon: Sparkles } },
-  { kind: "item", item: { title: "Pendências", url: "/pendencias", icon: AlertTriangle } },
-  { kind: "item", item: { title: "Histórico", url: "/historico", icon: History } },
-  { kind: "item", item: { title: "Sincronização", url: "/sync", icon: Activity } },
-];
-
-const sistema: NavGroup[] = [
-  { kind: "item", item: { title: "Configurações", url: "/configuracoes", icon: Settings } },
-  { kind: "item", item: { title: "Admin / Debug", url: "/admin", icon: Wrench } },
+  { kind: "item", item: { title: "Relatorios", url: "/relatorios", icon: BarChart3 } },
 ];
 
 export function AppSidebar() {
@@ -154,13 +96,13 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <Link to="/agenda" className="flex items-center gap-2 px-2 py-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary font-bold text-primary-foreground">
             F
           </div>
           {!collapsed && (
             <div className="leading-tight">
               <div className="text-sm font-semibold">FisioBot</div>
-              <div className="text-[10px] text-muted-foreground">cockpit clínico</div>
+              <div className="text-[10px] text-muted-foreground">cockpit clinico</div>
             </div>
           )}
         </Link>
@@ -169,14 +111,6 @@ export function AppSidebar() {
         <SidebarGroup>
           {!collapsed && <SidebarGroupLabel>Principal</SidebarGroupLabel>}
           <SidebarGroupContent>{renderItems(principal)}</SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup>
-          {!collapsed && <SidebarGroupLabel>Operação</SidebarGroupLabel>}
-          <SidebarGroupContent>{renderItems(operacao)}</SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup>
-          {!collapsed && <SidebarGroupLabel>Sistema</SidebarGroupLabel>}
-          <SidebarGroupContent>{renderItems(sistema)}</SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
@@ -200,7 +134,6 @@ function CollapsibleGroup({
   const [open, setOpen] = useState(childActive);
 
   if (collapsed) {
-    // mostra os itens como botões soltos quando colapsado
     return (
       <>
         {items.map((item) => (
@@ -225,9 +158,7 @@ function CollapsibleGroup({
               <Icon className="h-4 w-4" />
               <span>{title}</span>
             </span>
-            <ChevronDown
-              className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
-            />
+            <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
           </SidebarMenuButton>
         </CollapsibleTrigger>
         <CollapsibleContent>

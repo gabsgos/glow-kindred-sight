@@ -29,6 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { vendasApi, api } from "@/lib/api";
+import { asArray, asNumber, asSearchTerm, asText, formatCurrency, matchesText } from "@/lib/safe";
 import type { MetodoPagamento, Paciente, Venda } from "@/lib/types";
 
 export const Route = createFileRoute("/financeiro/vendas")({
@@ -36,10 +37,16 @@ export const Route = createFileRoute("/financeiro/vendas")({
   component: VendasPage,
 });
 
-const BRL = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const BRL = formatCurrency;
 
-const METODOS: MetodoPagamento[] = ["Dinheiro", "Pix", "C. Crédito", "C. Débito", "Cheque", "Depósito bancário"];
+const METODOS: MetodoPagamento[] = [
+  "Dinheiro",
+  "Pix",
+  "C. Crédito",
+  "C. Débito",
+  "Cheque",
+  "Depósito bancário",
+];
 
 function VendasPage() {
   const [vendas, setVendas] = useState<Venda[]>([]);
@@ -50,29 +57,31 @@ function VendasPage() {
   const [modal, setModal] = useState(false);
 
   async function load() {
-    setVendas(await vendasApi.list());
-    setPacientes(await api.pacientes.list());
-    setProfissionais(await api.profissionais());
+    setVendas(asArray(await vendasApi.list()));
+    setPacientes(asArray(await api.pacientes.list()));
+    setProfissionais(asArray(await api.profissionais()));
   }
   useEffect(() => {
     void load();
   }, []);
 
   const visiveis = useMemo(() => {
-    const t = busca.toLowerCase().trim();
-    return vendas
+    const t = asSearchTerm(busca);
+    return asArray(vendas)
       .filter((v) => (filtro === "todas" ? true : v.status === filtro))
-      .filter((v) => (t ? v.pacienteNome.toLowerCase().includes(t) || v.pacote.toLowerCase().includes(t) : true));
+      .filter((v) => (t ? matchesText(v.pacienteNome, t) || matchesText(v.pacote, t) : true));
   }, [vendas, filtro, busca]);
 
   const kpis = useMemo(() => {
-    const ativas = vendas.filter((v) => v.status === "ativa");
-    const total = vendas.filter((v) => v.status !== "cancelada").reduce((s, v) => s + v.valorFinal, 0);
-    const ticket = vendas.length ? total / vendas.filter((v) => v.status !== "cancelada").length : 0;
+    const safeVendas = asArray(vendas);
+    const ativas = safeVendas.filter((v) => v.status === "ativa");
+    const faturaveis = safeVendas.filter((v) => v.status !== "cancelada");
+    const total = faturaveis.reduce((s, v) => s + asNumber(v.valorFinal), 0);
+    const ticket = faturaveis.length ? total / faturaveis.length : 0;
     return {
       total,
       ativas: ativas.length,
-      qtd: vendas.length,
+      qtd: safeVendas.length,
       ticket,
     };
   }, [vendas]);
@@ -82,9 +91,7 @@ function VendasPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Vendas</h1>
-          <p className="text-sm text-muted-foreground">
-            Pacotes de sessões e vendas avulsas.
-          </p>
+          <p className="text-sm text-muted-foreground">Pacotes de sessões e vendas avulsas.</p>
         </div>
         <Button onClick={() => setModal(true)}>
           <Plus className="mr-2 size-4" /> Nova venda
@@ -92,10 +99,28 @@ function VendasPage() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-4">
-        <KpiCard icon={<TrendingUp className="size-4" />} label="Faturamento" value={BRL(kpis.total)} tone="success" />
-        <KpiCard icon={<ShoppingCart className="size-4" />} label="Vendas ativas" value={String(kpis.ativas)} tone="info" />
-        <KpiCard icon={<CheckCircle2 className="size-4" />} label="Total registros" value={String(kpis.qtd)} />
-        <KpiCard icon={<TrendingUp className="size-4" />} label="Ticket médio" value={BRL(kpis.ticket)} />
+        <KpiCard
+          icon={<TrendingUp className="size-4" />}
+          label="Faturamento"
+          value={BRL(kpis.total)}
+          tone="success"
+        />
+        <KpiCard
+          icon={<ShoppingCart className="size-4" />}
+          label="Vendas ativas"
+          value={String(kpis.ativas)}
+          tone="info"
+        />
+        <KpiCard
+          icon={<CheckCircle2 className="size-4" />}
+          label="Total registros"
+          value={String(kpis.qtd)}
+        />
+        <KpiCard
+          icon={<TrendingUp className="size-4" />}
+          label="Ticket médio"
+          value={BRL(kpis.ticket)}
+        />
       </div>
 
       <Card>
@@ -109,7 +134,9 @@ function VendasPage() {
               className="md:w-64"
             />
             <Select value={filtro} onValueChange={(v) => setFiltro(v as typeof filtro)}>
-              <SelectTrigger className="md:w-40"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="md:w-40">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todas">Todas</SelectItem>
                 <SelectItem value="ativa">Ativas</SelectItem>
@@ -135,19 +162,21 @@ function VendasPage() {
             <TableBody>
               {visiveis.map((v) => (
                 <TableRow key={v.id}>
-                  <TableCell className="whitespace-nowrap">{v.data}</TableCell>
-                  <TableCell>{v.pacienteNome}</TableCell>
+                  <TableCell className="whitespace-nowrap">{asText(v.data)}</TableCell>
+                  <TableCell>{asText(v.pacienteNome) || "Paciente sem nome"}</TableCell>
                   <TableCell>
-                    <div>{v.pacote}</div>
-                    <div className="text-xs text-muted-foreground">{v.quantidadeSessoes} sessões</div>
+                    <div>{asText(v.pacote)}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {asNumber(v.quantidadeSessoes)} sessões
+                    </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {v.formaPagamento}
-                    {v.parcelas > 1 && ` · ${v.parcelas}x`}
+                    {asText(v.formaPagamento)}
+                    {asNumber(v.parcelas) > 1 && ` - ${asNumber(v.parcelas)}x`}
                   </TableCell>
                   <TableCell className="text-right">
                     <div>{BRL(v.valorFinal)}</div>
-                    {v.desconto > 0 && (
+                    {asNumber(v.desconto) > 0 && (
                       <div className="text-xs text-muted-foreground">desc. {BRL(v.desconto)}</div>
                     )}
                   </TableCell>
@@ -230,18 +259,18 @@ function NovaVendaModal({
     if (!pacienteId) return;
     const pac = pacientes.find((p) => p.id === pacienteId);
     const vend = profissionais.find((p) => p.id === vendedorId);
-    const total = Number(valorTotal);
-    const desc = Number(desconto);
+    const total = asNumber(valorTotal);
+    const desc = asNumber(desconto);
     await vendasApi.create({
       pacienteId,
-      pacienteNome: pac?.nomeCompleto ?? "—",
+      pacienteNome: pac?.nomeCompleto ?? "-",
       pacote,
-      quantidadeSessoes: Number(quantidade),
+      quantidadeSessoes: asNumber(quantidade),
       valorTotal: total,
       desconto: desc,
       valorFinal: total - desc,
       formaPagamento: forma,
-      parcelas: Number(parcelas),
+      parcelas: asNumber(parcelas),
       data: new Date().toISOString().slice(0, 10),
       vendedorId: vend?.id,
       vendedorNome: vend?.nome,
@@ -261,10 +290,14 @@ function NovaVendaModal({
           <div className="grid gap-1">
             <Label>Paciente</Label>
             <Select value={pacienteId} onValueChange={setPacienteId}>
-              <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecionar" />
+              </SelectTrigger>
               <SelectContent>
-                {pacientes.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.nomeCompleto}</SelectItem>
+                {asArray(pacientes).map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {asText(p.nomeCompleto) || "Paciente sem nome"}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -276,17 +309,31 @@ function NovaVendaModal({
             </div>
             <div className="grid gap-1">
               <Label>Sessões</Label>
-              <Input type="number" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} />
+              <Input
+                type="number"
+                value={quantidade}
+                onChange={(e) => setQuantidade(e.target.value)}
+              />
             </div>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             <div className="grid gap-1">
               <Label>Valor total</Label>
-              <Input type="number" step="0.01" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} />
+              <Input
+                type="number"
+                step="0.01"
+                value={valorTotal}
+                onChange={(e) => setValorTotal(e.target.value)}
+              />
             </div>
             <div className="grid gap-1">
               <Label>Desconto</Label>
-              <Input type="number" step="0.01" value={desconto} onChange={(e) => setDesconto(e.target.value)} />
+              <Input
+                type="number"
+                step="0.01"
+                value={desconto}
+                onChange={(e) => setDesconto(e.target.value)}
+              />
             </div>
             <div className="grid gap-1">
               <Label>Parcelas</Label>
@@ -297,10 +344,14 @@ function NovaVendaModal({
             <div className="grid gap-1">
               <Label>Forma de pagamento</Label>
               <Select value={forma} onValueChange={(v) => setForma(v as MetodoPagamento)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {METODOS.map((m) => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -308,10 +359,14 @@ function NovaVendaModal({
             <div className="grid gap-1">
               <Label>Vendedor</Label>
               <Select value={vendedorId} onValueChange={setVendedorId}>
-                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="-" />
+                </SelectTrigger>
                 <SelectContent>
-                  {profissionais.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                  {asArray(profissionais).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {asText(p.nome) || "Profissional sem nome"}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -319,7 +374,9 @@ function NovaVendaModal({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
           <Button onClick={salvar}>Salvar</Button>
         </DialogFooter>
       </DialogContent>
@@ -339,7 +396,13 @@ function KpiCard({
   tone?: "success" | "warn" | "info";
 }) {
   const toneClass =
-    tone === "success" ? "text-emerald-600" : tone === "warn" ? "text-amber-600" : tone === "info" ? "text-sky-600" : "text-foreground";
+    tone === "success"
+      ? "text-emerald-600"
+      : tone === "warn"
+        ? "text-amber-600"
+        : tone === "info"
+          ? "text-sky-600"
+          : "text-foreground";
   return (
     <Card>
       <CardContent className="p-4">
