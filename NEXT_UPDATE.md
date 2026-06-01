@@ -101,6 +101,33 @@ Criado em: 2026-05-25 09:26 -03:00 America/Sao_Paulo
    - registrar log de chamadas API com rota, endpoint, duracao, status e erro resumido;
    - manter modo mock/local como fallback ate cada modulo ser validado contra DB real.
 
+11. Correcoes de agendamento WhatsApp para multiplos pacientes/horarios:
+   - caso real a reproduzir: `marca Iara Noto e Julio Noto na sexta 12h e 13h`;
+   - resposta incorreta observada: criou apenas `Julio Noto` em `29/05/2026 12:00`, ignorando Iara e deslocamento para 13h;
+   - ajustar parser para preservar a ordem dos nomes e casar cada nome ao respectivo horario quando a frase trouxer listas paralelas;
+   - quando houver ambiguidade de pareamento, pedir confirmacao objetiva antes de gravar agenda;
+   - validar conflito individual por paciente/horario antes da escrita e retornar resumo por item: criado, conflito, paciente nao encontrado ou precisa confirmar;
+   - otimizar o fluxo com processamento em lote: uma interpretacao da frase, uma busca consolidada de pacientes, uma leitura da janela de agenda e escritas transacionais/isoladas por item;
+   - evitar confirmar sucesso parcial como se fosse sucesso completo.
+
+12. Padrao de resposta para agendamento em lote:
+   - trocar resposta longa por resumo escaneavel e sem caracteres quebrados;
+   - formato sugerido:
+     `Agendamentos criados:`
+     `1. Iara Noto - sex 29/05/2026, 12:00-13:00 - R$ 150,00`
+     `2. Julio Noto - sex 29/05/2026, 13:00-14:00 - R$ 150,00`
+   - se houver falha parcial, responder:
+     `Criados: ...`
+     `Pendentes: ...`
+     `Nao alterei os pendentes sem confirmacao.`
+   - garantir saida real em UTF-8 correto para acentos do portugues, sem mojibake como `Ã s`.
+
+13. Pre-flight obrigatorio antes de mexer no tablet vanilla:
+   - antes do proximo update que tocar `src/vanilla/main.ts`, recuperar a versao limpa do branch principal/remoto e sobrepor o arquivo local se houver suspeita de corrupcao;
+   - comando base previsto: `git fetch` seguido de restauracao direcionada de `src/vanilla/main.ts` a partir do branch main/origin correspondente;
+   - depois reaplicar somente as alteracoes intencionais do update e rodar `npm run build:tablet`;
+   - nao usar restauracao ampla do repo, para nao apagar alteracoes locais nao relacionadas.
+
 ## Observacoes tecnicas
 
 - Comissao e Vendas permanecem no codigo/rotas, mas ocultas da navegacao ate existir modelo real nos DBs.

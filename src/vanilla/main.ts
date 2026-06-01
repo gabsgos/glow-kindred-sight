@@ -67,29 +67,37 @@ type AgendaSlot = {
 
 type Evolucao = {
   id: string;
+  pacienteId?: string;
   pacienteNome?: string;
   data?: string;
   texto?: string;
+  conduta?: string;
+  profissionalNome?: string;
 };
 
 type Faturamento = {
   id: string;
+  pacienteId?: string;
   nomeCompleto?: string;
   data?: string;
   dataPagamento?: string;
+  formaPagamento?: string;
   valorAtendimento?: number;
   statusFinanceiro?: string;
 };
 
 type AppState = {
   user: User | null;
-  route: "dashboard" | "pacientes" | "agenda";
+  route: "dashboard" | "pacientes" | "agenda" | "evolucoes" | "financeiro" | "relatorios" | "recursos";
   agenda: AgendaSlot[];
   pacientes: Paciente[];
+  evolucoes: Evolucao[];
+  financeiro: Faturamento[];
   patientFinance: Faturamento[];
   patientEvolutions: Evolucao[];
   selectedPatientId: string | null;
   patientSearch: string;
+  reportTab: "atendimentos" | "financeiro" | "pacientes";
   selectedEventId: string | null;
   agendaStart: string;
   agendaEnd: string;
@@ -106,10 +114,13 @@ const state: AppState = {
   route: "dashboard",
   agenda: [],
   pacientes: [],
+  evolucoes: [],
+  financeiro: [],
   patientFinance: [],
   patientEvolutions: [],
   selectedPatientId: null,
   patientSearch: "",
+  reportTab: "atendimentos",
   selectedEventId: null,
   agendaStart: todayISO(),
   agendaEnd: addDaysISO(7),
@@ -201,6 +212,10 @@ function setDocumentRoute(route: AppState["route"]): void {
     dashboard: "/dashboard",
     pacientes: "/pacientes",
     agenda: "/agenda",
+    evolucoes: "/evolucoes",
+    financeiro: "/financeiro/caixa",
+    relatorios: "/relatorios",
+    recursos: "/recursos",
   };
   history.replaceState(null, "", pathByRoute[route]);
   renderAppShell();
@@ -217,7 +232,15 @@ async function bootstrap(): Promise<void> {
         ? "agenda"
         : path.startsWith("/pacientes")
           ? "pacientes"
-          : "dashboard";
+          : path.startsWith("/evolucoes")
+            ? "evolucoes"
+            : path.startsWith("/financeiro")
+              ? "financeiro"
+              : path.startsWith("/relatorios")
+                ? "relatorios"
+                : path.startsWith("/recursos")
+                  ? "recursos"
+                  : "dashboard";
       renderAppShell();
       await loadCurrentRoute();
       return;
@@ -387,33 +410,90 @@ function renderAppShell(): void {
   if (!app) return;
   const active = state.route;
   const userName = state.user?.nomeExibicao || state.user?.nomeCompleto || state.user?.login || "Usuario";
+  const navGroups: Array<{ label: string; items: Array<{ route: AppState["route"]; icon: string; title: string }> }> = [
+    { label: "Geral", items: [{ route: "dashboard", icon: "⌂", title: "Inicio" }] },
+    {
+      label: "Operacao",
+      items: [
+        { route: "pacientes", icon: "◉", title: "Pacientes" },
+        { route: "agenda", icon: "▦", title: "Agenda" },
+        { route: "evolucoes", icon: "✎", title: "Evolucoes" },
+      ],
+    },
+    {
+      label: "Gestao",
+      items: [
+        { route: "financeiro", icon: "$", title: "Financeiro" },
+        { route: "relatorios", icon: "▤", title: "Relatorios" },
+        { route: "recursos", icon: "⚙", title: "Recursos" },
+      ],
+    },
+  ];
   app.innerHTML = `
     <main class="app-shell">
       <aside class="sidebar">
-        <div class="brand">
+        <div class="brand shell-brand">
           <div class="brand-mark" aria-hidden="true">F</div>
           <div>
             <p class="brand-title">FisioBot</p>
-            <div class="brand-subtitle">${escapeHtml(userName)}</div>
+            <div class="brand-subtitle">cockpit clinico</div>
           </div>
         </div>
         <nav class="nav" aria-label="Principal">
-          <button type="button" data-route="dashboard" aria-current="${active === "dashboard" ? "page" : "false"}">Inicio</button>
-          <button type="button" data-route="pacientes" aria-current="${active === "pacientes" ? "page" : "false"}">Pacientes</button>
-          <button type="button" data-route="agenda" aria-current="${active === "agenda" ? "page" : "false"}">Agenda</button>
-          <a class="react-switch" href="/react-app?route=${encodeURIComponent(window.location.pathname || "/dashboard")}">Abrir React</a>
-          <button type="button" id="logout">Sair</button>
+          ${navGroups
+            .map(
+              (group) => `
+                <div class="nav-group">
+                  <span>${group.label}</span>
+                  ${group.items
+                    .map(
+                      (item) => `
+                        <button type="button" data-route="${item.route}" aria-current="${active === item.route ? "page" : "false"}">
+                          <b aria-hidden="true">${item.icon}</b>
+                          ${item.title}
+                        </button>
+                      `,
+                    )
+                    .join("")}
+                </div>
+              `,
+            )
+            .join("")}
         </nav>
       </aside>
       <section class="main">
+        <header class="global-topbar">
+          <button class="sidebar-toggle" type="button" aria-label="Menu">☰</button>
+          <div class="global-search" role="search">
+            <span aria-hidden="true">⌕</span>
+            <input id="global-search" type="text" placeholder="Pesquisar paciente, atendimento ou relatorio" autocomplete="off" />
+          </div>
+          <div class="topbar-actions">
+            <span class="status-dot ok" title="Backend ativo"></span>
+            <span class="user-chip">${escapeHtml(userName)}</span>
+            <button class="ghost-button icon-button" id="logout" type="button" title="Sair">⇥</button>
+          </div>
+        </header>
         <div id="view"></div>
       </section>
     </main>
   `;
+  document.querySelector<HTMLButtonElement>(".sidebar-toggle")?.addEventListener("click", () => {
+    document.querySelector<HTMLElement>(".sidebar")?.classList.toggle("open");
+  });
+  document.querySelector<HTMLInputElement>("#global-search")?.addEventListener("keydown", async (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const term = event.currentTarget.value.trim();
+    if (!term) return;
+    state.patientSearch = term;
+    setDocumentRoute("pacientes");
+    await loadPacientes();
+  });
   document.querySelectorAll<HTMLButtonElement>("[data-route]").forEach((button) => {
     button.addEventListener("click", async () => {
       const nextRoute = button.dataset.route;
-      setDocumentRoute(nextRoute === "agenda" ? "agenda" : nextRoute === "pacientes" ? "pacientes" : "dashboard");
+      setDocumentRoute(isAppRoute(nextRoute) ? nextRoute : "dashboard");
       await loadCurrentRoute();
     });
   });
@@ -426,9 +506,17 @@ function renderAppShell(): void {
   renderCurrentRoute();
 }
 
+function isAppRoute(value: unknown): value is AppState["route"] {
+  return ["dashboard", "pacientes", "agenda", "evolucoes", "financeiro", "relatorios", "recursos"].includes(String(value));
+}
+
 function renderCurrentRoute(): void {
   if (state.route === "agenda") renderAgenda();
   else if (state.route === "pacientes") renderPacientes();
+  else if (state.route === "evolucoes") renderEvolucoes();
+  else if (state.route === "financeiro") renderFinanceiro();
+  else if (state.route === "relatorios") renderRelatorios();
+  else if (state.route === "recursos") renderRecursos();
   else renderDashboard();
 }
 
@@ -439,6 +527,22 @@ async function loadCurrentRoute(): Promise<void> {
   }
   if (state.route === "pacientes") {
     await loadPacientes();
+    return;
+  }
+  if (state.route === "evolucoes") {
+    await loadEvolucoes();
+    return;
+  }
+  if (state.route === "financeiro") {
+    await loadFinanceiro();
+    return;
+  }
+  if (state.route === "relatorios") {
+    await loadRelatorios();
+    return;
+  }
+  if (state.route === "recursos") {
+    await loadRecursos();
     return;
   }
   await loadDashboard();
@@ -456,6 +560,9 @@ async function loadDashboard(): Promise<void> {
       fetchJson<Faturamento[]>("/api/web/financeiro"),
     ]);
     state.agenda = agenda;
+    state.pacientes = pacientes;
+    state.evolucoes = evolucoes;
+    state.financeiro = financeiro;
     state.selectedEventId = agenda[0]?.id || null;
     renderDashboard(pacientes, agenda, evolucoes, financeiro);
   } catch (error) {
@@ -848,6 +955,458 @@ function showPatientNotice(kind: "error" | "success" | "info", message: string):
   notice.textContent = message;
 }
 
+async function loadEvolucoes(): Promise<void> {
+  renderEvolucoes(true);
+  try {
+    const [patients, evolutions] = await Promise.all([
+      fetchJson<Paciente[]>("/api/web/pacientes?limit=500"),
+      fetchJson<Evolucao[]>("/api/web/evolucoes?limit=200"),
+    ]);
+    state.pacientes = patients;
+    state.evolucoes = evolutions;
+    renderEvolucoes();
+  } catch (error) {
+    const view = document.querySelector<HTMLDivElement>("#view");
+    if (view) {
+      view.innerHTML = `<div class="notice error">Falha ao carregar evolucoes: ${escapeHtml(error instanceof Error ? error.message : "erro desconhecido")}</div>`;
+    }
+  }
+}
+
+function renderEvolucoes(loading = false): void {
+  const view = document.querySelector<HTMLDivElement>("#view");
+  if (!view) return;
+  view.innerHTML = `
+    <header class="topbar">
+      <div>
+        <h1>Evolucoes</h1>
+        <p>Registro clinico por texto, conectado ao banco operacional.</p>
+      </div>
+      <button class="secondary-button" id="refresh-evolucoes" type="button">Atualizar</button>
+    </header>
+    <section class="grid-2">
+      <div class="content-panel">
+        <div id="evolution-notice" class="notice" role="status"></div>
+        <form id="evolution-form" class="form-grid">
+          <label>Paciente
+            <select name="pacienteId" required>
+              <option value="">Selecionar paciente</option>
+              ${state.pacientes.map((patient) => `<option value="${escapeHtml(patient.id)}">${escapeHtml(patient.nomeCompleto)}</option>`).join("")}
+            </select>
+          </label>
+          <label>Evolucao
+            <textarea name="texto" rows="7" placeholder="Descreva queixas, exercicios realizados e evolucao do paciente..." required></textarea>
+          </label>
+          <label>Conduta / proximos passos
+            <textarea name="conduta" rows="3" placeholder="Manter protocolo, reavaliar em..."></textarea>
+          </label>
+          <div class="button-row">
+            <button class="primary-button" type="submit">Salvar evolucao</button>
+            <button class="ghost-button" id="mock-transcribe" type="button">Simular audio</button>
+          </div>
+        </form>
+      </div>
+      <aside class="content-panel">
+        <div class="section-title">
+          <h2>Ultimas evolucoes</h2>
+          <span class="pill">${state.evolucoes.length}</span>
+        </div>
+        ${loading ? `<div class="loading">Carregando evolucoes...</div>` : ""}
+        <div class="timeline-list">
+          ${state.evolucoes.map(evolutionItemHtml).join("") || `<div class="empty">Nenhuma evolucao registrada.</div>`}
+        </div>
+      </aside>
+    </section>
+  `;
+  document.querySelector<HTMLButtonElement>("#refresh-evolucoes")?.addEventListener("click", loadEvolucoes);
+  document.querySelector<HTMLButtonElement>("#mock-transcribe")?.addEventListener("click", () => {
+    const text = document.querySelector<HTMLTextAreaElement>("[name='texto']");
+    const conduct = document.querySelector<HTMLTextAreaElement>("[name='conduta']");
+    if (text) text.value = `${text.value ? `${text.value}\n` : ""}Paciente realizou exercicios de fortalecimento e mobilidade. Boa evolucao do quadro algico.`;
+    if (conduct) conduct.value = "Manter protocolo. Reavaliar em 1 semana.";
+  });
+  document.querySelector<HTMLFormElement>("#evolution-form")?.addEventListener("submit", handleEvolutionSubmit);
+}
+
+function evolutionItemHtml(evolution: Evolucao): string {
+  return `
+    <article class="timeline-item">
+      <div class="timeline-header">
+        <strong>${escapeHtml(evolution.pacienteNome || "Paciente sem nome")}</strong>
+        <span>${formatDate(evolution.data)}</span>
+      </div>
+      <p>${escapeHtml(evolution.texto || "-")}</p>
+      ${evolution.conduta ? `<small>Conduta: ${escapeHtml(evolution.conduta)}</small>` : ""}
+    </article>
+  `;
+}
+
+async function handleEvolutionSubmit(event: SubmitEvent): Promise<void> {
+  event.preventDefault();
+  const form = event.currentTarget as HTMLFormElement;
+  const data = new FormData(form);
+  const pacienteId = String(data.get("pacienteId") || "");
+  const patient = state.pacientes.find((item) => item.id === pacienteId);
+  const texto = String(data.get("texto") || "").trim();
+  if (!pacienteId || !texto) {
+    showEvolutionNotice("error", "Selecione um paciente e escreva a evolucao.");
+    return;
+  }
+  try {
+    const saved = await sendJson<Evolucao>("/api/web/evolucoes", {
+      pacienteId,
+      pacienteNome: patient?.nomeCompleto,
+      texto,
+      conduta: String(data.get("conduta") || "").trim(),
+      data: todayISO(),
+      profissionalNome: state.user?.nomeCompleto || state.user?.login || "FisioBot",
+    });
+    state.evolucoes = [saved, ...state.evolucoes];
+    form.reset();
+    renderEvolucoes();
+    showEvolutionNotice("success", "Evolucao salva no banco.");
+  } catch (error) {
+    showEvolutionNotice("error", error instanceof Error ? error.message : "Falha ao salvar evolucao.");
+  }
+}
+
+function showEvolutionNotice(kind: "error" | "success" | "info", message: string): void {
+  const notice = document.querySelector<HTMLDivElement>("#evolution-notice");
+  if (!notice) return;
+  notice.className = `notice ${kind}`;
+  notice.textContent = message;
+}
+
+async function loadFinanceiro(): Promise<void> {
+  renderFinanceiro(true);
+  try {
+    state.financeiro = await fetchJson<Faturamento[]>("/api/web/financeiro?limit=500");
+    renderFinanceiro();
+  } catch (error) {
+    const view = document.querySelector<HTMLDivElement>("#view");
+    if (view) {
+      view.innerHTML = `<div class="notice error">Falha ao carregar financeiro: ${escapeHtml(error instanceof Error ? error.message : "erro desconhecido")}</div>`;
+    }
+  }
+}
+
+function renderFinanceiro(loading = false): void {
+  const view = document.querySelector<HTMLDivElement>("#view");
+  if (!view) return;
+  const totals = financeTotals(state.financeiro);
+  view.innerHTML = `
+    <header class="topbar">
+      <div>
+        <h1>Caixa</h1>
+        <p>Espelho financeiro operacional baseado nos faturamentos registrados.</p>
+      </div>
+      <div class="button-row">
+        <button class="secondary-button" id="refresh-financeiro" type="button">Atualizar</button>
+        <button class="ghost-button" id="export-financeiro" type="button">Exportar CSV</button>
+      </div>
+    </header>
+    <section class="finance-layout">
+      <aside class="finance-side">
+        <div class="content-panel">
+          <div class="detail-row"><span>Situacao</span><strong>Operacional</strong></div>
+          <div class="detail-row"><span>Entradas pagas</span><strong>${formatMoney(totals.paid)}</strong></div>
+          <div class="detail-row"><span>Pendentes</span><strong>${formatMoney(totals.pending)}</strong></div>
+          <div class="detail-row"><span>Total previsto</span><strong>${formatMoney(totals.total)}</strong></div>
+        </div>
+        <div class="content-panel">
+          <div class="section-title"><h2>Por status</h2></div>
+          <div class="method-row"><span>Pago</span><strong>${formatMoney(totals.paid)}</strong></div>
+          <div class="method-row"><span>Pendente</span><strong>${formatMoney(totals.pending)}</strong></div>
+        </div>
+      </aside>
+      <section class="content-panel">
+        <div class="section-title">
+          <h2>Lancamentos</h2>
+          <span class="pill">${state.financeiro.length}</span>
+        </div>
+        ${loading ? `<div class="loading">Carregando financeiro...</div>` : ""}
+        <div class="data-table">
+          <div class="data-row data-head"><span>Data</span><span>Paciente</span><span>Status</span><span>Valor</span></div>
+          ${
+            state.financeiro
+              .map(
+                (item) => `
+                  <div class="data-row">
+                    <span>${formatDate(item.data)}</span>
+                    <span>${escapeHtml(item.nomeCompleto || "-")}</span>
+                    <span class="pill ${item.statusFinanceiro === "pago" ? "ok" : "warn"}">${escapeHtml(item.statusFinanceiro || "pendente")}</span>
+                    <strong>${formatMoney(item.valorAtendimento)}</strong>
+                  </div>
+                `,
+              )
+              .join("") || `<div class="empty">Sem lancamentos financeiros.</div>`
+          }
+        </div>
+      </section>
+    </section>
+  `;
+  document.querySelector<HTMLButtonElement>("#refresh-financeiro")?.addEventListener("click", loadFinanceiro);
+  document.querySelector<HTMLButtonElement>("#export-financeiro")?.addEventListener("click", exportFinanceCsv);
+}
+
+function financeTotals(items: Faturamento[]): { paid: number; pending: number; total: number } {
+  const paid = items.filter((item) => item.statusFinanceiro === "pago").reduce((sum, item) => sum + Number(item.valorAtendimento || 0), 0);
+  const pending = items.filter((item) => item.statusFinanceiro !== "pago").reduce((sum, item) => sum + Number(item.valorAtendimento || 0), 0);
+  return { paid, pending, total: paid + pending };
+}
+
+function exportFinanceCsv(): void {
+  const rows = [
+    ["Data", "Paciente", "Status", "Valor"].join(";"),
+    ...state.financeiro.map((item) => [item.data || "", item.nomeCompleto || "", item.statusFinanceiro || "", String(item.valorAtendimento || 0)].join(";")),
+  ].join("\n");
+  downloadText(`fisiobot-financeiro-${todayISO()}.csv`, rows);
+}
+
+async function loadRelatorios(): Promise<void> {
+  renderRelatorios(true);
+  try {
+    const [patients, agenda, finance] = await Promise.all([
+      fetchJson<Paciente[]>("/api/web/pacientes?limit=500"),
+      fetchJson<AgendaSlot[]>("/api/web/agenda?limit=500"),
+      fetchJson<Faturamento[]>("/api/web/financeiro?limit=500"),
+    ]);
+    state.pacientes = patients;
+    state.agenda = agenda;
+    state.financeiro = finance;
+    renderRelatorios();
+  } catch (error) {
+    const view = document.querySelector<HTMLDivElement>("#view");
+    if (view) {
+      view.innerHTML = `<div class="notice error">Falha ao carregar relatorios: ${escapeHtml(error instanceof Error ? error.message : "erro desconhecido")}</div>`;
+    }
+  }
+}
+
+function renderRelatorios(loading = false): void {
+  const view = document.querySelector<HTMLDivElement>("#view");
+  if (!view) return;
+  const report = buildReportData();
+  view.innerHTML = `
+    <header class="topbar">
+      <div>
+        <h1>Relatorios</h1>
+        <p>Estatisticas de atendimentos, financeiro e pacientes.</p>
+      </div>
+      <button class="ghost-button" id="export-report" type="button">Exportar CSV</button>
+    </header>
+    <section class="tabs">
+      <button class="${state.reportTab === "atendimentos" ? "active" : ""}" data-report-tab="atendimentos">Atendimentos</button>
+      <button class="${state.reportTab === "financeiro" ? "active" : ""}" data-report-tab="financeiro">Financeiro</button>
+      <button class="${state.reportTab === "pacientes" ? "active" : ""}" data-report-tab="pacientes">Pacientes</button>
+    </section>
+    ${loading ? `<div class="loading">Carregando relatorios...</div>` : ""}
+    ${state.reportTab === "financeiro" ? reportFinanceHtml(report) : state.reportTab === "pacientes" ? reportPatientsHtml(report) : reportAttendanceHtml(report)}
+  `;
+  document.querySelectorAll<HTMLButtonElement>("[data-report-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const tab = button.dataset.reportTab;
+      state.reportTab = tab === "financeiro" || tab === "pacientes" ? tab : "atendimentos";
+      renderRelatorios();
+    });
+  });
+  document.querySelector<HTMLButtonElement>("#export-report")?.addEventListener("click", () => {
+    const rows = [["Tipo", "Chave", "Valor"], ...report.byDay.map(([k, v]) => ["Atendimentos por dia", k, String(v)]), ["Financeiro", "Recebido", String(report.finance.paid)], ["Financeiro", "Pendente", String(report.finance.pending)]];
+    downloadText(`fisiobot-relatorio-${todayISO()}.csv`, rows.map((row) => row.join(";")).join("\n"));
+  });
+}
+
+function buildReportData() {
+  const activeAgenda = state.agenda.filter((slot) => slot.status !== "cancelado");
+  const byDay = groupCount(activeAgenda.map((slot) => slot.data).filter(Boolean));
+  const byService = groupCount(activeAgenda.map((slot) => slot.servico || "Fisioterapia"));
+  const finance = financeTotals(state.financeiro);
+  const patients = state.pacientes.map((patient) => ({
+    patient,
+    atendimentos: Number(patient.totalAtendimentos || 0),
+    pago: Number(patient.totalPago || 0),
+    pendente: Number(patient.totalPendente || 0),
+  })).sort((a, b) => b.atendimentos - a.atendimentos);
+  return { byDay, byService, finance, patients };
+}
+
+function groupCount(keys: string[]): Array<[string, number]> {
+  const map = new Map<string, number>();
+  keys.forEach((key) => map.set(key, (map.get(key) || 0) + 1));
+  return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+}
+
+function reportAttendanceHtml(report: ReturnType<typeof buildReportData>): string {
+  return `
+    <section class="stats-grid">
+      <div class="stat"><span>Total atendimentos</span><strong>${report.byDay.reduce((sum, [, value]) => sum + value, 0)}</strong></div>
+      <div class="stat"><span>Dias com agenda</span><strong>${report.byDay.length}</strong></div>
+      <div class="stat"><span>Servicos</span><strong>${report.byService.length}</strong></div>
+    </section>
+    <section class="grid-2">
+      <div class="content-panel">${barSeriesHtml("Atendimentos por dia", report.byDay, formatDate)}</div>
+      <div class="content-panel">${barSeriesHtml("Por servico", report.byService)}</div>
+    </section>
+  `;
+}
+
+function reportFinanceHtml(report: ReturnType<typeof buildReportData>): string {
+  return `
+    <section class="stats-grid">
+      <div class="stat"><span>Total recebido</span><strong>${formatMoney(report.finance.paid)}</strong></div>
+      <div class="stat"><span>Total pendente</span><strong>${formatMoney(report.finance.pending)}</strong></div>
+      <div class="stat"><span>Total previsto</span><strong>${formatMoney(report.finance.total)}</strong></div>
+    </section>
+    <section class="content-panel">${barSeriesHtml("Recebimentos por status", [["Pago", report.finance.paid], ["Pendente", report.finance.pending]])}</section>
+  `;
+}
+
+function reportPatientsHtml(report: ReturnType<typeof buildReportData>): string {
+  return `
+    <section class="content-panel">
+      <div class="section-title"><h2>${report.patients.length} pacientes</h2></div>
+      <div class="data-table">
+        <div class="data-row data-head"><span>Paciente</span><span>Atend.</span><span>Pago</span><span>Pendente</span></div>
+        ${
+          report.patients.map((item) => `
+            <div class="data-row">
+              <span>${escapeHtml(item.patient.nomeCompleto)}</span>
+              <span>${item.atendimentos}</span>
+              <span>${formatMoney(item.pago)}</span>
+              <strong>${formatMoney(item.pendente)}</strong>
+            </div>
+          `).join("") || `<div class="empty">Sem pacientes.</div>`
+        }
+      </div>
+    </section>
+  `;
+}
+
+function barSeriesHtml(title: string, items: Array<[string, number]>, formatKey?: (value: string) => string): string {
+  const max = Math.max(1, ...items.map(([, value]) => value));
+  return `
+    <div class="section-title"><h2>${escapeHtml(title)}</h2></div>
+    <div class="bar-list">
+      ${
+        items.map(([key, value]) => `
+          <div class="bar-row">
+            <span>${escapeHtml(formatKey ? formatKey(key) : key)}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.max(4, (value / max) * 100)}%"></div></div>
+            <strong>${typeof value === "number" && value > 99 ? formatMoney(value) : value}</strong>
+          </div>
+        `).join("") || `<div class="empty">Sem dados.</div>`
+      }
+    </div>
+  `;
+}
+
+function downloadText(filename: string, text: string): void {
+  const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+async function loadRecursos(): Promise<void> {
+  renderRecursos(true);
+  const checks = await Promise.allSettled([
+    fetchJson<{ status?: string }>("/healthz"),
+    fetchJson<SessionPayload>("/api/web/session"),
+    fetchJson<{ ok?: boolean; connected?: boolean; status?: string }>("/whatsapp/baileys/health"),
+  ]);
+  const health = checks[0].status === "fulfilled" ? checks[0].value : null;
+  const session = checks[1].status === "fulfilled" ? checks[1].value : null;
+  const whatsapp = checks[2].status === "fulfilled" ? checks[2].value : null;
+  renderRecursos(false, { health, session, whatsapp });
+}
+
+function renderRecursos(
+  loading = false,
+  data: {
+    health: { status?: string } | null;
+    session: SessionPayload | null;
+    whatsapp: { ok?: boolean; connected?: boolean; status?: string } | null;
+  } = { health: null, session: null, whatsapp: null },
+): void {
+  const view = document.querySelector<HTMLDivElement>("#view");
+  if (!view) return;
+  const modules = [
+    {
+      name: "Backend Flask",
+      status: data.health?.status === "ok" ? "Ativo" : "Indisponivel",
+      detail: "API local, sessao web e rotas operacionais.",
+      active: data.health?.status === "ok",
+    },
+    {
+      name: "Sessao web",
+      status: data.session?.authenticated ? "Autenticado" : "Aguardando login",
+      detail: data.session?.user?.login || "Controle por cookie no backend.",
+      active: Boolean(data.session?.authenticated),
+    },
+    {
+      name: "WhatsApp / Baileys",
+      status: data.whatsapp?.connected || data.whatsapp?.ok ? "Ativo" : "Verificar",
+      detail: data.whatsapp?.status || "Worker separado do dashboard.",
+      active: Boolean(data.whatsapp?.connected || data.whatsapp?.ok),
+    },
+    {
+      name: "Pacientes",
+      status: "Ativo",
+      detail: "Cadastro, edicao, exclusao logica e detalhes por paciente.",
+      active: true,
+    },
+    {
+      name: "Agenda",
+      status: "Ativo",
+      detail: "Grade semanal, filtros manuais e acoes de atendimento.",
+      active: true,
+    },
+    {
+      name: "IA, CRM, Operacao e dashboards internos",
+      status: "Oculto",
+      detail: "Estrutura preservada para ativacao futura.",
+      active: false,
+    },
+  ];
+  view.innerHTML = `
+    <header class="page-header">
+      <div>
+        <h1>Recursos do sistema</h1>
+        <p>Status rapido dos modulos ativos e conexoes criticas.</p>
+      </div>
+      <button class="secondary-button" id="refresh-recursos" type="button">Atualizar</button>
+    </header>
+    ${loading ? `<div class="loading">Verificando recursos...</div>` : ""}
+    <section class="resources-layout">
+      <div class="content-panel resource-list">
+        ${modules
+          .map(
+            (item, index) => `
+              <button class="resource-row ${index === 0 ? "selected" : ""}" type="button">
+                <span class="resource-icon">${item.active ? "✓" : "–"}</span>
+                <span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.detail)}</small></span>
+                <em class="${item.active ? "ok" : "warn"}">${escapeHtml(item.status)}</em>
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+      <aside class="content-panel resource-detail">
+        <div class="resource-badge">F</div>
+        <h2>FisioBot operacional</h2>
+        <p>Esta tela segue o modelo de recursos do NextFit, mas com os modulos realmente ativos no tablet. Os itens ocultos ficam fora da navegacao principal e continuam desconectados ate nova etapa.</p>
+        <div class="detail-row"><span>Modo de interface</span><strong>Vanilla HTML/CSS/JS</strong></div>
+        <div class="detail-row"><span>Banco de dados</span><strong>Acesso somente via backend</strong></div>
+        <div class="detail-row"><span>WhatsApp</span><strong>Worker separado do dashboard</strong></div>
+      </aside>
+    </section>
+  `;
+  document.querySelector<HTMLButtonElement>("#refresh-recursos")?.addEventListener("click", loadRecursos);
+}
+
 async function loadAgenda(): Promise<void> {
   renderAgenda(true);
   try {
@@ -873,21 +1432,40 @@ function renderAgenda(loading = false): void {
     state.agenda.find((slot) => slot.id === state.selectedEventId) || filteredAgenda[0] || null;
   const weekDays = weekDaysFrom(state.agendaWeekStart);
   const totals = agendaTotals(state.agenda);
+  const monthLabel = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(
+    new Date(`${state.agendaWeekStart}T12:00:00`),
+  );
   view.innerHTML = `
-    <header class="topbar">
+    <header class="page-header">
       <div>
         <h1>Agenda</h1>
         <p>Semana de ${formatDate(state.agendaStart)} a ${formatDate(state.agendaEnd)}.</p>
       </div>
-      <button class="secondary-button" id="refresh-agenda" type="button">Atualizar</button>
+      <div class="button-row">
+        <button class="secondary-button" id="refresh-agenda" type="button">Atualizar</button>
+        <button class="primary-button" type="button" data-route="pacientes">Novo paciente</button>
+      </div>
     </header>
-    <section class="content-panel">
-      <div class="calendar-toolbar">
-        <button class="ghost-button" id="prev-week" type="button">Anterior</button>
-        <button class="ghost-button" id="today-week" type="button">Hoje</button>
-        <button class="ghost-button" id="next-week" type="button">Proxima</button>
+    <section class="calendar-shell">
+      <div class="calendar-topline">
+        <div class="calendar-nav">
+          <button class="ghost-button icon-button" id="prev-week" type="button" title="Semana anterior">‹</button>
+          <button class="secondary-button" id="today-week" type="button">HOJE</button>
+          <button class="ghost-button icon-button" id="next-week" type="button" title="Proxima semana">›</button>
+          <strong>${escapeHtml(monthLabel)}</strong>
+        </div>
+        <div class="calendar-actions">
+          <label>Visualizacao
+            <select id="agenda-view" disabled>
+              <option>Semana</option>
+            </select>
+          </label>
+          <button class="ghost-button" id="apply-agenda-filter" type="button">Filtros</button>
+        </div>
+      </div>
+      <div class="calendar-filterbar">
         <label>Buscar
-          <input id="agenda-search" type="text" value="${escapeHtml(state.agendaSearch)}" placeholder="Paciente ou atendimento" />
+          <input id="agenda-search" type="text" value="${escapeHtml(state.agendaSearch)}" placeholder="Paciente, servico ou profissional" />
         </label>
         <label>Status
           <select id="agenda-status">
@@ -897,31 +1475,37 @@ function renderAgenda(loading = false): void {
             <option value="cancelado" ${state.agendaStatus === "cancelado" ? "selected" : ""}>Cancelados</option>
           </select>
         </label>
-        <button class="primary-button" id="apply-agenda-filter" type="button">Filtrar</button>
-      </div>
-      <div class="status-strip">
-        <span>Futuros: ${totals.future}</span>
-        <span>Retroativos: ${totals.retro}</span>
-        <span>Pendencia faturamento: ${totals.pending}</span>
+        <div class="status-strip">
+          <span>Futuros: ${totals.future}</span>
+          <span>Retroativos: ${totals.retro}</span>
+          <span>Pend. faturamento: ${totals.pending}</span>
+        </div>
       </div>
       ${loading ? `<div class="loading">Carregando agenda...</div>` : ""}
-      <div class="grid-2">
-        <div>
+      <div class="calendar-workspace">
+        <div class="calendar-main">
           ${weekGridHtml(weekDays, filteredAgenda)}
-          <div class="content-panel agenda-list-panel">
+          <div class="content-panel agenda-list-panel dense-panel">
             <div class="section-title"><h2>Atendimentos da semana</h2></div>
             <div class="agenda-list">
               ${filteredAgenda.map(eventCardHtml).join("") || `<div class="empty">Nenhum atendimento no filtro atual.</div>`}
             </div>
           </div>
         </div>
-        <aside class="content-panel">
+        <aside class="content-panel agenda-detail-panel">
           ${selected ? eventDetailHtml(selected) : `<div class="empty">Selecione um atendimento.</div>`}
         </aside>
+      </div>
+      <div class="quick-rail" aria-label="Acoes rapidas">
+        <button type="button" title="Atualizar" id="quick-refresh">↻</button>
+        <button type="button" title="Pacientes" data-route="pacientes">◉</button>
+        <button type="button" title="Relatorios" data-route="relatorios">▤</button>
       </div>
     </section>
   `;
   document.querySelector<HTMLButtonElement>("#refresh-agenda")?.addEventListener("click", loadAgenda);
+  document.querySelector<HTMLButtonElement>("#quick-refresh")?.addEventListener("click", loadAgenda);
+  window.requestAnimationFrame(scrollAgendaToCurrentHour);
   document.querySelector<HTMLButtonElement>("#prev-week")?.addEventListener("click", async () => {
     state.agendaWeekStart = addDaysToISO(state.agendaWeekStart, -7);
     state.selectedEventId = null;
@@ -948,6 +1532,13 @@ function renderAgenda(loading = false): void {
     state.agendaSearch = event.currentTarget.value.trim();
     state.agendaStatus = document.querySelector<HTMLSelectElement>("#agenda-status")?.value || "todos";
     renderAgenda();
+  });
+  view.querySelectorAll<HTMLButtonElement>("[data-route]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const nextRoute = button.dataset.route;
+      setDocumentRoute(isAppRoute(nextRoute) ? nextRoute : "dashboard");
+      await loadCurrentRoute();
+    });
   });
   document.querySelectorAll<HTMLButtonElement>("[data-event-id]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -999,7 +1590,7 @@ function agendaTotals(slots: AgendaSlot[]): { future: number; retro: number; pen
 }
 
 function weekGridHtml(weekDays: string[], slots: AgendaSlot[]): string {
-  const hours = Array.from({ length: 16 }, (_, index) => index + 6);
+  const hours = Array.from({ length: 17 }, (_, index) => index + 6);
   const labels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
   return `
     <div class="week-grid">
@@ -1007,7 +1598,7 @@ function weekGridHtml(weekDays: string[], slots: AgendaSlot[]): string {
       ${weekDays
         .map((day) => {
           const date = new Date(`${day}T12:00:00`);
-          return `<div class="week-head ${day === todayISO() ? "today" : ""}"><span>${labels[date.getDay()]}</span><strong>${date.getDate()}</strong></div>`;
+          return `<div class="week-head ${day === todayISO() ? "today" : ""}"><span>${labels[date.getDay()]}.</span><strong>${date.getDate()}</strong></div>`;
         })
         .join("")}
       ${hours
@@ -1031,12 +1622,22 @@ function weekGridHtml(weekDays: string[], slots: AgendaSlot[]): string {
 
 function calendarChipHtml(slot: AgendaSlot): string {
   const cliente = slot.clientes?.[0];
+  const status = String(slot.status || "aberto").toLowerCase();
+  const capacity = slot.clientes?.length || 0;
   return `
-    <button class="calendar-chip ${escapeHtml(slot.status || "aberto")}" type="button" data-event-id="${escapeHtml(slot.id)}">
-      <strong>${escapeHtml(slot.horaInicio || "")}</strong>
+    <button class="calendar-chip ${escapeHtml(status)}" type="button" data-event-id="${escapeHtml(slot.id)}">
+      <span class="chip-time">${escapeHtml(slot.horaInicio || "")}${slot.horaFim ? ` - ${escapeHtml(slot.horaFim)}` : ""}</span>
       <span>${escapeHtml(cliente?.nomeCompleto || slot.servico || "Atendimento")}</span>
+      <small>${escapeHtml(slot.servico || "Fisioterapia")} · ${capacity} / ∞</small>
     </button>
   `;
+}
+
+function scrollAgendaToCurrentHour(): void {
+  const grid = document.querySelector<HTMLDivElement>(".week-grid");
+  if (!grid) return;
+  const currentHour = new Date().getHours();
+  grid.scrollTop = Math.max(0, currentHour - 1) * 84;
 }
 
 function eventCardHtml(slot: AgendaSlot): string {
@@ -1063,6 +1664,10 @@ function eventDetailHtml(slot: AgendaSlot): string {
       <div class="section-title">
         <h2>Detalhes</h2>
         <span class="pill ${slot.status === "concluido" ? "ok" : slot.status === "cancelado" ? "warn" : ""}">${escapeHtml(slot.status || "aberto")}</span>
+      </div>
+      <div class="detail-hero">
+        <strong>${escapeHtml(cliente.nomeCompleto || slot.servico || "Atendimento")}</strong>
+        <span>${formatDate(slot.data)} ${escapeHtml(slot.horaInicio || "")}${slot.horaFim ? `-${escapeHtml(slot.horaFim)}` : ""}</span>
       </div>
       <div class="detail-row"><span>Paciente</span><strong>${escapeHtml(cliente.nomeCompleto || "-")}</strong></div>
       <div class="detail-row"><span>Data e horario</span><strong>${formatDate(slot.data)} ${escapeHtml(slot.horaInicio || "")}${slot.horaFim ? `-${escapeHtml(slot.horaFim)}` : ""}</strong></div>

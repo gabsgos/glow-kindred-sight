@@ -145,8 +145,10 @@
 }
 
 @layer base {
-  * {
-    border-color: var(--color-border);
+  *,
+  ::before,
+  ::after {
+    border-color: currentColor;
   }
 
   body {

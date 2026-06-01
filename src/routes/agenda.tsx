@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -32,8 +32,10 @@ export const Route = createFileRoute("/agenda")({
   component: AgendaPage,
 });
 
-const HOURS = Array.from({ length: 16 }, (_, i) => 6 + i);
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const DAY_LABELS = ["Dom.", "Seg.", "Ter.", "Qua.", "Qui.", "Sex.", "Sab."];
+const MAX_WEEK_SLOTS = 160;
+const MAX_SIDE_LIST = 80;
 
 function isoDate(date: Date) {
   const year = date.getFullYear();
@@ -69,6 +71,8 @@ function AgendaPage() {
   const [selected, setSelected] = useState<AgendaSlot | null>(null);
   const [status, setStatus] = useState("todos");
   const [search, setSearch] = useState("");
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const initialScrollDoneRef = useRef(false);
 
   const weekDays = useMemo(
     () =>
@@ -96,9 +100,14 @@ function AgendaPage() {
     queryFn: () => api.agenda.list(inicio, fim),
   });
 
+  const weekSlots = useMemo(
+    () => asArray(slots).filter((slot) => asText(slot.data) >= inicio && asText(slot.data) <= fim).slice(0, MAX_WEEK_SLOTS),
+    [fim, inicio, slots],
+  );
+
   const filteredSlots = useMemo(() => {
     const term = asSearchTerm(search);
-    return asArray(slots).filter((slot) => {
+    return weekSlots.filter((slot) => {
       if (status !== "todos" && slot.status !== status) return false;
       if (!term) return true;
       return (
@@ -107,7 +116,7 @@ function AgendaPage() {
         asArray(slot.clientes).some((client) => matchesText(client.nomeCompleto, term))
       );
     });
-  }, [search, slots, status]);
+  }, [search, status, weekSlots]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, AgendaSlot[]>();
@@ -121,14 +130,21 @@ function AgendaPage() {
   }, [filteredSlots]);
 
   const totals = useMemo(() => {
-    const safeSlots = asArray(slots);
+    const safeSlots = weekSlots;
     const future = safeSlots.filter((slot) => asText(slot.data) >= isoDate(new Date())).length;
     const retro = safeSlots.length - future;
     const pending = safeSlots.filter(
       (slot) => slot.statusFinanceiro === "pendente" || slot.temPendencia,
     ).length;
     return { future, retro, pending };
-  }, [slots]);
+  }, [weekSlots]);
+
+  useEffect(() => {
+    if (initialScrollDoneRef.current || !gridRef.current) return;
+    const currentHour = new Date().getHours();
+    gridRef.current.scrollTop = Math.max(0, currentHour - 1) * 92;
+    initialScrollDoneRef.current = true;
+  }, []);
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-muted/20">
@@ -194,11 +210,16 @@ function AgendaPage() {
           <span className="rounded-md border bg-background px-2.5 py-1">
             Pendencia faturamento: {totals.pending}
           </span>
+          {asArray(slots).length > weekSlots.length && (
+            <span className="rounded-md border bg-warning/10 px-2.5 py-1 text-warning">
+              Exibindo {weekSlots.length} de {asArray(slots).length} itens para proteger a tela.
+            </span>
+          )}
         </div>
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(760px,1fr)_320px]">
-        <div className="grid min-h-0 grid-cols-[60px_repeat(7,minmax(128px,1fr))] overflow-auto">
+        <div ref={gridRef} className="grid min-h-0 grid-cols-[60px_repeat(7,minmax(128px,1fr))] overflow-auto">
           <div className="sticky top-0 z-10 border-b border-r bg-background" />
           {weekDays.map((day) => (
             <div
@@ -247,7 +268,7 @@ function AgendaPage() {
                 Nenhum atendimento no filtro atual.
               </p>
             )}
-            {filteredSlots.map((slot) => (
+            {filteredSlots.slice(0, MAX_SIDE_LIST).map((slot) => (
               <SlotCard
                 key={`list-${slot.id}`}
                 slot={slot}
@@ -255,6 +276,11 @@ function AgendaPage() {
                 onClick={() => setSelected(slot)}
               />
             ))}
+            {filteredSlots.length > MAX_SIDE_LIST && (
+              <p className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+                Mais {filteredSlots.length - MAX_SIDE_LIST} atendimentos ocultos na lista lateral.
+              </p>
+            )}
           </div>
         </aside>
       </div>

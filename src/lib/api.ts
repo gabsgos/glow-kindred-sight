@@ -38,6 +38,11 @@ const wait = <T>(value: T, ms = 220): Promise<T> =>
 const API_BASE = (import.meta.env.VITE_FISIOBOT_API_BASE ?? "").replace(/\/$/, "");
 const USE_BACKEND_DB = import.meta.env.VITE_FISIOBOT_USE_BACKEND === "1";
 const API_TIMEOUT_MS = Number(import.meta.env.VITE_FISIOBOT_API_TIMEOUT_MS ?? 10_000);
+const API_WARN_MS = 1_200;
+const API_WARN_BYTES = 500_000;
+const MAX_AGENDA_ITEMS = 200;
+const MAX_PATIENT_ITEMS = 200;
+const MAX_EVOLUTION_ITEMS = 200;
 const MOCK_USER = {
   internalUserId: "mock-web-user",
   login: "mock.web",
@@ -69,6 +74,7 @@ async function requestWithTimeout(input: RequestInfo | URL, init: RequestInit): 
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
+  const started = performance.now();
   const response = await requestWithTimeout(`${API_BASE}${path}`, {
     credentials: "include",
     headers: { Accept: "application/json" },
@@ -79,7 +85,12 @@ async function fetchJson<T>(path: string): Promise<T> {
     throw new Error(errorBody?.message || `GET ${path} -> ${response.status}`);
   }
   if (!response.ok) throw new Error(`GET ${path} -> ${response.status}`);
-  return response.json() as Promise<T>;
+  const raw = await response.text();
+  const elapsed = performance.now() - started;
+  if (elapsed > API_WARN_MS || raw.length > API_WARN_BYTES) {
+    console.warn("[FisioBot API]", { path, ms: Math.round(elapsed), bytes: raw.length });
+  }
+  return (raw ? JSON.parse(raw) : null) as T;
 }
 
 async function sendJson<T>(
@@ -111,8 +122,13 @@ async function withBackend<T>(request: () => Promise<T>, fallback: () => Promise
     return await request();
   } catch (error) {
     if (error instanceof BackendAuthError) throw error;
-    return fallback();
+    console.warn("[FisioBot API] backend request failed", error);
+    throw error;
   }
+}
+
+function limitArray<T>(items: T[], max: number): T[] {
+  return asArray(items).slice(0, max);
 }
 
 export const api = {
@@ -143,7 +159,10 @@ export const api = {
           const params = new URLSearchParams();
           if (inicio) params.set("inicio", inicio);
           if (fim) params.set("fim", fim);
-          return fetchJson<AgendaSlot[]>(`/api/web/agenda${params.toString() ? `?${params}` : ""}`);
+          params.set("limit", String(MAX_AGENDA_ITEMS));
+          return fetchJson<AgendaSlot[]>(`/api/web/agenda${params.toString() ? `?${params}` : ""}`).then((items) =>
+            limitArray(items, MAX_AGENDA_ITEMS),
+          );
         },
         () => {
           const items = agenda.filter((s) => {
@@ -262,7 +281,14 @@ export const api = {
   pacientes: {
     list: (q?: string) =>
       withBackend(
-        () => fetchJson<Paciente[]>(`/api/web/pacientes${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+        () => {
+          const params = new URLSearchParams();
+          if (q) params.set("q", q);
+          params.set("limit", String(MAX_PATIENT_ITEMS));
+          return fetchJson<Paciente[]>(`/api/web/pacientes?${params}`).then((items) =>
+            limitArray(items, MAX_PATIENT_ITEMS),
+          );
+        },
         () => {
           const term = asSearchTerm(q);
           const items = term
@@ -350,7 +376,9 @@ export const api = {
   evolucoes: {
     list: () =>
       withBackend(
-        () => fetchJson<Evolucao[]>("/api/web/evolucoes"),
+        () => fetchJson<Evolucao[]>(`/api/web/evolucoes?limit=${MAX_EVOLUTION_ITEMS}`).then((items) =>
+          limitArray(items, MAX_EVOLUTION_ITEMS),
+        ),
         () => wait(evolucoes),
       ),
     create: async (data: Partial<Evolucao>) =>

@@ -1,0 +1,266 @@
+[2026-05-25 09:14 -03:00 America/Sao_Paulo] Atualizacao inicial da interface web
+- Verificado repositorio remoto: https://github.com/gabsgos/glow-kindred-sight.git.
+- Executado git pull --ff-only na branch main; repositorio atualizado de 243e067 para 6757418.
+- Inspecionada estrutura baixada: TanStack Start/Router, React, Vite, Tailwind CSS, shadcn/Radix, lucide-react e Recharts.
+- Identificada identidade visual atual: cockpit clinico FisioBot, sidebar operacional, cards/tabelas administrativos e paleta principal violeta com estados semanticos.
+- Mapeadas paginas ativas, rotas funcionais e placeholders do frontend.
+- Nenhuma implementacao de codigo, commit ou deploy realizado neste bloco.
+
+[2026-05-25 09:26 -03:00 America/Sao_Paulo] Ocultacao de navegacao e pipeline do proximo update
+- Ocultados da sidebar, mantendo arquivos e rotas: Dashboards, CRM, guia Operacao, Agenda > Ocupacao, Financeiro > Comissao, Contas a pagar, Contas a receber, Contas financeiras e Vendas.
+- Removidos atalhos superiores visiveis para IA, Pendencias e Sincronizacao.
+- Mantida pagina inicial /dashboard visivel.
+- Criado NEXT_UPDATE.md com pipeline de integracao: frontend -> backend Flask -> SQLite/Baileys, sem conexao direta do frontend ao WhatsApp.
+- Nenhum commit ou deploy realizado neste bloco.
+
+[2026-05-25 09:35:39 -03:00 America/Sao_Paulo] Merge inicial com backend local FisioBot
+- `src/lib/api.ts` passou a tentar consumir `/api/web/*` com `credentials: include`, mantendo fallback para mocks quando o backend nao responder.
+- Integradas leituras/escritas iniciais de pacientes, agenda, evolucoes e financeiro basico via backend Flask local.
+- Removidos atalhos internos do dashboard para IA, Pendencias e Historico, mantendo essas rotas fora da superficie visivel.
+- Dashboard passou a usar a data atual em vez de uma data fixa do mock.
+- Instaladas dependencias com `npm install` para validacao local; `package-lock.json` foi criado.
+- Build frontend OK com `npm run build`; lint ainda falha por regra global Prettier/CRLF preexistente em muitos arquivos.
+- Nenhum commit ou deploy realizado neste bloco.
+
+[2026-05-25 09:40:30 -03:00 America/Sao_Paulo] Smoke local via proxy FisioBot
+- Testado fluxo local com Flask em 5000, Vite em 5173 e `reverse_proxy.py` em 8088.
+- `/dashboard` e `/pacientes` responderam 200 via proxy.
+- `/api/web/pacientes` respondeu via mesmo host com 41 registros reais do SQLite local.
+- HTML SSR do dashboard confirmou ausencia dos itens ocultos da navegacao.
+- Browser interno bloqueou localhost/127.0.0.1 com `ERR_BLOCKED_BY_CLIENT`; validacao visual automatizada ficou pendente.
+- Nenhum commit ou deploy realizado neste bloco.
+
+[2026-05-25 09:48:30 -03:00 America/Sao_Paulo] Build frontend preparado para deploy no tablet
+- Executado `npm run build` para atualizar `dist/client`, que sera servido no tablet por `web_static_server.py`.
+- Deploy remoto preparado para publicar a interface na porta interna 4173 atras do reverse proxy/ngrok 8080.
+- O deploy remoto ainda nao foi executado porque a variavel `TABLET_SSH_PASSWORD` nao esta definida no ambiente desta sessao.
+
+[2026-05-25 09:56:03 -03:00] Build tablet SPA para deploy FisioBot
+- Criado tablet.index.html, src/tablet-main.tsx e vite.tablet.config.ts para gerar dist-tablet como SPA estatica.
+- Adicionado script npm build:tablet e scripts/prepare-tablet-build.mjs para copiar index.html final.
+- Validado build:tablet e render local /dashboard via web_static_server.
+
+[2026-05-25 11:59:41 -03:00] Validacao remota build tablet
+- Interface publicada em https://walk-gaming-magazine.ngrok-free.dev/dashboard.
+- Browser remoto confirmou render React da tela Inicio/FisioBot sem erros de console.
+- API backend consumida pelo frontend disponivel via /api/web com build 0.1.225.
+[2026-05-25 12:48:26 -03:00] Login SPA local integrado ao auth FisioBot
+- Substituido placeholder de /login por tela real de autenticacao FisioBot.
+- Criada rota /app-login para uso da SPA atras do proxy sem conflitar com /login legado do Flask.
+- Root shell agora consulta /api/web/session e redireciona usuarios sem sessao para /app-login.
+- Topbar passou a exibir usuario autenticado e executar logout via /api/web/logout.
+- Cliente API ganhou auth.session, auth.login, auth.loginCode e auth.logout.
+- Fallback para mocks foi bloqueado quando o backend retorna 401 auth_required, evitando paginas falsas sem sessao.
+- routeTree.gen.ts atualizado para incluir /app-login enquanto o gerador automatico nao pode rodar no sandbox.
+- Validado localmente com npx tsc --noEmit.
+- Tentativa de npm run build/dev local falhou no sandbox com esbuild spawn EPERM; nenhum deploy foi feito.
+
+[2026-05-25 12:58:50 -03:00] Remocao de paginas mock da superficie web local
+- Removidos links visiveis para paginas placeholder: Configuracoes, Admin/Debug e Grades de horarios.
+- Rotas placeholder de sync, configuracoes, admin, agenda/grades, agenda/ocupacao, CRM e dashboards extras agora redirecionam para paginas reais.
+- Mantida a rota /app-login como entrada SPA sem conflito com /login Flask.
+- Build local OK com npm run build e typecheck OK com npx tsc --noEmit.
+- Servidores locais para teste: Vite em http://127.0.0.1:5173 e proxy integrado em http://127.0.0.1:8088.
+
+[2026-05-25 13:01:44 -03:00] Ajuste visual da pagina de login
+- Atualizada /app-login para usar identidade visual do cockpit FisioBot: fundo claro, superficies brancas, bordas discretas, roxo primario, marca quadrada F e cards operacionais.
+- Copia da tela de login reduzida para linguagem clinica/operacional do app.
+- Painel lateral do login alinhado aos modulos reais: Agenda, Pacientes e Financeiro.
+- Validado com npx tsc --noEmit, npm run build e GET local em http://127.0.0.1:8088/app-login.
+
+[2026-05-25 13:25:51 -03:00] Smoke remoto pos-deploy
+- Interface tablet publicada atras do ngrok em https://walk-gaming-magazine.ngrok-free.dev.
+- Smoke remoto com header ngrok-skip-browser-warning: /app-login 200, /api/web/session 200, /signup 200 e /recover 200.
+- Cadastro e recuperar senha validados sem mencoes visiveis a codigo, WPP ou WhatsApp.
+
+[2026-05-25 18:44:03 -03:00] Correcao local de travamento no login web
+- Reproduzido travamento no foco/preenchimento do campo de senha da rota /app-login durante teste local de navegador.
+- Substituidos os campos da tela de login por inputs HTML nativos com estilos estaveis e hints de autofill/password manager desativados.
+- Campo de senha deixou de usar type=password e passou a usar mascara visual por estilo, mantendo o valor enviado como secret para a API.
+- Validado com npx tsc --noEmit, npm run build:tablet e teste local em Chrome isolado em http://127.0.0.1:4199/app-login?redirect=%2Fdashboard.
+- Nenhum deploy realizado neste bloco.
+
+[2026-05-25 18:57:46 -03:00] Agenda web DB e backlog next update
+- Registrados em NEXT_UPDATE.md os requisitos de notificacao WhatsApp/Telegram para novo usuario e confirmacao imediata de audio no WhatsApp.
+- Recriada /agenda com semana navegavel, busca, filtro por status, lista lateral e cards coloridos por status do atendimento.
+- Modal de atendimento passou a exibir paciente, valor, status financeiro, pendencia de faturamento, evolucao e link para perfil do paciente.
+- Cancelar e reagendar ficam disponiveis apenas quando o atendimento ainda nao possui evolucao registrada.
+- Cliente API ganhou chamada de reagendamento e tipos de agenda receberam campos de faturamento/evolucao.
+- AuthGate passou a respeitar authRequired=false para smoke local isolado sem sessao.
+- Validado com npx tsc --noEmit, npm run build:tablet e GET local de /agenda no servidor tablet.
+- npm run lint foi tentado, mas nao finalizou em 124s e foi interrompido sem diagnostico util.
+- ESLint direcionado dos arquivos alterados passou apos formatacao Prettier.
+- Nenhum deploy realizado neste bloco.
+
+[2026-05-25 19:07:32 -03:00] Deploy remoto agenda web
+- Build tablet publicado no tablet com assets index-B9_u8xmN.js e styles-CpPrc95D.css.
+- Stack remota reiniciada atras do ngrok https://walk-gaming-magazine.ngrok-free.dev.
+- Smoke publico confirmou /app-login, /agenda e /dashboard com HTTP 200.
+- Smoke publico sem sessao confirmou /api/web/session 200 e /api/web/agenda 401 auth_required.
+- Smoke autenticado com usuario de bateria confirmou login 200, sessao autenticada 200 e /api/web/agenda 200 com 50 eventos.
+- Regra remota de atendimento evoluido confirmada: cancelar e reagendar retornaram 409.
+[2026-05-25 20:04:43 -03:00] Tablet login hotfix para FisioBot 0.1.229
+- Adicionadas paginas estaticas `tablet.app-login.html` e `tablet.app-login-code.html` para o build tablet, removendo a tela de login publica do bundle React que travava apos clique/foco no input.
+- `scripts/prepare-tablet-build.mjs` agora copia as paginas estaticas para `dist-tablet/app-login.html` e `dist-tablet/app-login-code.html` apos o build Vite.
+- Fluxo de codigo de login separado: `/app-login` redireciona para `/app-login-code` quando o backend retorna `next=code`; o codigo segue validado por `/api/web/login/code` e descartado pelo backend apos uso.
+- Validado com `npm run build:tablet` e probe Edge headless mobile 412x915, confirmando foco e digitacao sem travamento nos campos de login/codigo.
+[2026-05-25 20:10:20 -03:00] Observacao deploy FisioBot 0.1.229
+- O deploy remoto aplicou o build tablet, mas a stack caiu quando `n8n start` encontrou porta 5678 ocupada; a correcao ficou no script do FisioBot para aceitar n8n existente saudavel.
+
+[2026-05-26 08:52:17 -03:00] Dashboard FisioBot - reducao de chamadas
+- src/routes/dashboard.tsx removido carregamento duplicado de pacientes e chamadas financeiras por paciente.
+- src/lib/api.ts passa a usar /api/web/financeiro quando api.pacientes.financeiro recebe id vazio.
+
+[2026-05-26 09:18:04 -03:00] Web mock-first e Sheets desligado
+- src/lib/api.ts agora usa mocks por padrao e so chama backend com VITE_FISIOBOT_USE_BACKEND=1.
+- Auth mock retorna sessao autenticada local para permitir testar paginas sem DB.
+- src/lib/mocks.ts remove fila fake de sync e marca Google Sheets como off.
+
+[2026-05-26 09:24:45 -03:00] Build tablet mock-first validado
+- npm run build:tablet OK; asset publicado no deploy remoto como index-DmXqsJ1B.js.
+- Verificacao estatica do bundle confirma auth mock e refresh de Sheets com reason sheets_sync_disabled.
+- Publico /dashboard respondeu 200 apos deploy.
+2026-05-26 11:43:57 -03:00
+- Corrigido padrao de travamento em buscas/filtros com mock desconectado dos DBs: adicionada normalizacao segura em `src/lib/safe.ts` para texto e arrays opcionais.
+- Aplicada tolerancia a campos ausentes em agenda, cards/modal de agenda, financeiro e relatorios, evitando `.toLowerCase()`/arrays em valores indefinidos.
+- Reduzidas chamadas N+1 em financeiro e relatorios: faturamento agora usa `api.pacientes.financeiro("")` em vez de buscar por paciente individual.
+- Validacao: `npm run build:tablet` executado com sucesso; bateria local headless sem erros em `/dashboard` e `/pacientes` antes de falha do harness CDP, mantendo necessidade de validacao remota apos deploy.
+
+2026-05-26 11:50:43 -03:00
+- Deploy para tablet executado via `_tmp_deploy_tablet.py`; script retornou falso negativo com `apply_only_ok`, mas validacao direta confirmou `web_dist` atualizado para `assets/index-DB4OPumD.js`.
+- Validacao remota direta no tablet: `/dashboard`, `/pacientes`, `/agenda`, `/evolucoes`, `/financeiro` e `/relatorios` retornaram 200 com `Cache-Control: no-store`; bundle contem mock web ativo e sync Sheets desativado.
+- `https://walk-gaming-magazine.ngrok-free.dev/healthz` respondeu 200 `{"status":"ok"}` apos a validacao publica.
+- Tentativa de restart por SSH falhou porque `192.168.0.163:8022` recusou conexao em 5 tentativas; stack publica ficou acessivel pelo ngrok.
+
+2026-05-26 12:02:37 -03:00
+- Teste local para travamento em focus de campos: removido `focus-visible:ring-*`/`focus:ring-*` dos componentes base `Input`, `Textarea` e `SelectTrigger`, mantendo indicacao de foco por borda primaria.
+- Validacao local: `npm run build:tablet` executado com sucesso, gerando `assets/index-E5Fz7DN0.js` e `assets/styles-BIyG3FBf.css`.
+- Bateria local no Chrome headless em `/dashboard`, `/pacientes`, `/cadastro`, `/agenda`, `/evolucoes`, `/financeiro` e `/relatorios`: foco, clique e digitacao simulados em inputs/textareas/selects sem erros de console; unico aviso foi valor invalido ao forcar texto em campo `date` durante o teste.
+
+2026-05-26 12:30:29 -03:00
+- Validacao remota do bundle `assets/index-E5Fz7DN0.js` confirmou que `/agenda`, `/evolucoes` e `/financeiro/caixa` ainda travavam no primeiro `Input.dispatchMouseEvent`.
+- Isolamento por CDP mostrou que rotas com `@radix-ui/react-select` montado congelavam ao receber eventos de mouse/pointer; rotas sem Select (`/dashboard`, `/pacientes`, `/relatorios`) respondiam normalmente.
+- Substituido `src/components/ui/select.tsx` por wrapper nativo compativel com a API usada (`Select`, `SelectTrigger`, `SelectItem`, `SelectValue`) para remover listeners globais de mouse/pointer do Radix Select.
+- Validacao local: `npm run build:tablet` executado com sucesso, gerando `assets/index-CsprezOW.js` e `assets/styles-Bjaxygh0.css`.
+
+2026-05-26 12:38:41 -03:00
+- Reconectado build tablet ao backend real por padrao: `vite.tablet.config.ts` agora injeta `VITE_FISIOBOT_USE_BACKEND=1` salvo override explicito.
+- Validacao local do bundle conectado: `npm run build:tablet` OK, gerando `assets/index-Bz-BtIV7.js`; bundle contem endpoints `/api/web/session`, `/api/web/agenda` e `/api/web/pacientes` e nao contem `mock-web-user`/`mock.web`.
+- Validacao remota pre-deploy do login estatico: clique e digitacao em `login` e `secret` OK em desktop e mobile, mantendo valores nos campos.
+
+2026-05-26 13:13:49 -03:00
+- Deploy remoto executado para o tablet; `_tmp_deploy_tablet.py` retornou falso negativo `apply_only_ok`, mas a validacao publica confirmou o bundle `assets/index-Bz-BtIV7.js` servido em `/agenda`.
+- Saude remota confirmada: `/healthz` respondeu `{"status":"ok"}` e `/api/web/session` sem cookie respondeu `authRequired=true`, comprovando backend real conectado e sessao obrigatoria.
+- Usuario admin de teste recriado no banco real `/root/openclaw-port/brain.db` com login `codex.teste` e `internal_user_id=USRZCCG67W`, sem registrar senha no log.
+- Login real via `/api/web/login` validado com o usuario novo e sessao autenticada emitida para testes de navegador.
+- Bateria remota autenticada passou em `/dashboard`, `/pacientes`, `/agenda`, `/financeiro/caixa`, `/relatorios` e `/evolucoes`: movimento/clique nao travou, selects/inputs renderizaram e nao houve erros de console/runtime.
+- Tela `/app-login?redirect=%2Fdashboard` validada em desktop e mobile com clique/digitacao em login e senha sem limpar campos.
+
+2026-05-26 13:37:02 -03:00
+- Aplicado hardening curto da SPA React principal: chamadas HTTP agora usam timeout de 10s para evitar espera infinita em backend pendurado.
+- Dashboard, pacientes, evolucoes e historico passaram a tratar falhas de carregamento sem deixar promises rejeitadas sem controle.
+- Filtros de contas a pagar, vendas e historico passaram a usar normalizacao segura para campos opcionais/nulos vindos do backend.
+- Validacao local: `npm run build:tablet` OK, gerando `assets/index-Bp5zgqnU.js` e mantendo `assets/styles-Bjaxygh0.css`.
+
+2026-05-26 13:44:05 -03:00
+- Login HTML estatico `/app-login` passa a ler `login` da query string para pre-preencher o usuario apos cadastro concluido.
+- Validacao local: `npm run build:tablet` OK, mantendo `assets/index-Bp5zgqnU.js` e copiando `dist-tablet/app-login.html` com suporte a `login` na query string.
+- Deploy remoto confirmado via FisioBot: `/app-login?redirect=%2Fdashboard&login=codex.teste` publico contem o script de prefill e `/dashboard` serve `assets/index-Bp5zgqnU.js`.
+
+2026-05-27 11:01:44 -03:00
+- Mantidas duas interfaces no build tablet: vanilla como entrada principal em `index.html` e React como entrada secundaria em `react.html`.
+- Adicionado botao `Abrir React` na navegacao da vanilla, apontando para `/react-app?route=<rota_atual>`.
+- Adicionado `tablet.react.html` com bootstrap do app React e preservacao da rota solicitada via query `route`.
+- Validacao local: `npm run build:tablet` OK, gerando vanilla `assets/index-Fj3B0whH.js` (~30 KB) e React `assets/react-CpCxFbqc.js` (~732 KB).
+- Deploy remoto confirmado: `/dashboard` carrega a entrada vanilla e `/react-app?route=%2Fagenda` carrega a entrada React no endpoint publico.
+
+2026-05-26 14:11:43 -03:00
+- Atualizado `NEXT_UPDATE.md` com pipeline do proximo update: link temporario deve retornar ao WhatsApp e nao abrir dashboard React.
+- Adicionada estrategia de DB sob demanda: carregar dados conforme cliques/navegacao do usuario, verificar cache/updated_at antes de nova leitura e evitar leitura dupla do mesmo DB.
+- Registrado hardening pendente da SPA antes de reconectar DBs: busca remota controlada, paginacao, `Promise.allSettled`, loading/erro por bloco, bloqueio de rotas ocultas e log de chamadas API.
+
+2026-05-26 15:01:34 -03:00
+- Hardening local da SPA React contra travamento por dados inconsistentes: adicionados helpers seguros em `src/lib/safe.ts` para texto, busca normalizada, array, numero, booleano, moeda, decimal, data e slice limitado.
+- Dashboard reescrito para `Promise.allSettled`, normalizacao de arrays, calculos em `useMemo`, render limitado de agenda/pendencias e textos sem caracteres quebrados.
+- Busca de pacientes desconectada de chamadas remotas por tecla: `/pacientes` agora carrega a lista uma vez e filtra localmente.
+- Agenda, financeiro, relatorios, historico, contas a pagar, vendas, caixa e modal de pagamento ajustados para evitar `toLowerCase`, `toFixed`, `reduce` e filtros inseguros sobre valores nulos/stringificados.
+- Validacao local: `npm run build:tablet` OK, gerando `assets/index-B4ilyqFu.js`; ESLint direcionado nos arquivos alterados OK apos Prettier.
+- Smoke local via Playwright CLI capturou screenshots temporarios de `/dashboard`, `/pacientes`, `/agenda`, `/financeiro` e `/relatorios` em `http://127.0.0.1:5176` sem falha de render; artefatos temporarios foram removidos apos a validacao.
+
+2026-05-26 20:51:19 -03:00
+- Retomada da verificacao local "todo codigo" da SPA React: revisadas paginas restantes de evolucoes, pendencias, detalhe/edicao de paciente, contas financeiras, comissao e IA.
+- Substituidos pontos restantes de risco por normalizacao segura (`asArray`, `asText`, `asNumber`, `formatCurrency`) e tratamento de falha em carregamentos assíncronos.
+- Verificacao de busca remota por digitacao: `rg` nao encontrou `api.pacientes.list(q)` nem `api.pacientes.list(busca)`; chamadas de lista agora ficam sem parametro de busca nas telas principais.
+- Verificacao de `toLowerCase`/`toFixed`: restou apenas `toLowerCase` centralizado no helper seguro de busca em `src/lib/safe.ts`; nao restaram `toFixed` diretos nas paginas verificadas.
+- Validacao local: `npx eslint` direcionado nos arquivos alterados OK; `npm run build:tablet` OK, gerando `assets/index-CoBKjJKP.js`. Sem deploy.
+
+2026-05-26 20:56:03 -03:00
+- Deploy remoto aplicado no tablet a partir de `dist-tablet`; helper de deploy retornou falso negativo conhecido com `apply_only_ok`, seguido de restart operacional isolado da stack.
+- Validacao remota curta em `https://walk-gaming-magazine.ngrok-free.dev`: `/healthz`, `/api/web/session`, `/dashboard`, `/pacientes`, `/agenda`, `/financeiro`, `/relatorios`, `/evolucoes` e `/whatsapp/baileys/health` responderam 200.
+- Bundle remoto confirmado: `/dashboard` referencia `assets/index-CoBKjJKP.js`; `/assets/index-CoBKjJKP.js` respondeu 200 com 732581 bytes e CSS respondeu 200.
+- Notificacao WhatsApp enviada para o numero administrativo via Baileys local (`message_id=3EB0BE46EC597CCACE01E2`).
+2026-05-26 21:05:14 -03:00 - Adicionadas paginas estaticas de diagnostico input-smoke para tablet: HTML puro, HTML com CSS do build e HTML com script isolado. Atualizado prepare-tablet-build para publicar as paginas, auth-smoke.js e alias estavel app.css no dist-tablet.
+2026-05-26 21:06:22 -03:00 - Build tablet executado com sucesso e publicado no tablet. Validadas remotamente as rotas /input-smoke/plain, /input-smoke/css, /input-smoke/auth-js e /app-login via ngrok.
+2026-05-26 21:16:34 -03:00 - Criada entrada tablet em HTML/CSS/vanilla JS para substituir a SPA React no build tablet inicial. Implementados login, confirmacao por codigo, dashboard e agenda conectados aos endpoints Flask /api/web/*. Mantido React no codigo para rollback. Build tablet validado com bundle JS 16.52 kB. Smoke local via proxy 8091 confirmou dashboard, agenda, foco em inputs e console sem erros. Backup local: C:\Users\gabri\Documents\Dataset MedRag\backups\glow-kindred-sight_pre_vanilla_20260526_211120.
+2026-05-26 21:22:47 -03:00 - Ampliada interface tablet vanilla com interacao real via DBs pelo backend Flask: adicionada rota Pacientes com busca manual, cadastro, edicao, exclusao logica, financeiro por paciente e evolucoes por paciente. Dashboard vanilla recebeu KPIs equivalentes ao React para atendimentos hoje, financeiro pendente, recebido no mes, credito total, pendencias financeiras, evolucoes e pacientes recentes. Agenda vanilla recebeu visualizacao semanal, navegacao por semana, filtro manual por texto/status, totais futuro/retroativo/pendencia e detalhes operacionais com concluir/cancelar/reagendar. Build tablet validado com JS 30.96 kB e CSS 8.77 kB; smoke local no proxy 8091 confirmou dashboard, agenda, APIs /api/web e foco em campos sem erro de console.
+2026-05-26 21:25:15 -03:00 - Teste local pre-deploy reexecutado com sucesso: build tablet gerou JS index-BdsvOnK1.js 30.96 kB e CSS index-D3C4lCGA.css 8.77 kB; smoke HTTP local passou em /dashboard, /agenda e /pacientes; smoke headless confirmou dashboard, pacientes, agenda, foco em patient-search e agenda-search, sem erros de console. Deploy no tablet bloqueado porque SSH 192.168.0.163:8022 nao aceitou conexao.
+
+2026-05-28 11:31:26 -03:00
+- Movidos artefatos locais nao rastreados (_vanilla_db_smoke.png, _vanilla_local_agenda.png, dist-tablet/) para deletar/ para revisao manual antes de apagar.
+- Manifesto salvo em deletar/MOVED_MANIFEST_20260528.txt.
+
+2026-05-28 12:04:24 -03:00
+- Agenda React atualizada para renderizar 24 horas, de 00:00 a 23:00, com scroll inicial automatico proximo ao horario atual.
+- Agenda vanilla atualizada para a mesma grade diaria completa e limite visual com rolagem interna.
+- Validacao: `npm run build:tablet` OK, gerando `assets/index-C6o6jJAu.js`, `assets/react-OwyNf1Il.js`, `assets/index-DO-__iND.css` e `assets/styles-WGegRVyV.css`.
+- Deploy remoto confirmado via FisioBot tablet: `/agenda` e `/dashboard` servem o bundle novo `assets/index-C6o6jJAu.js`; `/react-app` respondeu 200.
+
+2026-05-28 12:51:13 -03:00
+- Corrigido `src/vanilla/main.ts`, que estava com um bloco de texto clinico inserido antes do `import "./styles.css";`, quebrando a entrada TypeScript da interface tablet vanilla do FisioBot.
+- Preservadas as alteracoes funcionais ja existentes no arquivo: grade de agenda 24h e scroll automatico para o horario atual.
+- Verificado que o projeto `glow-kindred-sight` e um frontend Node/Vite (`package.json`) e nao contem `pyproject.toml`/`poetry.lock`; nenhuma configuracao Poetry foi adicionada por nao ser projeto Python.
+- Validacao: `npm run build:tablet` OK, gerando `dist-tablet` com bundle vanilla e React; unico aviso foi chunk React acima de 500 kB.
+
+2026-05-28 12:52:25 -03:00
+- Registrado em `NEXT_UPDATE.md` o caso de agendamento em lote via WhatsApp: frase `marca Iara Noto e Julio Noto na sexta 12h e 13h` deve criar dois atendimentos pareados por ordem, nao apenas Julio as 12h.
+- Planejada otimizacao do parser/execucao: interpretacao unica da frase, busca consolidada de pacientes, leitura unica da janela de agenda, validacao individual de conflitos e resumo por item.
+- Planejado padrao de resposta em lista escaneavel, com sucesso parcial separado de pendencias e correcao de UTF-8 para evitar mojibake como `Ã s`.
+- Registrado pre-flight para proximo update: antes de tocar `src/vanilla/main.ts`, recuperar/sobrepor a versao limpa do branch principal/remoto de forma direcionada e depois reaplicar somente mudancas intencionais.
+2026-06-01 18:54:20 -03:00
+- React/tablet: `src/router.tsx` configurado com defaults seguros do TanStack Query para nao refazer chamadas no foco/reconnect.
+- React/tablet: `src/lib/api.ts` adicionou limites defensivos, logs leves para payload lento/grande e removeu fallback silencioso para mock quando backend real falha.
+- React/tablet: `src/routes/agenda.tsx` passou a filtrar semana antes do render e limitar grade/lista lateral para evitar congelamento.
+- Vanilla/tablet: `src/vanilla/main.ts` mantido compilando; build tablet validado apos suspeita de quebra.
+- Validacao: `npm run build:tablet` OK.
+
+2026-06-01 19:19:04 -03:00
+- React/tablet: removido custo de foco suspeito com `border-color` global baseado em token, `Input` agora define `type=text` e `autocomplete=off` por padrao e sem `transition-colors` no componente base.
+- React/tablet: Topbar passou a nomear/desativar autocomplete do campo de busca e montar o DropdownMenu de usuario somente quando aberto.
+- React/tablet: Sidebar/TooltipProvider agora usa atraso nao-zero, `useIsMobile` evita re-render redundante e router desativa scroll restoration/preload agressivo.
+- Tablet HTML: viewport React e vanilla recebeu `interactive-widget=resizes-content` para reduzir relayout com teclado virtual.
+- Validacao: `npm run build:tablet` OK; servidor estatico local retornou 200 para `tablet.react.html` e `tablet.index.html`; smoke Chrome headless carregou os bundles novos.
+
+2026-06-01 19:43:16 -03:00
+- Vanilla/tablet: aproximada a interface operacional da SPA React com novas telas para Evolucoes, Financeiro/Caixa e Relatorios, alem das telas ja existentes Inicio, Pacientes e Agenda.
+- Evolucoes vanilla: lista pacientes do backend, registra evolucao por `/api/web/evolucoes`, lista ultimas evolucoes e inclui simulacao local de transcricao para preservar o fluxo visual da React sem carregar componentes pesados.
+- Financeiro vanilla: adicionada tela Caixa/espelho financeiro baseada em `/api/web/financeiro`, com totais de pago/pendente/previsto, tabela de lancamentos e exportacao CSV.
+- Relatorios vanilla: adicionadas abas Atendimentos/Financeiro/Pacientes com agregacoes locais sobre `/api/web/agenda`, `/api/web/financeiro` e `/api/web/pacientes`, barras visuais e exportacao CSV.
+- Navegacao vanilla ampliada para Inicio, Pacientes, Agenda, Evolucoes, Financeiro e Relatorios; removido atalho visual para React da sidebar principal.
+- Validacao: `npm run build:tablet` OK; app vanilla gerou `assets/index-DfEPGAln.js` 43.15 kB e CSS `assets/index-BD1M9ph-.css` 10.89 kB; servidor estatico local retornou 200 para /dashboard, /pacientes, /agenda, /evolucoes, /financeiro/caixa e /relatorios.
+
+2026-06-01 19:46:18 -03:00
+- Deploy tablet executado para a interface vanilla ampliada. O wrapper retornou o falso negativo conhecido `apply_only_ok`, mas a copia foi aplicada.
+- Stack reiniciada no tablet via Termux/proot com `RESTART_N8N=0 /root/start-n8n-ngrok-stack.sh`.
+- Validacao local no tablet: proxy 8080 OK, `/api/web/session` OK e `/dashboard` servindo `assets/index-DfEPGAln.js`.
+- Validacao remota ngrok: /healthz, /api/web/session, /dashboard, /pacientes, /agenda, /evolucoes, /financeiro/caixa, /relatorios, /app-login e /whatsapp/baileys/health retornaram 200.
+- Assets remotos confirmados: `assets/index-DfEPGAln.js` 43145 bytes e `assets/index-BD1M9ph-.css` 10887 bytes.
+
+[2026-06-01 19:57:48 -03:00] NextFit shell/agenda vanilla
+- Refatorado shell tablet vanilla com sidebar agrupada, topbar global, busca manual sem consulta por tecla e nova rota Recursos/Status.
+- Agenda recriada em layout semanal compacto inspirado no NextFit: toolbar de semana, filtros manuais, grade por hora, painel lateral de detalhes e acoes rapidas.
+- Pacientes, Evolucoes, Financeiro e Relatorios mantidos no fluxo vanilla/Flask e ajustados para o novo shell visual; Recursos consulta /healthz, /api/web/session e /whatsapp/baileys/health.
+- Validacao local: npm run build:tablet OK, bundle vanilla assets/index-CUOBZnlj.js 49.02 kB e CSS assets/index-Bt-CLqip.css 15.62 kB; smoke local em tablet.index.html confirmou foco em input sem erro de console.
+[2026-06-01 19:59:17 -03:00] Deploy tablet NextFit shell/agenda
+- Deploy tablet executado; wrapper retornou falso negativo conhecido apply_only_ok, mas tablet serviu bundle novo assets/index-CUOBZnlj.js.
+- Stack reiniciada via Termux/proot; validado local no tablet /healthz OK, /api/web/session OK e /dashboard apontando para index-CUOBZnlj.js.
+- Smoke remoto ngrok OK: /healthz, /api/web/session, /dashboard, /agenda, /pacientes, /evolucoes, /financeiro/caixa, /relatorios, /recursos e /whatsapp/baileys/health retornaram 200.
