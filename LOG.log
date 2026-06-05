@@ -264,3 +264,100 @@
 - Deploy tablet executado; wrapper retornou falso negativo conhecido apply_only_ok, mas tablet serviu bundle novo assets/index-CUOBZnlj.js.
 - Stack reiniciada via Termux/proot; validado local no tablet /healthz OK, /api/web/session OK e /dashboard apontando para index-CUOBZnlj.js.
 - Smoke remoto ngrok OK: /healthz, /api/web/session, /dashboard, /agenda, /pacientes, /evolucoes, /financeiro/caixa, /relatorios, /recursos e /whatsapp/baileys/health retornaram 200.
+
+[2026-06-01 20:22:54 -03:00] Professional product UI direction
+- Salva diretriz visual: cockpit clinico denso, limpo e operacional, inspirado em Linear, Notion Calendar/Cron, Google Calendar, Stripe, Intercom/Zendesk e NextFit apenas como referencia de densidade.
+- Implementada nova tela Inicio/Hoje profissional na vanilla: metric strip, agenda semanal como foco, painel lateral de atendimento, tabela Agenda de hoje, acoes rapidas e topbar branca com status Backend/WhatsApp.
+- CSS recebeu camada Professional product shell v2: sidebar 240px, roxo apenas como acento, superficies brancas, bordas leves, metricas discretas e responsividade para novas secoes.
+[2026-06-01 20:28:38 -03:00] Deploy UI profissional e watchdog sshd
+- Deploy tablet aplicado para bundle vanilla profissional assets/index-CSSfNQCu.js e CSS assets/index-B9NlsKLV.css; wrapper retornou falso negativo conhecido apply_only_ok.
+- Validacao remota OK em /healthz, /api/web/session, /dashboard, /agenda, /pacientes, /evolucoes, /financeiro/caixa, /relatorios, /recursos e /whatsapp/baileys/health.
+- Watchdog de sshd instalado no Termux host pelo backend FisioBot para manter porta 8022 disponivel.
+
+[2026-06-01 20:35:24 -03:00] UI professional polish encoding cleanup
+- Corrigidos caracteres corrompidos/mojibake na UI vanilla profissional: icones da sidebar, botao de menu, busca, sair, separadores, quick rail, recursos e agenda.
+- UI vanilla main.ts/styles.css auditada com rg para caracteres nao ASCII: ASCII_OK.
+- Validacao local: npm run build:tablet OK, gerando assets/index-CFAceYw7.js e CSS assets/index-B9NlsKLV.css.
+[2026-06-01 20:37:47 -03:00] Deploy UI encoding cleanup
+- Deploy tablet aplicado para bundle assets/index-CFAceYw7.js apos limpeza de caracteres corrompidos na UI vanilla.
+- Validacao remota: /dashboard, /agenda, /pacientes e /recursos servem index-CFAceYw7.js; asset remoto auditado com non_ascii=0.
+- Health remoto OK em /healthz, /api/web/session e /whatsapp/baileys/health.
+
+[2026-06-02 10:27:34 -03:00] Backlog proximo update - polimento UI
+- Registradas em NEXT_UPDATE.md as melhorias de layout para reduzir aparencia amadora: Inicio como cockpit do dia, remocao dos cards laterais fixos, Agenda full-width com drawer/modal por clique no agendamento, Pacientes mais discreto e formularios mais compactos.
+- Registrada reorganizacao futura: substituir Evolucoes por Cadastros, reunindo Pacientes, Evolucoes por paciente e Financeiro individual em ficha master-detail com abas.
+
+[2026-06-02 12:31:04 -03:00] UI local - Inicio, Agenda e Cadastros
+- Alterada navegacao vanilla para exibir `Cadastros` no lugar de `Evolucoes`, mantendo a rota interna existente para compatibilidade local.
+- Inicio ajustado para remover o painel/card lateral de proximo atendimento; metricas ficaram mais operacionais e a agenda semanal ocupa a largura principal.
+- Agenda ajustada para remover painel lateral fixo e quick rail; detalhes do atendimento agora sao preparados para abrir em drawer/modal apenas por clique no agendamento.
+- Cadastros refeito como ficha master-detail: lista de pacientes, resumo do paciente selecionado, abas visuais, nova evolucao, historico clinico, financeiro individual e bloco de cadastro.
+- Validacao local: `npm run build:tablet` OK, bundle vanilla `assets/index-DH8rnzpX.js`; capturas locais com mock server geradas em `deletar/local-ui-dashboard.png`, `deletar/local-ui-agenda.png` e `deletar/local-ui-cadastros.png`.
+
+[2026-06-02 12:51:59 -03:00] UI local - ajustes solicitados em Inicio/Agenda/Cadastros
+- Inicio restaurado para o layout anterior com `Proximo horario` e painel lateral de proximo atendimento.
+- Navegacao unificada: removido item separado `Pacientes` da sidebar; `Cadastros` passa a ser o ponto principal para pacientes, evolucoes e financeiro individual.
+- Agenda compactada: botoes de navegacao trocados para setas `<<` e `>>`, filtros Buscar/Status/Visualizacao movidos para a direita na mesma linha e seletor recebeu opcao `Mensal` com grade mensal local.
+- Cadastros ajustado: botao `Novo Cadastro` ao lado de Atualizar, lista de pacientes em cards com ordenacao por alfabetico, ultimo atendimento, cadastros recentes e antigos.
+- Cadastros reorganizado: Resumo sem campo de evolucao, botao `Registrar Atendimento`, evolucao separada e atrelada apenas a atendimentos em aberto sem evolucao, remocao do botao `Simular audio`, financeiro individual com distribuicao por mes e lista de registros.
+- Corrigido erro local `Invalid time value` causado por chamada incorreta de `addDaysToISO(-90)` no carregamento auxiliar da agenda para Cadastros.
+- Validacao local: `npm run build:tablet` OK, bundle vanilla `assets/index-wdPPn7ta.js`; capturas locais atualizadas em `deletar/local-ui-dashboard.png`, `deletar/local-ui-agenda.png` e `deletar/local-ui-cadastros.png`.
+
+[2026-06-02 13:03:02 -03:00] UI local - agenda e abas Cadastros
+- Removido CSS residual da quick rail da Agenda, eliminando os botoes pequenos flutuantes `Atualizar`, `Pac` e `Rel`.
+- Agenda agora limpa `selectedEventId` no carregamento inicial para nao abrir automaticamente o ultimo atendimento; detalhe abre somente apos clique no agendamento.
+- Cadastros recebeu estado de aba real (`Resumo`, `Cadastro`, `Evolucoes`, `Financeiro`) com hide/show dos cards; sem paciente selecionado exibe overview geral com total de pacientes, ativos, inativos e pendente geral.
+- Topbar ajustada para manter Backend, WhatsApp, usuario e Sair alinhados a direita, com busca global mais larga.
+- Validacao local: `npm run build:tablet` OK, bundle vanilla `assets/index-BuaYH8jG.js`; screenshots locais de Agenda e Cadastros atualizados em `deletar/`.
+
+[2026-06-02 13:15:52 -03:00] Deploy UI Cadastros/Agenda
+- Deploy tablet executado para o bundle vanilla `assets/index-BuaYH8jG.js` e CSS `assets/index-CE043rA-.css`; wrapper retornou falso negativo conhecido `apply_only_ok`.
+- Stack reiniciada via Termux/proot com `RESTART_N8N=0 /root/start-n8n-ngrok-stack.sh`.
+- Apos restart o SSH 8022 caiu novamente, mas a validacao publica via ngrok confirmou o bundle novo em producao.
+- Smoke remoto OK: `/healthz`, `/api/web/session`, `/dashboard`, `/agenda`, `/evolucoes` e `/whatsapp/baileys/health` retornaram 200; `/dashboard`, `/agenda` e `/evolucoes` servem `assets/index-BuaYH8jG.js`.
+
+[2026-06-03 12:24:49 -03:00] Backlog proximo update - linguagem humana e acesso
+- Registrado em NEXT_UPDATE.md o escopo de proximo update para perguntas em linguagem natural do tipo `Paciente Bernardo esta cadastrado?`, com consulta real ao cadastro, tratamento de nomes parecidos e resposta curta.
+- Registrado fluxo futuro para perda/troca de celular com edicao de numero pela web, confirmacao de senha, auditoria e atualizacao de vinculos WhatsApp/Telegram.
+- Registradas melhorias de autenticacao: recuperar senha na tela de login, login por e-mail/telefone/usuario, bloqueio de usuarios duplicados e botoes mostrar/ocultar senha em login/cadastro.
+- Registrada exclusao/inativacao logica de paciente pela web com confirmacao de senha e via WhatsApp com confirmacao em duas etapas.
+
+[2026-06-03 12:30:22 -03:00] Backlog proximo update - menu usuario e perfil
+- Refinado NEXT_UPDATE.md para incluir menu do usuario na topbar com `Configuracoes` e `Editar perfil`.
+- Registrado que `Editar perfil` deve permitir edicao do cadastro do usuario logado, incluindo nome, e-mail, telefone/numero vinculado e dados permitidos, mantendo CPF bloqueado/somente leitura no fluxo comum.
+- Ajustada especificacao de mostrar/ocultar senha: campos permanecem `password` por padrao e a visibilidade so alterna por botao durante a interacao do usuario.
+
+[2026-06-03 12:35:48 -03:00] Backlog limpeza - agendamento em lote
+- Removidas de NEXT_UPDATE.md as secoes de correcao e resposta para agendamento em lote, pois o fluxo `marca Iara Noto e Julio Noto na sexta 12h e 13h` ja foi considerado implementado.
+- Itens seguintes renumerados: Pre-flight virou 11, polimento UI virou 12, Cadastros virou 13 e linguagem humana/acesso virou 14.
+
+[2026-06-03 12:51:44 -03:00] Implementacao local - perfil, senha e cadastros
+- Login vanilla atualizado para aceitar usuario, e-mail ou telefone na UI, manter campo de senha como `password`, adicionar botao Mostrar/Ocultar e link `Recuperar senha`.
+- Topbar atualizada com menu do usuario, acoes `Editar perfil`/`Configuracoes` e modal de perfil com CPF bloqueado, telefone/e-mail editaveis e senha atual para alteracoes sensiveis.
+- Exclusao logica de paciente pela web passou a solicitar senha antes de enviar o DELETE ao backend.
+- CSS adicionado para campo de senha com botao, menu de usuario e modal de perfil, mantendo a tela inicial anterior e o padrao vanilla.
+- Removido BOM acidental do inicio de `src/vanilla/main.ts` e `NEXT_UPDATE.md`; primeiros bytes confirmados como ASCII (`69 6D 70` e `23 20 50`).
+- Validacao local: `npm run build:tablet` OK em tres ciclos; mock server local em `http://127.0.0.1:4180/dashboard` respondeu 200 e `/api/web/profile` retornou payload esperado. Sem deploy.
+
+[2026-06-03 12:55:11 -03:00] Ajuste local - chip do usuario legivel
+- Corrigido contraste e largura minima do botao do usuario na topbar; nome agora usa texto escuro sobre fundo branco e indicador de menu.
+- Validacao local: npm run build:tablet OK; mock local http://127.0.0.1:4180/dashboard respondeu 200. Sem deploy.
+
+[2026-06-03 13:03:49 -03:00] Implementacao local - menu usuario e exclusao profissional
+- Menu do usuario ampliado com Editar perfil, Seguranca e acesso, Configuracoes e Sair.
+- Criado modal Seguranca e acesso com usuario, telefone vinculado, e-mail, CPF bloqueado e acoes para editar perfil/desconectar dispositivo.
+- Perfil salvo agora mantem o modal aberto com feedback visual de sucesso e atualiza o nome do usuario na topbar.
+- Exclusao/inativacao de paciente trocada de confirm/prompt nativo para modal profissional com resumo do paciente, senha e acao destrutiva explicita.
+- CSS atualizado para menu mais largo, cards de seguranca, resumo de exclusao e botao destrutivo.
+- Validacao local: npm run build:tablet OK; http://127.0.0.1:4180/dashboard respondeu 200; bundle local contem Seguranca e acesso e security-grid. Sem deploy.
+
+[2026-06-05 12:44:25 -03:00] Backlog proximo update - Cadastros premium e agenda anual
+- Registrado em NEXT_UPDATE.md o escopo de visualizacao anual da Agenda com contadores mensais de executados, abertos e cancelados.
+- Registrado cadastro expandido do paciente com dados demograficos, contatos/endereco, dados administrativos, convenio/encaminhamento, valor do atendimento e upload de foto.
+- Registrado valor padrao de atendimento nas configuracoes do usuario, usado como default global e sobrescrito por paciente quando informado.
+- Registrada nova UI de Cadastros inspirada na referencia NextFit: lista lateral em cards de pacientes, ficha principal visivel ao clique, cabecalho com foto/avatar e abas Resumo, Cadastro, Financeiro, Evolucoes e possivel Agenda.
+- Registrados cuidados tecnicos: carregamento sob demanda da ficha, migracoes defensivas de DB/API, campos opcionais exceto nome e testes locais obrigatorios antes de deploy.
+
+[2026-06-05 12:46:14 -03:00] Backlog proximo update - valor atendimento na ficha do paciente
+- Refinado NEXT_UPDATE.md para explicitar que o valor padrao/especifico do atendimento tambem deve aparecer e ser editavel na tela de cadastro do paciente.
+- Registrada regra visual: indicar quando o paciente usa o valor global das configuracoes e quando possui valor proprio sobrescrito.

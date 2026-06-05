@@ -1,9 +1,18 @@
 import "./styles.css";
 
 type User = {
+  internalUserId?: string;
   nomeCompleto?: string;
   nomeExibicao?: string;
   login?: string;
+  cpf?: string;
+  telefone?: string;
+  email?: string;
+  conselho?: string;
+  numeroRegistroConselho?: string;
+  ufConselho?: string;
+  endereco?: string;
+  profissaoCategoria?: string;
 };
 
 type SessionPayload = {
@@ -20,6 +29,11 @@ type LoginPayload = {
   login?: string;
   message?: string;
   user?: User;
+};
+
+type ProfilePayload = {
+  ok?: boolean;
+  user: User;
 };
 
 type Paciente = {
@@ -97,6 +111,8 @@ type AppState = {
   patientEvolutions: Evolucao[];
   selectedPatientId: string | null;
   patientSearch: string;
+  patientSort: "alpha" | "last_attendance" | "newest" | "oldest";
+  registryTab: "resumo" | "cadastro" | "evolucoes" | "financeiro";
   reportTab: "atendimentos" | "financeiro" | "pacientes";
   selectedEventId: string | null;
   agendaStart: string;
@@ -104,6 +120,7 @@ type AppState = {
   agendaWeekStart: string;
   agendaSearch: string;
   agendaStatus: string;
+  agendaView: "semana" | "mes";
   loading: boolean;
 };
 
@@ -120,6 +137,8 @@ const state: AppState = {
   patientEvolutions: [],
   selectedPatientId: null,
   patientSearch: "",
+  patientSort: "alpha",
+  registryTab: "resumo",
   reportTab: "atendimentos",
   selectedEventId: null,
   agendaStart: todayISO(),
@@ -127,6 +146,7 @@ const state: AppState = {
   agendaWeekStart: startOfWeekISO(new Date()),
   agendaSearch: "",
   agendaStatus: "todos",
+  agendaView: "semana",
   loading: false,
 };
 
@@ -269,17 +289,21 @@ function renderLogin(errorMessage = ""): void {
             <p class="hint">Acesse agenda, pacientes e rotina clinica com sua conta do FisioBot.</p>
             <div id="notice" class="notice ${errorMessage ? "error" : ""}" role="status">${escapeHtml(errorMessage)}</div>
             <form id="login-form" class="form-grid" autocomplete="off" novalidate>
-              <label>Usuario
+              <label>Usuario, e-mail ou telefone
                 <input id="login" name="login" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required />
               </label>
               <label>Senha
-                <input id="secret" name="secret" type="password" autocomplete="current-password" required />
+                <span class="password-field">
+                  <input id="secret" name="secret" type="password" autocomplete="current-password" required />
+                  <button class="ghost-button password-toggle" type="button" data-toggle-password="secret" aria-pressed="false">Mostrar</button>
+                </span>
               </label>
               <label class="check-row">
                 <input id="remember" name="remember" type="checkbox" checked />
                 Manter este dispositivo autorizado
               </label>
               <button class="primary-button" id="submit" type="submit">Entrar no sistema</button>
+              <a class="text-link" href="/recover">Recuperar senha</a>
             </form>
           </div>
         </div>
@@ -298,6 +322,7 @@ function renderLogin(errorMessage = ""): void {
     </main>
   `;
   document.querySelector<HTMLFormElement>("#login-form")?.addEventListener("submit", handleLogin);
+  bindPasswordToggles();
 }
 
 function renderLoginCode(login: string, message: string): void {
@@ -345,6 +370,20 @@ function showNotice(kind: "error" | "success" | "info", message: string): void {
   if (!notice) return;
   notice.className = `notice ${kind}`;
   notice.textContent = message;
+}
+
+function bindPasswordToggles(root: ParentNode = document): void {
+  root.querySelectorAll<HTMLButtonElement>("[data-toggle-password]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const inputId = button.dataset.togglePassword || "";
+      const input = root.querySelector<HTMLInputElement>(`#${CSS.escape(inputId)}`);
+      if (!input) return;
+      const visible = input.type === "text";
+      input.type = visible ? "password" : "text";
+      button.textContent = visible ? "Mostrar" : "Ocultar";
+      button.setAttribute("aria-pressed", String(!visible));
+    });
+  });
 }
 
 async function handleLogin(event: SubmitEvent): Promise<void> {
@@ -411,21 +450,20 @@ function renderAppShell(): void {
   const active = state.route;
   const userName = state.user?.nomeExibicao || state.user?.nomeCompleto || state.user?.login || "Usuario";
   const navGroups: Array<{ label: string; items: Array<{ route: AppState["route"]; icon: string; title: string }> }> = [
-    { label: "Geral", items: [{ route: "dashboard", icon: "⌂", title: "Inicio" }] },
+    { label: "Geral", items: [{ route: "dashboard", icon: "I", title: "Inicio" }] },
     {
       label: "Operacao",
       items: [
-        { route: "pacientes", icon: "◉", title: "Pacientes" },
-        { route: "agenda", icon: "▦", title: "Agenda" },
-        { route: "evolucoes", icon: "✎", title: "Evolucoes" },
+        { route: "agenda", icon: "A", title: "Agenda" },
+        { route: "evolucoes", icon: "C", title: "Cadastros" },
       ],
     },
     {
       label: "Gestao",
       items: [
         { route: "financeiro", icon: "$", title: "Financeiro" },
-        { route: "relatorios", icon: "▤", title: "Relatorios" },
-        { route: "recursos", icon: "⚙", title: "Recursos" },
+        { route: "relatorios", icon: "R", title: "Relatorios" },
+        { route: "recursos", icon: "S", title: "Recursos" },
       ],
     },
   ];
@@ -463,19 +501,29 @@ function renderAppShell(): void {
       </aside>
       <section class="main">
         <header class="global-topbar">
-          <button class="sidebar-toggle" type="button" aria-label="Menu">☰</button>
+          <button class="sidebar-toggle" type="button" aria-label="Menu">Menu</button>
           <div class="global-search" role="search">
-            <span aria-hidden="true">⌕</span>
+            <span aria-hidden="true" class="search-label">Buscar</span>
             <input id="global-search" type="text" placeholder="Pesquisar paciente, atendimento ou relatorio" autocomplete="off" />
           </div>
           <div class="topbar-actions">
-            <span class="status-dot ok" title="Backend ativo"></span>
-            <span class="user-chip">${escapeHtml(userName)}</span>
-            <button class="ghost-button icon-button" id="logout" type="button" title="Sair">⇥</button>
+            <span class="system-status"><span class="status-dot ok"></span><b>Backend</b><small>Ativo</small></span>
+            <span class="system-status"><span class="status-dot ok"></span><b>WhatsApp</b><small>Conectado</small></span>
+            <div class="user-menu">
+              <button class="user-chip" id="user-menu-button" type="button" aria-expanded="false">${escapeHtml(userName)}</button>
+              <div class="user-menu-panel" id="user-menu-panel" hidden>
+                <button type="button" id="open-profile">Editar perfil</button>
+                <button type="button" id="open-security">Seguranca e acesso</button>
+                <button type="button" id="open-settings">Configuracoes</button>
+                <button type="button" id="menu-logout">Sair</button>
+              </div>
+            </div>
+            <button class="ghost-button icon-button" id="logout" type="button" title="Sair">Sair</button>
           </div>
         </header>
         <div id="view"></div>
       </section>
+      <div id="profile-modal-root"></div>
     </main>
   `;
   document.querySelector<HTMLButtonElement>(".sidebar-toggle")?.addEventListener("click", () => {
@@ -498,12 +546,241 @@ function renderAppShell(): void {
     });
   });
   document.querySelector<HTMLButtonElement>("#logout")?.addEventListener("click", async () => {
-    await sendJson("/api/web/logout");
-    state.user = null;
-    history.replaceState(null, "", "/");
-    renderLogin();
+    await logoutFromWeb();
   });
+  bindUserMenu();
   renderCurrentRoute();
+}
+
+function bindUserMenu(): void {
+  const button = document.querySelector<HTMLButtonElement>("#user-menu-button");
+  const panel = document.querySelector<HTMLDivElement>("#user-menu-panel");
+  button?.addEventListener("click", () => {
+    if (!panel) return;
+    const expanded = panel.hidden;
+    panel.hidden = !expanded;
+    button.setAttribute("aria-expanded", String(expanded));
+  });
+  document.querySelector<HTMLButtonElement>("#open-profile")?.addEventListener("click", () => {
+    if (panel) panel.hidden = true;
+    renderProfileModal();
+  });
+  document.querySelector<HTMLButtonElement>("#open-security")?.addEventListener("click", () => {
+    if (panel) panel.hidden = true;
+    renderSecurityModal();
+  });
+  document.querySelector<HTMLButtonElement>("#open-settings")?.addEventListener("click", () => {
+    if (panel) panel.hidden = true;
+    renderSecurityModal();
+  });
+  document.querySelector<HTMLButtonElement>("#menu-logout")?.addEventListener("click", async () => {
+    if (panel) panel.hidden = true;
+    await logoutFromWeb();
+  });
+}
+
+async function logoutFromWeb(): Promise<void> {
+  await sendJson("/api/web/logout");
+  state.user = null;
+  history.replaceState(null, "", "/");
+  renderLogin();
+}
+
+function renderProfileModal(profile: User | null = state.user, errorMessage = ""): void {
+  const root = document.querySelector<HTMLDivElement>("#profile-modal-root");
+  if (!root) return;
+  const user = profile || {};
+  root.innerHTML = `
+    <div class="modal-backdrop" role="presentation">
+      <section class="profile-modal" role="dialog" aria-modal="true" aria-label="Editar perfil">
+        <header>
+          <div>
+            <h2>Editar perfil</h2>
+            <p>Atualize dados do profissional. CPF permanece bloqueado.</p>
+          </div>
+          <button class="ghost-button" id="close-profile" type="button">Fechar</button>
+        </header>
+        <div id="profile-notice" class="notice ${errorMessage ? "error" : ""}" role="status">${escapeHtml(errorMessage)}</div>
+        <form id="profile-form" class="form-grid profile-grid">
+          <label>Nome completo
+            <input name="nomeCompleto" type="text" value="${escapeHtml(user.nomeCompleto || "")}" required />
+          </label>
+          <label>Nome exibido
+            <input name="nomeExibicao" type="text" value="${escapeHtml(user.nomeExibicao || "")}" />
+          </label>
+          <label>CPF
+            <input name="cpf" type="text" value="${escapeHtml(user.cpf || "")}" disabled />
+          </label>
+          <label>Telefone vinculado
+            <input name="telefone" type="tel" value="${escapeHtml(user.telefone || "")}" autocomplete="tel" />
+          </label>
+          <label>E-mail
+            <input name="email" type="email" value="${escapeHtml(user.email || "")}" autocomplete="email" />
+          </label>
+          <label>Conselho
+            <input name="conselho" type="text" value="${escapeHtml(user.conselho || "")}" />
+          </label>
+          <label>Registro
+            <input name="numeroRegistroConselho" type="text" value="${escapeHtml(user.numeroRegistroConselho || "")}" />
+          </label>
+          <label>UF
+            <input name="ufConselho" type="text" value="${escapeHtml(user.ufConselho || "")}" maxlength="2" />
+          </label>
+          <label class="span-2">Endereco
+            <input name="endereco" type="text" value="${escapeHtml(user.endereco || "")}" />
+          </label>
+          <label class="span-2">Senha atual para confirmar alteracoes sensiveis
+            <span class="password-field">
+              <input id="profile-secret" name="secret" type="password" autocomplete="current-password" />
+              <button class="ghost-button password-toggle" type="button" data-toggle-password="profile-secret" aria-pressed="false">Mostrar</button>
+            </span>
+          </label>
+          <div class="button-row span-2">
+            <button class="primary-button" type="submit">Salvar perfil</button>
+            <button class="ghost-button" id="cancel-profile" type="button">Cancelar</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  `;
+  root.querySelector<HTMLButtonElement>("#close-profile")?.addEventListener("click", closeProfileModal);
+  root.querySelector<HTMLButtonElement>("#cancel-profile")?.addEventListener("click", closeProfileModal);
+  root.querySelector<HTMLFormElement>("#profile-form")?.addEventListener("submit", handleProfileSubmit);
+  bindPasswordToggles(root);
+  void refreshProfileModal();
+}
+
+function closeProfileModal(): void {
+  const root = document.querySelector<HTMLDivElement>("#profile-modal-root");
+  if (root) root.innerHTML = "";
+}
+
+async function refreshProfileModal(): Promise<void> {
+  try {
+    const payload = await fetchJson<ProfilePayload>("/api/web/profile");
+    state.user = payload.user || state.user;
+    const form = document.querySelector<HTMLFormElement>("#profile-form");
+    if (!form || !payload.user) return;
+    Object.entries({
+      nomeCompleto: payload.user.nomeCompleto || "",
+      nomeExibicao: payload.user.nomeExibicao || "",
+      cpf: payload.user.cpf || "",
+      telefone: payload.user.telefone || "",
+      email: payload.user.email || "",
+      conselho: payload.user.conselho || "",
+      numeroRegistroConselho: payload.user.numeroRegistroConselho || "",
+      ufConselho: payload.user.ufConselho || "",
+      endereco: payload.user.endereco || "",
+    }).forEach(([name, value]) => {
+      const input = form.elements.namedItem(name) as HTMLInputElement | null;
+      if (input) input.value = value;
+    });
+  } catch (error) {
+    const notice = document.querySelector<HTMLDivElement>("#profile-notice");
+    if (notice) {
+      notice.className = "notice error";
+      notice.textContent = error instanceof Error ? error.message : "Falha ao carregar perfil.";
+    }
+  }
+}
+
+async function handleProfileSubmit(event: SubmitEvent): Promise<void> {
+  event.preventDefault();
+  const form = event.currentTarget as HTMLFormElement;
+  const data = new FormData(form);
+  const payload = {
+    nomeCompleto: String(data.get("nomeCompleto") || "").trim(),
+    nomeExibicao: String(data.get("nomeExibicao") || "").trim(),
+    telefone: String(data.get("telefone") || "").trim(),
+    email: String(data.get("email") || "").trim(),
+    conselho: String(data.get("conselho") || "").trim(),
+    numeroRegistroConselho: String(data.get("numeroRegistroConselho") || "").trim(),
+    ufConselho: String(data.get("ufConselho") || "").trim().toUpperCase(),
+    endereco: String(data.get("endereco") || "").trim(),
+    secret: String(data.get("secret") || ""),
+  };
+  try {
+    const response = await fetchJson<ProfilePayload>("/api/web/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    state.user = response.user;
+    renderProfileModal(response.user, "");
+    const notice = document.querySelector<HTMLDivElement>("#profile-notice");
+    if (notice) {
+      notice.className = "notice success";
+      notice.textContent = "Perfil atualizado.";
+    }
+    const userButton = document.querySelector<HTMLButtonElement>("#user-menu-button");
+    if (userButton) {
+      userButton.textContent = response.user.nomeExibicao || response.user.nomeCompleto || response.user.login || "Usuario";
+    }
+  } catch (error) {
+    const notice = document.querySelector<HTMLDivElement>("#profile-notice");
+    if (notice) {
+      notice.className = "notice error";
+      notice.textContent = error instanceof Error ? error.message : "Falha ao salvar perfil.";
+    }
+  }
+}
+
+function renderSecurityModal(profile: User | null = state.user): void {
+  const root = document.querySelector<HTMLDivElement>("#profile-modal-root");
+  if (!root) return;
+  const user = profile || {};
+  root.innerHTML = `
+    <div class="modal-backdrop" role="presentation">
+      <section class="profile-modal security-modal" role="dialog" aria-modal="true" aria-label="Seguranca e acesso">
+        <header>
+          <div>
+            <h2>Seguranca e acesso</h2>
+            <p>Gerencie os dados usados para entrar, recuperar acesso e vincular dispositivos.</p>
+          </div>
+          <button class="ghost-button" id="close-security" type="button">Fechar</button>
+        </header>
+        <div class="security-grid">
+          <div class="security-card">
+            <span>Usuario</span>
+            <strong>${escapeHtml(user.login || "-")}</strong>
+            <small>Tambem e possivel entrar por e-mail ou telefone quando cadastrados.</small>
+          </div>
+          <div class="security-card">
+            <span>Telefone vinculado</span>
+            <strong>${escapeHtml(user.telefone || "Nao informado")}</strong>
+            <small>Usado para recuperacao de acesso e vinculo WhatsApp.</small>
+          </div>
+          <div class="security-card">
+            <span>E-mail</span>
+            <strong>${escapeHtml(user.email || "Nao informado")}</strong>
+            <small>Deve ser unico entre usuarios.</small>
+          </div>
+          <div class="security-card">
+            <span>CPF</span>
+            <strong>${escapeHtml(user.cpf || "Bloqueado")}</strong>
+            <small>Somente leitura neste fluxo.</small>
+          </div>
+        </div>
+        <div class="security-actions">
+          <button class="ghost-button" id="security-edit-profile" type="button">Editar perfil</button>
+          <button class="ghost-button" id="security-logout" type="button">Desconectar este dispositivo</button>
+        </div>
+      </section>
+    </div>
+  `;
+  root.querySelector<HTMLButtonElement>("#close-security")?.addEventListener("click", closeProfileModal);
+  root.querySelector<HTMLButtonElement>("#security-edit-profile")?.addEventListener("click", () => renderProfileModal());
+  root.querySelector<HTMLButtonElement>("#security-logout")?.addEventListener("click", logoutFromWeb);
+  void refreshSecurityModal();
+}
+
+async function refreshSecurityModal(): Promise<void> {
+  try {
+    const payload = await fetchJson<ProfilePayload>("/api/web/profile");
+    state.user = payload.user || state.user;
+  } catch {
+    // Modal remains useful with the session payload when profile refresh fails.
+  }
 }
 
 function isAppRoute(value: unknown): value is AppState["route"] {
@@ -517,7 +794,7 @@ function renderCurrentRoute(): void {
   else if (state.route === "financeiro") renderFinanceiro();
   else if (state.route === "relatorios") renderRelatorios();
   else if (state.route === "recursos") renderRecursos();
-  else renderDashboard();
+  else renderDashboardPro();
 }
 
 async function loadCurrentRoute(): Promise<void> {
@@ -563,8 +840,7 @@ async function loadDashboard(): Promise<void> {
     state.pacientes = pacientes;
     state.evolucoes = evolucoes;
     state.financeiro = financeiro;
-    state.selectedEventId = agenda[0]?.id || null;
-    renderDashboard(pacientes, agenda, evolucoes, financeiro);
+    renderDashboardPro(pacientes, agenda, evolucoes, financeiro);
   } catch (error) {
     view.innerHTML = `<div class="notice error">Falha ao carregar inicio: ${escapeHtml(error instanceof Error ? error.message : "erro desconhecido")}</div>`;
   }
@@ -627,7 +903,7 @@ function renderDashboard(
               .map(
                 (slot) => `
                   <div class="table-row">
-                    <div><strong>${escapeHtml(slot.clientes?.[0]?.nomeCompleto || slot.servico || "-")}</strong><br><span class="muted">${formatDate(slot.data)} ${escapeHtml(slot.horaInicio)} · ${formatMoney(slot.valorAtendimento || slot.clientes?.[0]?.valorAtendimento)}</span></div>
+                    <div><strong>${escapeHtml(slot.clientes?.[0]?.nomeCompleto || slot.servico || "-")}</strong><br><span class="muted">${formatDate(slot.data)} ${escapeHtml(slot.horaInicio)} &middot; ${formatMoney(slot.valorAtendimento || slot.clientes?.[0]?.valorAtendimento)}</span></div>
                     <span class="pill warn">${escapeHtml(slot.statusFinanceiro || "pendente")}</span>
                   </div>
                 `,
@@ -688,6 +964,180 @@ function renderDashboard(
     setDocumentRoute("pacientes");
     await loadPacientes();
   });
+}
+
+function renderDashboardPro(
+  pacientes: Paciente[] = state.pacientes,
+  agenda: AgendaSlot[] = state.agenda,
+  evolucoes: Evolucao[] = state.evolucoes,
+  financeiro: Faturamento[] = state.financeiro,
+): void {
+  const view = document.querySelector<HTMLDivElement>("#view");
+  if (!view) return;
+  const hoje = todayISO();
+  const agendaHoje = agenda.filter((slot) => slot.data === hoje);
+  const mesAtual = monthKey();
+  const pendente = financeiro
+    .filter((item) => String(item.statusFinanceiro || "").toLowerCase() === "pendente")
+    .reduce((sum, item) => sum + Number(item.valorAtendimento || 0), 0);
+  const recebidoMes = financeiro
+    .filter(
+      (item) =>
+        String(item.statusFinanceiro || "").toLowerCase() === "pago" &&
+        String(item.dataPagamento || item.data || "").startsWith(mesAtual),
+    )
+    .reduce((sum, item) => sum + Number(item.valorAtendimento || 0), 0);
+  const slotsAbertos = agendaHoje.filter((slot) => slot.status === "aberto").length;
+  const agendaPendencias = agenda.filter((slot) => slot.temPendencia || slot.statusFinanceiro === "pendente");
+  const creditoTotal = pacientes.reduce((sum, patient) => sum + Number(patient.creditoDisponivel || 0), 0);
+  const nextSlot =
+    agendaHoje
+      .filter((slot) => slot.status !== "cancelado")
+      .sort((a, b) => String(a.horaInicio || "").localeCompare(String(b.horaInicio || "")))[0] ||
+    agenda.filter((slot) => slot.status !== "cancelado")[0] ||
+    null;
+  view.innerHTML = `
+    <header class="page-header product-header">
+      <div>
+        <h1>Hoje</h1>
+        <p>${formatDate(hoje)} &middot; operacao clinica em tempo real</p>
+      </div>
+      <div class="button-row">
+        <button class="ghost-button" id="go-pacientes" type="button">Novo paciente</button>
+        <button class="secondary-button" id="refresh-dashboard" type="button">Atualizar</button>
+      </div>
+    </header>
+    <section class="metric-strip">
+      <div class="metric"><span>Atendimentos hoje</span><strong>${agendaHoje.length}</strong><small>${slotsAbertos} abertos</small></div>
+      <div class="metric"><span>Proximo horario</span><strong>${escapeHtml(nextSlot?.horaInicio || "--:--")}</strong><small>${escapeHtml(nextSlot?.clientes?.[0]?.nomeCompleto || "sem atendimento")}</small></div>
+      <div class="metric"><span>Pendencias clinicas</span><strong>${agendaPendencias.length}</strong><small>evolucao ou financeiro</small></div>
+      <div class="metric"><span>Pendencias financeiras</span><strong>${formatMoney(pendente)}</strong><small>recebido mes ${formatMoney(recebidoMes)}</small></div>
+    </section>
+    <section class="today-layout">
+      <div class="content-panel agenda-board">
+        <div class="section-title">
+          <h2>Agenda da semana</h2>
+          <button class="ghost-button" id="go-agenda" type="button">Abrir agenda</button>
+        </div>
+        ${weekGridHtml(weekDaysFrom(startOfWeekISO(new Date())), agenda)}
+      </div>
+      <aside class="content-panel command-panel">
+        ${nextSlot ? dashboardAppointmentDetail(nextSlot) : `<div class="empty">Nenhum atendimento selecionado.</div>`}
+      </aside>
+    </section>
+    <section class="content-panel data-section">
+      <div class="section-title">
+        <h2>Agenda de hoje</h2>
+        <span class="pill">${agendaHoje.length}</span>
+      </div>
+      <div class="data-table agenda-table">
+        <div class="data-row data-head"><span>Horario</span><span>Paciente</span><span>Servico</span><span>Status</span><span>Financeiro</span></div>
+        ${
+          agendaHoje
+            .map((slot) => {
+              const client = slot.clientes?.[0] || {};
+              return `
+                <div class="data-row">
+                  <strong>${escapeHtml(slot.horaInicio || "--:--")}</strong>
+                  <span>${escapeHtml(client.nomeCompleto || "-")}</span>
+                  <span>${escapeHtml(slot.servico || "Fisioterapia")}</span>
+                  <span class="pill ${slot.status === "concluido" ? "ok" : slot.status === "cancelado" ? "warn" : ""}">${escapeHtml(slot.status || "aberto")}</span>
+                  <span class="pill ${slot.statusFinanceiro === "pago" ? "ok" : "warn"}">${escapeHtml(slot.statusFinanceiro || client.statusFinanceiro || "pendente")}</span>
+                </div>
+              `;
+            })
+            .join("") || `<div class="empty">Nenhum atendimento para hoje.</div>`
+        }
+      </div>
+    </section>
+    <section class="dashboard-secondary">
+      <div class="content-panel">
+        <div class="section-title"><h2>Ultimas evolucoes</h2></div>
+        <div class="table-list">${evolucoes.slice(0, 4).map(compactEvolutionRowHtml).join("") || `<div class="empty">Nenhuma evolucao recente.</div>`}</div>
+      </div>
+      <div class="content-panel">
+        <div class="section-title"><h2>Pacientes recentes</h2></div>
+        <div class="table-list">${pacientes.slice(0, 4).map(compactPatientRowHtml).join("") || `<div class="empty">Nenhum paciente cadastrado.</div>`}</div>
+      </div>
+      <div class="content-panel">
+        <div class="section-title"><h2>Acoes rapidas</h2></div>
+        <div class="quick-actions">
+          <button class="ghost-button" id="go-agenda-quick" type="button">Novo atendimento</button>
+          <button class="ghost-button" id="go-pacientes-quick" type="button">Novo paciente</button>
+          <button class="ghost-button" id="go-evolucoes-quick" type="button">Abrir cadastros</button>
+        </div>
+        <div class="detail-row"><span>Credito total</span><strong>${formatMoney(creditoTotal)}</strong></div>
+      </div>
+    </section>
+  `;
+  document.querySelector<HTMLButtonElement>("#refresh-dashboard")?.addEventListener("click", loadDashboard);
+  document.querySelector<HTMLButtonElement>("#go-agenda")?.addEventListener("click", async () => {
+    setDocumentRoute("agenda");
+    await loadAgenda();
+  });
+  document.querySelector<HTMLButtonElement>("#go-pacientes")?.addEventListener("click", async () => {
+    setDocumentRoute("pacientes");
+    await loadPacientes();
+  });
+  document.querySelector<HTMLButtonElement>("#go-agenda-quick")?.addEventListener("click", async () => {
+    setDocumentRoute("agenda");
+    await loadAgenda();
+  });
+  document.querySelector<HTMLButtonElement>("#go-pacientes-quick")?.addEventListener("click", async () => {
+    setDocumentRoute("pacientes");
+    await loadPacientes();
+  });
+  document.querySelector<HTMLButtonElement>("#go-evolucoes-quick")?.addEventListener("click", async () => {
+    setDocumentRoute("evolucoes");
+    await loadEvolucoes();
+  });
+  view.querySelectorAll<HTMLButtonElement>("[data-route]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const nextRoute = button.dataset.route;
+      setDocumentRoute(isAppRoute(nextRoute) ? nextRoute : "dashboard");
+      await loadCurrentRoute();
+    });
+  });
+  window.requestAnimationFrame(scrollAgendaToCurrentHour);
+}
+
+function dashboardAppointmentDetail(slot: AgendaSlot): string {
+  const client = slot.clientes?.[0] || {};
+  return `
+    <div class="detail">
+      <div class="eyebrow">Proximo atendimento</div>
+      <div class="detail-hero clean">
+        <strong>${escapeHtml(client.nomeCompleto || slot.servico || "Atendimento")}</strong>
+        <span>${escapeHtml(slot.servico || "Fisioterapia")} &middot; ${formatDate(slot.data)} ${escapeHtml(slot.horaInicio || "")}${slot.horaFim ? `-${escapeHtml(slot.horaFim)}` : ""}</span>
+      </div>
+      <div class="detail-row"><span>Status</span><strong>${escapeHtml(slot.status || "aberto")}</strong></div>
+      <div class="detail-row"><span>Financeiro</span><strong>${escapeHtml(slot.statusFinanceiro || client.statusFinanceiro || "pendente")} &middot; ${formatMoney(slot.valorAtendimento || client.valorAtendimento)}</strong></div>
+      <div class="detail-row"><span>Evolucao</span><strong>${client.temEvolucao ? "Registrada" : "Nao registrada"}</strong></div>
+      <div class="button-row">
+        <button class="primary-button" type="button" data-route="agenda">Concluir</button>
+        <button class="ghost-button" type="button" data-route="evolucoes">Registrar evolucao</button>
+        <button class="ghost-button" type="button" data-route="agenda">Reagendar</button>
+      </div>
+    </div>
+  `;
+}
+
+function compactEvolutionRowHtml(evo: Evolucao): string {
+  return `
+    <div class="table-row compact-row">
+      <div><strong>${escapeHtml(evo.pacienteNome || "-")}</strong><br><span class="muted">${escapeHtml((evo.texto || "").slice(0, 86))}</span></div>
+      <span class="muted">${formatDate(evo.data)}</span>
+    </div>
+  `;
+}
+
+function compactPatientRowHtml(patient: Paciente): string {
+  return `
+    <div class="table-row compact-row">
+      <div><strong>${escapeHtml(patient.nomeCompleto)}</strong><br><span class="muted">${escapeHtml(patient.telefone || "sem telefone")}</span></div>
+      <span class="muted">${formatMoney(patient.totalPendente)}</span>
+    </div>
+  `;
 }
 
 async function loadPacientes(): Promise<void> {
@@ -793,7 +1243,7 @@ function patientRowHtml(patient: Paciente): string {
     <button class="patient-row ${selected ? "selected" : ""}" type="button" data-patient-id="${escapeHtml(patient.id)}">
       <span>
         <strong>${escapeHtml(patient.nomeCompleto || "-")}</strong>
-        <small>${escapeHtml(patient.telefone || "sem telefone")} · ${escapeHtml(patient.cpf || "sem CPF")}</small>
+        <small>${escapeHtml(patient.telefone || "sem telefone")} &middot; ${escapeHtml(patient.cpf || "sem CPF")}</small>
       </span>
       <span class="pill ${patient.ativo === false ? "warn" : "ok"}">${patient.ativo === false ? "inativo" : "ativo"}</span>
     </button>
@@ -933,18 +1383,84 @@ async function handlePatientSubmit(event: SubmitEvent): Promise<void> {
   }
 }
 
-async function handlePatientDelete(): Promise<void> {
+function handlePatientDelete(): void {
   const id = state.selectedPatientId;
   const patient = state.pacientes.find((item) => item.id === id);
   if (!id || !patient) return;
-  if (!confirm(`Excluir cadastro de ${patient.nomeCompleto}? O registro sera marcado como inativo.`)) return;
+  renderDeletePatientModal(patient);
+}
+
+function renderDeletePatientModal(patient: Paciente, errorMessage = ""): void {
+  const root = document.querySelector<HTMLDivElement>("#profile-modal-root");
+  if (!root) return;
+  root.innerHTML = `
+    <div class="modal-backdrop" role="presentation">
+      <section class="profile-modal danger-modal" role="dialog" aria-modal="true" aria-label="Excluir paciente">
+        <header>
+          <div>
+            <h2>Inativar cadastro</h2>
+            <p>O paciente sera marcado como inativo. Historico clinico e financeiro permanecem preservados.</p>
+          </div>
+          <button class="ghost-button" id="close-delete-patient" type="button">Fechar</button>
+        </header>
+        <div class="delete-summary">
+          <span>Paciente</span>
+          <strong>${escapeHtml(patient.nomeCompleto)}</strong>
+          <small>${escapeHtml(patient.telefone || "sem telefone")} · ${escapeHtml(patient.cpf || "sem CPF")}</small>
+        </div>
+        <div id="delete-patient-notice" class="notice ${errorMessage ? "error" : ""}" role="status">${escapeHtml(errorMessage)}</div>
+        <form id="delete-patient-form" class="form-grid">
+          <input type="hidden" name="patientId" value="${escapeHtml(patient.id)}" />
+          <label>Senha do usuario logado
+            <span class="password-field">
+              <input id="delete-patient-secret" name="secret" type="password" autocomplete="current-password" required />
+              <button class="ghost-button password-toggle" type="button" data-toggle-password="delete-patient-secret" aria-pressed="false">Mostrar</button>
+            </span>
+          </label>
+          <div class="button-row">
+            <button class="danger-button" id="confirm-delete-patient" type="submit">Inativar paciente</button>
+            <button class="ghost-button" id="cancel-delete-patient" type="button">Cancelar</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  `;
+  root.querySelector<HTMLButtonElement>("#close-delete-patient")?.addEventListener("click", closeProfileModal);
+  root.querySelector<HTMLButtonElement>("#cancel-delete-patient")?.addEventListener("click", closeProfileModal);
+  root.querySelector<HTMLFormElement>("#delete-patient-form")?.addEventListener("submit", confirmPatientDelete);
+  bindPasswordToggles(root);
+}
+
+async function confirmPatientDelete(event: SubmitEvent): Promise<void> {
+  event.preventDefault();
+  const form = event.currentTarget as HTMLFormElement;
+  const id = String(new FormData(form).get("patientId") || "");
+  const secret = String(new FormData(form).get("secret") || "");
+  const patient = state.pacientes.find((item) => item.id === id);
+  if (!secret) {
+    const notice = document.querySelector<HTMLDivElement>("#delete-patient-notice");
+    if (notice) {
+      notice.className = "notice error";
+      notice.textContent = "Senha obrigatoria.";
+    }
+    return;
+  }
+  const button = form.querySelector<HTMLButtonElement>("#confirm-delete-patient");
+  if (button) button.disabled = true;
   try {
-    await fetchJson<{ ok: boolean }>(`/api/web/pacientes/${encodeURIComponent(id)}`, { method: "DELETE" });
+    await fetchJson<{ ok: boolean }>(`/api/web/pacientes/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ secret }),
+    });
+    closeProfileModal();
     state.selectedPatientId = null;
     await loadPacientes();
     showPatientNotice("success", "Cadastro marcado como inativo no banco.");
   } catch (error) {
-    showPatientNotice("error", error instanceof Error ? error.message : "Falha ao excluir paciente.");
+    renderDeletePatientModal(patient || { id, nomeCompleto: "Paciente" }, error instanceof Error ? error.message : "Falha ao excluir paciente.");
+  } finally {
+    if (button) button.disabled = false;
   }
 }
 
@@ -958,12 +1474,19 @@ function showPatientNotice(kind: "error" | "success" | "info", message: string):
 async function loadEvolucoes(): Promise<void> {
   renderEvolucoes(true);
   try {
-    const [patients, evolutions] = await Promise.all([
+    const [patients, evolutions, agenda] = await Promise.allSettled([
       fetchJson<Paciente[]>("/api/web/pacientes?limit=500"),
       fetchJson<Evolucao[]>("/api/web/evolucoes?limit=200"),
+      fetchJson<AgendaSlot[]>(`/api/web/agenda?${new URLSearchParams({ inicio: addDaysISO(-90), fim: addDaysISO(30) })}`),
     ]);
-    state.pacientes = patients;
-    state.evolucoes = evolutions;
+    state.pacientes = patients.status === "fulfilled" ? patients.value : [];
+    state.evolucoes = evolutions.status === "fulfilled" ? evolutions.value : [];
+    state.agenda = agenda.status === "fulfilled" ? agenda.value : [];
+    state.selectedPatientId =
+      state.selectedPatientId && state.pacientes.some((patient) => patient.id === state.selectedPatientId)
+        ? state.selectedPatientId
+        : null;
+    await loadSelectedPatientDetails();
     renderEvolucoes();
   } catch (error) {
     const view = document.querySelector<HTMLDivElement>("#view");
@@ -976,56 +1499,242 @@ async function loadEvolucoes(): Promise<void> {
 function renderEvolucoes(loading = false): void {
   const view = document.querySelector<HTMLDivElement>("#view");
   if (!view) return;
+  const selected = state.pacientes.find((patient) => patient.id === state.selectedPatientId) || null;
+  const sortedPatients = sortedPatientList(state.pacientes);
+  const selectedName = selected?.nomeCompleto || "";
+  const patientSlots = state.agenda.filter((slot) => (slot.clientes?.[0]?.nomeCompleto || "") === selectedName);
+  const openAttendances = patientSlots.filter((slot) => slot.status !== "cancelado" && !slot.temEvolucao);
+  const latestDates = patientSlots
+    .sort((a, b) => String(b.data + b.horaInicio).localeCompare(String(a.data + a.horaInicio)))
+    .slice(0, 4)
+    .map((slot) => `${formatDate(slot.data)} ${slot.horaInicio || ""}`.trim());
+  const pending = state.patientFinance
+    .filter((item) => String(item.statusFinanceiro || "").toLowerCase() !== "pago")
+    .reduce((sum, item) => sum + Number(item.valorAtendimento || 0), 0);
+  const activePatients = state.pacientes.filter((patient) => patient.ativo !== false).length;
+  const inactivePatients = state.pacientes.length - activePatients;
+  const totalPendingAll = state.pacientes.reduce((sum, patient) => sum + Number(patient.totalPendente || 0), 0);
   view.innerHTML = `
-    <header class="topbar">
+    <header class="page-header">
       <div>
-        <h1>Evolucoes</h1>
-        <p>Registro clinico por texto, conectado ao banco operacional.</p>
+        <h1>Cadastros</h1>
+        <p>Ficha clinica, evolucoes e financeiro individual em um unico lugar.</p>
       </div>
-      <button class="secondary-button" id="refresh-evolucoes" type="button">Atualizar</button>
+      <div class="button-row">
+        <button class="ghost-button" id="new-registry" type="button">Novo Cadastro</button>
+        <button class="secondary-button" id="refresh-evolucoes" type="button">Atualizar</button>
+      </div>
     </header>
-    <section class="grid-2">
-      <div class="content-panel">
-        <div id="evolution-notice" class="notice" role="status"></div>
-        <form id="evolution-form" class="form-grid">
-          <label>Paciente
-            <select name="pacienteId" required>
-              <option value="">Selecionar paciente</option>
-              ${state.pacientes.map((patient) => `<option value="${escapeHtml(patient.id)}">${escapeHtml(patient.nomeCompleto)}</option>`).join("")}
+    <section class="content-panel registry-shell">
+      <div id="evolution-notice" class="notice" role="status"></div>
+      ${loading ? `<div class="loading">Carregando cadastros...</div>` : ""}
+      <div class="registry-layout">
+        <aside class="registry-list">
+          <div class="section-title compact-title">
+            <h2>Pacientes</h2>
+            <span class="pill">${state.pacientes.length}</span>
+          </div>
+          <label class="compact-select">Ordenar
+            <select id="patient-sort">
+              <option value="alpha" ${state.patientSort === "alpha" ? "selected" : ""}>Alfabetico</option>
+              <option value="last_attendance" ${state.patientSort === "last_attendance" ? "selected" : ""}>Ultimo atendimento</option>
+              <option value="newest" ${state.patientSort === "newest" ? "selected" : ""}>Cadastros recentes</option>
+              <option value="oldest" ${state.patientSort === "oldest" ? "selected" : ""}>Cadastros antigos</option>
             </select>
           </label>
-          <label>Evolucao
-            <textarea name="texto" rows="7" placeholder="Descreva queixas, exercicios realizados e evolucao do paciente..." required></textarea>
-          </label>
-          <label>Conduta / proximos passos
-            <textarea name="conduta" rows="3" placeholder="Manter protocolo, reavaliar em..."></textarea>
-          </label>
-          <div class="button-row">
-            <button class="primary-button" type="submit">Salvar evolucao</button>
-            <button class="ghost-button" id="mock-transcribe" type="button">Simular audio</button>
+          <div class="patient-card-list">
+            ${sortedPatients.map(patientRowHtml).join("") || `<div class="empty">Nenhum paciente cadastrado.</div>`}
           </div>
-        </form>
+        </aside>
+        <div class="registry-detail">
+          <div class="registry-summary">
+            <div>
+              <h2>${escapeHtml(selected?.nomeCompleto || "Overview de cadastros")}</h2>
+              <p>${selected ? `${escapeHtml(selected.telefone || "sem telefone")} &middot; ${escapeHtml(selected.cpf || "sem CPF")}` : "Selecione um paciente para abrir a ficha individual."}</p>
+            </div>
+            <div class="registry-stats">
+              <div><span>${selected ? "Atendimentos" : "Pacientes"}</span><strong>${escapeHtml(selected?.totalAtendimentos || state.pacientes.length)}</strong></div>
+              <div><span>${selected ? "Pendente" : "Ativos"}</span><strong>${selected ? formatMoney(pending || selected.totalPendente) : activePatients}</strong></div>
+              <div><span>${selected ? "Evolucoes" : "Inativos"}</span><strong>${selected ? state.patientEvolutions.length : inactivePatients}</strong></div>
+            </div>
+          </div>
+          <div class="registry-tabs" role="tablist" aria-label="Ficha do paciente">
+            <button class="${state.registryTab === "resumo" ? "selected" : ""}" type="button" data-registry-tab="resumo">Resumo</button>
+            <button class="${state.registryTab === "cadastro" ? "selected" : ""}" type="button" data-registry-tab="cadastro" ${selected ? "" : "disabled"}>Cadastro</button>
+            <button class="${state.registryTab === "evolucoes" ? "selected" : ""}" type="button" data-registry-tab="evolucoes" ${selected ? "" : "disabled"}>Evolucoes</button>
+            <button class="${state.registryTab === "financeiro" ? "selected" : ""}" type="button" data-registry-tab="financeiro" ${selected ? "" : "disabled"}>Financeiro</button>
+          </div>
+          <div class="registry-grid">
+            ${
+              !selected
+                ? `<div class="registry-card registry-panel">
+                    <div class="section-title compact-title"><h2>Resumo geral</h2></div>
+                    <div class="summary-list">
+                      <div><span>Pacientes cadastrados</span><strong>${state.pacientes.length}</strong></div>
+                      <div><span>Pacientes ativos</span><strong>${activePatients}</strong></div>
+                      <div><span>Pacientes inativos</span><strong>${inactivePatients}</strong></div>
+                      <div><span>Financeiro pendente geral</span><strong>${formatMoney(totalPendingAll)}</strong></div>
+                    </div>
+                  </div>`
+                : `
+            <div class="registry-card registry-panel ${state.registryTab === "resumo" ? "" : "is-hidden"}">
+              <div class="section-title compact-title"><h2>Resumo</h2></div>
+              <div class="summary-list">
+                <div><span>Atendimentos</span><strong>${escapeHtml(selected?.totalAtendimentos || 0)}</strong></div>
+                <div><span>Ultimas datas</span><strong>${escapeHtml(latestDates.join(" | ") || "Sem atendimentos")}</strong></div>
+                <div><span>Financeiro pendente</span><strong>${formatMoney(pending || selected?.totalPendente)}</strong></div>
+              </div>
+              <button class="primary-button" id="retro-attendance" type="button" ${selected ? "" : "disabled"}>Registrar Atendimento</button>
+            </div>
+            <div class="registry-card registry-panel ${state.registryTab === "evolucoes" ? "" : "is-hidden"}">
+              <div class="section-title compact-title">
+                <h2>Historico clinico</h2>
+                <span class="pill">${state.patientEvolutions.length}</span>
+              </div>
+              <div class="timeline-list compact-history">
+                ${
+                  state.patientEvolutions.map(evolutionItemHtml).join("") ||
+                  state.evolucoes.slice(0, 5).map(evolutionItemHtml).join("") ||
+                  `<div class="empty">Nenhuma evolucao registrada.</div>`
+                }
+              </div>
+            </div>
+            <div class="registry-card registry-panel ${state.registryTab === "evolucoes" ? "" : "is-hidden"}">
+              <div class="section-title compact-title">
+                <h2>Registrar evolucao</h2>
+                <span class="pill">${openAttendances.length} em aberto</span>
+              </div>
+              <form id="evolution-form" class="form-grid">
+                <input type="hidden" name="pacienteId" value="${escapeHtml(selected?.id || "")}" />
+                <label>Atendimento em aberto
+                  <select name="agendaId" required ${openAttendances.length ? "" : "disabled"}>
+                    <option value="">Selecionar data de atendimento</option>
+                    ${openAttendances
+                      .map((slot) => `<option value="${escapeHtml(slot.id)}">${formatDate(slot.data)} ${escapeHtml(slot.horaInicio || "")} - ${escapeHtml(slot.servico || "Atendimento")}</option>`)
+                      .join("")}
+                  </select>
+                </label>
+                <label>Evolucao
+                  <textarea name="texto" rows="5" placeholder="Descreva queixas, exercicios realizados e evolucao do paciente..." required ${openAttendances.length ? "" : "disabled"}></textarea>
+                </label>
+                <label>Conduta / proximos passos
+                  <textarea name="conduta" rows="3" placeholder="Manter protocolo, reavaliar em..." ${openAttendances.length ? "" : "disabled"}></textarea>
+                </label>
+                <button class="primary-button" type="submit" ${selected && openAttendances.length ? "" : "disabled"}>Salvar evolucao</button>
+              </form>
+            </div>
+            <div class="registry-card registry-panel ${state.registryTab === "financeiro" ? "" : "is-hidden"}">
+              <div class="section-title compact-title">
+                <h2>Financeiro individual</h2>
+                <span class="pill ${pending ? "warn" : "ok"}">${formatMoney(pending)}</span>
+              </div>
+              <div class="month-distribution">
+                ${monthlyFinanceDistribution(state.patientFinance)}
+              </div>
+              <div class="table-list">
+                ${
+                  state.patientFinance
+                    .slice(0, 6)
+                    .map(
+                      (item) => `
+                        <div class="table-row">
+                          <div><strong>${formatMoney(item.valorAtendimento)}</strong><br><span class="muted">${formatDate(item.data)}</span></div>
+                          <span class="pill ${item.statusFinanceiro === "pago" ? "ok" : "warn"}">${escapeHtml(item.statusFinanceiro || "pendente")}</span>
+                        </div>
+                      `,
+                    )
+                    .join("") || `<div class="empty">Sem financeiro para este paciente.</div>`
+                }
+              </div>
+            </div>
+            <div class="registry-card registry-panel ${state.registryTab === "cadastro" ? "" : "is-hidden"}">
+              <div class="section-title compact-title"><h2>Cadastro</h2></div>
+              ${selected ? `
+                <div class="detail-row"><span>Nome</span><strong>${escapeHtml(selected.nomeCompleto || "-")}</strong></div>
+                <div class="detail-row"><span>Telefone</span><strong>${escapeHtml(selected.telefone || "-")}</strong></div>
+                <div class="detail-row"><span>Endereco</span><strong>${escapeHtml(selected.endereco || "-")}</strong></div>
+                <div class="detail-row"><span>Observacoes</span><p>${escapeHtml(selected.observacoes || "Sem observacoes.")}</p></div>
+                <button class="ghost-button" type="button" data-route="pacientes">Editar cadastro completo</button>
+              ` : `<div class="empty">Selecione um paciente para ver a ficha.</div>`}
+            </div>
+            `
+            }
+          </div>
+        </div>
       </div>
-      <aside class="content-panel">
-        <div class="section-title">
-          <h2>Ultimas evolucoes</h2>
-          <span class="pill">${state.evolucoes.length}</span>
-        </div>
-        ${loading ? `<div class="loading">Carregando evolucoes...</div>` : ""}
-        <div class="timeline-list">
-          ${state.evolucoes.map(evolutionItemHtml).join("") || `<div class="empty">Nenhuma evolucao registrada.</div>`}
-        </div>
-      </aside>
     </section>
   `;
   document.querySelector<HTMLButtonElement>("#refresh-evolucoes")?.addEventListener("click", loadEvolucoes);
-  document.querySelector<HTMLButtonElement>("#mock-transcribe")?.addEventListener("click", () => {
-    const text = document.querySelector<HTMLTextAreaElement>("[name='texto']");
-    const conduct = document.querySelector<HTMLTextAreaElement>("[name='conduta']");
-    if (text) text.value = `${text.value ? `${text.value}\n` : ""}Paciente realizou exercicios de fortalecimento e mobilidade. Boa evolucao do quadro algico.`;
-    if (conduct) conduct.value = "Manter protocolo. Reavaliar em 1 semana.";
+  document.querySelector<HTMLButtonElement>("#new-registry")?.addEventListener("click", async () => {
+    setDocumentRoute("pacientes");
+    state.selectedPatientId = null;
+    await loadPacientes();
+  });
+  document.querySelector<HTMLButtonElement>("#retro-attendance")?.addEventListener("click", async () => {
+    setDocumentRoute("agenda");
+    await loadAgenda();
+  });
+  document.querySelector<HTMLSelectElement>("#patient-sort")?.addEventListener("change", (event) => {
+    state.patientSort = event.currentTarget.value as AppState["patientSort"];
+    renderEvolucoes();
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-registry-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.registryTab = (button.dataset.registryTab as AppState["registryTab"]) || "resumo";
+      renderEvolucoes();
+    });
   });
   document.querySelector<HTMLFormElement>("#evolution-form")?.addEventListener("submit", handleEvolutionSubmit);
+  document.querySelectorAll<HTMLButtonElement>("[data-patient-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.selectedPatientId = button.dataset.patientId || null;
+      state.registryTab = "resumo";
+      void loadSelectedPatientDetails().then(() => renderEvolucoes());
+    });
+  });
+  view.querySelectorAll<HTMLButtonElement>("[data-route]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const nextRoute = button.dataset.route;
+      setDocumentRoute(isAppRoute(nextRoute) ? nextRoute : "dashboard");
+      await loadCurrentRoute();
+    });
+  });
+}
+
+function sortedPatientList(patients: Paciente[]): Paciente[] {
+  const byName = (a: Paciente, b: Paciente) => String(a.nomeCompleto || "").localeCompare(String(b.nomeCompleto || ""), "pt-BR");
+  const list = [...patients];
+  if (state.patientSort === "alpha") return list.sort(byName);
+  if (state.patientSort === "last_attendance") return list.sort((a, b) => latestPatientAttendance(b) - latestPatientAttendance(a) || byName(a, b));
+  if (state.patientSort === "oldest") return list.reverse();
+  return list;
+}
+
+function latestPatientAttendance(patient: Paciente): number {
+  const name = patient.nomeCompleto || "";
+  const dates = state.agenda
+    .filter((slot) => (slot.clientes?.[0]?.nomeCompleto || "") === name)
+    .map((slot) => new Date(`${slot.data}T${normalizeTimeForDate(slot.horaInicio)}`).getTime())
+    .filter(Number.isFinite);
+  return dates.length ? Math.max(...dates) : 0;
+}
+
+function normalizeTimeForDate(value: unknown): string {
+  const text = String(value || "00:00").trim();
+  if (/^\d{2}:\d{2}:\d{2}$/.test(text)) return text;
+  if (/^\d{2}:\d{2}$/.test(text)) return `${text}:00`;
+  return "00:00:00";
+}
+
+function monthlyFinanceDistribution(items: Faturamento[]): string {
+  const totals = new Map<string, number>();
+  items.forEach((item) => {
+    const key = String(item.dataPagamento || item.data || "").slice(0, 7) || "sem mes";
+    totals.set(key, (totals.get(key) || 0) + Number(item.valorAtendimento || 0));
+  });
+  const entries = [...totals.entries()].slice(0, 4);
+  if (!entries.length) return `<div class="empty compact-empty">Sem distribuicao mensal.</div>`;
+  return entries.map(([month, total]) => `<div><span>${escapeHtml(month)}</span><strong>${formatMoney(total)}</strong></div>`).join("");
 }
 
 function evolutionItemHtml(evolution: Evolucao): string {
@@ -1046,15 +1755,17 @@ async function handleEvolutionSubmit(event: SubmitEvent): Promise<void> {
   const form = event.currentTarget as HTMLFormElement;
   const data = new FormData(form);
   const pacienteId = String(data.get("pacienteId") || "");
+  const agendaId = String(data.get("agendaId") || "");
   const patient = state.pacientes.find((item) => item.id === pacienteId);
   const texto = String(data.get("texto") || "").trim();
-  if (!pacienteId || !texto) {
-    showEvolutionNotice("error", "Selecione um paciente e escreva a evolucao.");
+  if (!pacienteId || !agendaId || !texto) {
+    showEvolutionNotice("error", "Selecione um atendimento em aberto e escreva a evolucao.");
     return;
   }
   try {
     const saved = await sendJson<Evolucao>("/api/web/evolucoes", {
       pacienteId,
+      agendaId,
       pacienteNome: patient?.nomeCompleto,
       texto,
       conduta: String(data.get("conduta") || "").trim(),
@@ -1062,6 +1773,7 @@ async function handleEvolutionSubmit(event: SubmitEvent): Promise<void> {
       profissionalNome: state.user?.nomeCompleto || state.user?.login || "FisioBot",
     });
     state.evolucoes = [saved, ...state.evolucoes];
+    state.patientEvolutions = [saved, ...state.patientEvolutions];
     form.reset();
     renderEvolucoes();
     showEvolutionNotice("success", "Evolucao salva no banco.");
@@ -1386,7 +2098,7 @@ function renderRecursos(
           .map(
             (item, index) => `
               <button class="resource-row ${index === 0 ? "selected" : ""}" type="button">
-                <span class="resource-icon">${item.active ? "✓" : "–"}</span>
+                <span class="resource-icon">${item.active ? "OK" : "-"}</span>
                 <span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.detail)}</small></span>
                 <em class="${item.active ? "ok" : "warn"}">${escapeHtml(item.status)}</em>
               </button>
@@ -1408,13 +2120,13 @@ function renderRecursos(
 }
 
 async function loadAgenda(): Promise<void> {
+  state.selectedEventId = null;
   renderAgenda(true);
   try {
     state.agendaStart = state.agendaWeekStart;
     state.agendaEnd = addDaysToISO(state.agendaWeekStart, 6);
     const params = new URLSearchParams({ inicio: state.agendaStart, fim: state.agendaEnd });
     state.agenda = await fetchJson<AgendaSlot[]>(`/api/web/agenda?${params}`);
-    state.selectedEventId = state.selectedEventId || state.agenda[0]?.id || null;
     renderAgenda();
   } catch (error) {
     const view = document.querySelector<HTMLDivElement>("#view");
@@ -1428,8 +2140,7 @@ function renderAgenda(loading = false): void {
   const view = document.querySelector<HTMLDivElement>("#view");
   if (!view) return;
   const filteredAgenda = filteredAgendaSlots();
-  const selected =
-    state.agenda.find((slot) => slot.id === state.selectedEventId) || filteredAgenda[0] || null;
+  const selected = state.agenda.find((slot) => slot.id === state.selectedEventId) || null;
   const weekDays = weekDaysFrom(state.agendaWeekStart);
   const totals = agendaTotals(state.agenda);
   const monthLabel = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(
@@ -1449,32 +2160,33 @@ function renderAgenda(loading = false): void {
     <section class="calendar-shell">
       <div class="calendar-topline">
         <div class="calendar-nav">
-          <button class="ghost-button icon-button" id="prev-week" type="button" title="Semana anterior">‹</button>
+          <button class="ghost-button icon-button arrow-button" id="prev-week" type="button" title="Semana anterior">&laquo;</button>
           <button class="secondary-button" id="today-week" type="button">HOJE</button>
-          <button class="ghost-button icon-button" id="next-week" type="button" title="Proxima semana">›</button>
+          <button class="ghost-button icon-button arrow-button" id="next-week" type="button" title="Proxima semana">&raquo;</button>
           <strong>${escapeHtml(monthLabel)}</strong>
         </div>
-        <div class="calendar-actions">
+        <div class="calendar-actions calendar-inline-controls">
+          <label>Buscar
+            <input id="agenda-search" type="text" value="${escapeHtml(state.agendaSearch)}" placeholder="Paciente, servico ou profissional" />
+          </label>
+          <label>Status
+            <select id="agenda-status">
+              <option value="todos" ${state.agendaStatus === "todos" ? "selected" : ""}>Todos</option>
+              <option value="aberto" ${state.agendaStatus === "aberto" ? "selected" : ""}>Abertos</option>
+              <option value="concluido" ${state.agendaStatus === "concluido" ? "selected" : ""}>Concluidos</option>
+              <option value="cancelado" ${state.agendaStatus === "cancelado" ? "selected" : ""}>Cancelados</option>
+            </select>
+          </label>
           <label>Visualizacao
-            <select id="agenda-view" disabled>
-              <option>Semana</option>
+            <select id="agenda-view">
+              <option value="semana" ${state.agendaView === "semana" ? "selected" : ""}>Semana</option>
+              <option value="mes" ${state.agendaView === "mes" ? "selected" : ""}>Mensal</option>
             </select>
           </label>
           <button class="ghost-button" id="apply-agenda-filter" type="button">Filtros</button>
         </div>
       </div>
       <div class="calendar-filterbar">
-        <label>Buscar
-          <input id="agenda-search" type="text" value="${escapeHtml(state.agendaSearch)}" placeholder="Paciente, servico ou profissional" />
-        </label>
-        <label>Status
-          <select id="agenda-status">
-            <option value="todos" ${state.agendaStatus === "todos" ? "selected" : ""}>Todos</option>
-            <option value="aberto" ${state.agendaStatus === "aberto" ? "selected" : ""}>Abertos</option>
-            <option value="concluido" ${state.agendaStatus === "concluido" ? "selected" : ""}>Concluidos</option>
-            <option value="cancelado" ${state.agendaStatus === "cancelado" ? "selected" : ""}>Cancelados</option>
-          </select>
-        </label>
         <div class="status-strip">
           <span>Futuros: ${totals.future}</span>
           <span>Retroativos: ${totals.retro}</span>
@@ -1484,7 +2196,7 @@ function renderAgenda(loading = false): void {
       ${loading ? `<div class="loading">Carregando agenda...</div>` : ""}
       <div class="calendar-workspace">
         <div class="calendar-main">
-          ${weekGridHtml(weekDays, filteredAgenda)}
+          ${state.agendaView === "mes" ? monthGridHtml(state.agendaWeekStart, filteredAgenda) : weekGridHtml(weekDays, filteredAgenda)}
           <div class="content-panel agenda-list-panel dense-panel">
             <div class="section-title"><h2>Atendimentos da semana</h2></div>
             <div class="agenda-list">
@@ -1492,19 +2204,11 @@ function renderAgenda(loading = false): void {
             </div>
           </div>
         </div>
-        <aside class="content-panel agenda-detail-panel">
-          ${selected ? eventDetailHtml(selected) : `<div class="empty">Selecione um atendimento.</div>`}
-        </aside>
       </div>
-      <div class="quick-rail" aria-label="Acoes rapidas">
-        <button type="button" title="Atualizar" id="quick-refresh">↻</button>
-        <button type="button" title="Pacientes" data-route="pacientes">◉</button>
-        <button type="button" title="Relatorios" data-route="relatorios">▤</button>
-      </div>
+      ${selected ? `<div class="drawer-backdrop" data-close-drawer="true"></div><aside class="appointment-drawer" aria-label="Detalhes do atendimento">${eventDetailHtml(selected)}</aside>` : ""}
     </section>
   `;
   document.querySelector<HTMLButtonElement>("#refresh-agenda")?.addEventListener("click", loadAgenda);
-  document.querySelector<HTMLButtonElement>("#quick-refresh")?.addEventListener("click", loadAgenda);
   window.requestAnimationFrame(scrollAgendaToCurrentHour);
   document.querySelector<HTMLButtonElement>("#prev-week")?.addEventListener("click", async () => {
     state.agendaWeekStart = addDaysToISO(state.agendaWeekStart, -7);
@@ -1524,6 +2228,11 @@ function renderAgenda(loading = false): void {
   document.querySelector<HTMLButtonElement>("#apply-agenda-filter")?.addEventListener("click", () => {
     state.agendaSearch = document.querySelector<HTMLInputElement>("#agenda-search")?.value.trim() || "";
     state.agendaStatus = document.querySelector<HTMLSelectElement>("#agenda-status")?.value || "todos";
+    state.agendaView = (document.querySelector<HTMLSelectElement>("#agenda-view")?.value as AppState["agendaView"]) || "semana";
+    renderAgenda();
+  });
+  document.querySelector<HTMLSelectElement>("#agenda-view")?.addEventListener("change", (event) => {
+    state.agendaView = event.currentTarget.value as AppState["agendaView"];
     renderAgenda();
   });
   document.querySelector<HTMLInputElement>("#agenda-search")?.addEventListener("keydown", (event) => {
@@ -1531,6 +2240,7 @@ function renderAgenda(loading = false): void {
     event.preventDefault();
     state.agendaSearch = event.currentTarget.value.trim();
     state.agendaStatus = document.querySelector<HTMLSelectElement>("#agenda-status")?.value || "todos";
+    state.agendaView = (document.querySelector<HTMLSelectElement>("#agenda-view")?.value as AppState["agendaView"]) || "semana";
     renderAgenda();
   });
   view.querySelectorAll<HTMLButtonElement>("[data-route]").forEach((button) => {
@@ -1543,6 +2253,12 @@ function renderAgenda(loading = false): void {
   document.querySelectorAll<HTMLButtonElement>("[data-event-id]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedEventId = button.dataset.eventId || null;
+      renderAgenda();
+    });
+  });
+  document.querySelectorAll<HTMLElement>("[data-close-drawer]").forEach((element) => {
+    element.addEventListener("click", () => {
+      state.selectedEventId = null;
       renderAgenda();
     });
   });
@@ -1620,6 +2336,40 @@ function weekGridHtml(weekDays: string[], slots: AgendaSlot[]): string {
   `;
 }
 
+function monthGridHtml(anchorISO: string, slots: AgendaSlot[]): string {
+  const anchor = new Date(`${anchorISO}T12:00:00`);
+  const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+  const start = new Date(first);
+  start.setDate(first.getDate() - first.getDay());
+  const labels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
+  const days = Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return date.toISOString().slice(0, 10);
+  });
+  return `
+    <div class="month-grid">
+      ${labels.map((label) => `<div class="month-head">${label}</div>`).join("")}
+      ${days
+        .map((day) => {
+          const date = new Date(`${day}T12:00:00`);
+          const daySlots = slots.filter((slot) => slot.data === day);
+          return `
+            <button class="month-cell ${date.getMonth() === anchor.getMonth() ? "" : "muted-month"} ${day === todayISO() ? "today" : ""}" type="button">
+              <strong>${date.getDate()}</strong>
+              ${daySlots
+                .slice(0, 3)
+                .map((slot) => `<span>${escapeHtml(slot.horaInicio || "")} ${escapeHtml(slot.clientes?.[0]?.nomeCompleto || slot.servico || "Atendimento")}</span>`)
+                .join("")}
+              ${daySlots.length > 3 ? `<small>+${daySlots.length - 3}</small>` : ""}
+            </button>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
 function calendarChipHtml(slot: AgendaSlot): string {
   const cliente = slot.clientes?.[0];
   const status = String(slot.status || "aberto").toLowerCase();
@@ -1628,7 +2378,7 @@ function calendarChipHtml(slot: AgendaSlot): string {
     <button class="calendar-chip ${escapeHtml(status)}" type="button" data-event-id="${escapeHtml(slot.id)}">
       <span class="chip-time">${escapeHtml(slot.horaInicio || "")}${slot.horaFim ? ` - ${escapeHtml(slot.horaFim)}` : ""}</span>
       <span>${escapeHtml(cliente?.nomeCompleto || slot.servico || "Atendimento")}</span>
-      <small>${escapeHtml(slot.servico || "Fisioterapia")} · ${capacity} / ∞</small>
+      <small>${escapeHtml(slot.servico || "Fisioterapia")} &middot; ${capacity} / sem limite</small>
     </button>
   `;
 }
@@ -1663,6 +2413,7 @@ function eventDetailHtml(slot: AgendaSlot): string {
     <div class="detail">
       <div class="section-title">
         <h2>Detalhes</h2>
+        <button class="ghost-button compact-button" type="button" data-close-drawer="true">Fechar</button>
         <span class="pill ${slot.status === "concluido" ? "ok" : slot.status === "cancelado" ? "warn" : ""}">${escapeHtml(slot.status || "aberto")}</span>
       </div>
       <div class="detail-hero">
@@ -1697,3 +2448,4 @@ function eventDetailHtml(slot: AgendaSlot): string {
 }
 
 void bootstrap();
+

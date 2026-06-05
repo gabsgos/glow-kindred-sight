@@ -101,32 +101,80 @@ Criado em: 2026-05-25 09:26 -03:00 America/Sao_Paulo
    - registrar log de chamadas API com rota, endpoint, duracao, status e erro resumido;
    - manter modo mock/local como fallback ate cada modulo ser validado contra DB real.
 
-11. Correcoes de agendamento WhatsApp para multiplos pacientes/horarios:
-   - caso real a reproduzir: `marca Iara Noto e Julio Noto na sexta 12h e 13h`;
-   - resposta incorreta observada: criou apenas `Julio Noto` em `29/05/2026 12:00`, ignorando Iara e deslocamento para 13h;
-   - ajustar parser para preservar a ordem dos nomes e casar cada nome ao respectivo horario quando a frase trouxer listas paralelas;
-   - quando houver ambiguidade de pareamento, pedir confirmacao objetiva antes de gravar agenda;
-   - validar conflito individual por paciente/horario antes da escrita e retornar resumo por item: criado, conflito, paciente nao encontrado ou precisa confirmar;
-   - otimizar o fluxo com processamento em lote: uma interpretacao da frase, uma busca consolidada de pacientes, uma leitura da janela de agenda e escritas transacionais/isoladas por item;
-   - evitar confirmar sucesso parcial como se fosse sucesso completo.
-
-12. Padrao de resposta para agendamento em lote:
-   - trocar resposta longa por resumo escaneavel e sem caracteres quebrados;
-   - formato sugerido:
-     `Agendamentos criados:`
-     `1. Iara Noto - sex 29/05/2026, 12:00-13:00 - R$ 150,00`
-     `2. Julio Noto - sex 29/05/2026, 13:00-14:00 - R$ 150,00`
-   - se houver falha parcial, responder:
-     `Criados: ...`
-     `Pendentes: ...`
-     `Nao alterei os pendentes sem confirmacao.`
-   - garantir saida real em UTF-8 correto para acentos do portugues, sem mojibake como `Ã s`.
-
-13. Pre-flight obrigatorio antes de mexer no tablet vanilla:
+11. Pre-flight obrigatorio antes de mexer no tablet vanilla:
    - antes do proximo update que tocar `src/vanilla/main.ts`, recuperar a versao limpa do branch principal/remoto e sobrepor o arquivo local se houver suspeita de corrupcao;
    - comando base previsto: `git fetch` seguido de restauracao direcionada de `src/vanilla/main.ts` a partir do branch main/origin correspondente;
    - depois reaplicar somente as alteracoes intencionais do update e rodar `npm run build:tablet`;
    - nao usar restauracao ampla do repo, para nao apagar alteracoes locais nao relacionadas.
+
+12. Polimento profissional da UI vanilla:
+   - reduzir aparencia de prototipo/amador nas telas Inicio, Agenda, Pacientes e Evolucoes;
+   - remover o card lateral fixo de "Proximo atendimento" no Inicio;
+   - transformar o Inicio em cockpit operacional do dia, com metricas discretas, tabela/lista "Agenda de hoje", pendencias clinicas/financeiras e acoes rapidas compactas;
+   - remover o card lateral fixo de detalhes da Agenda;
+   - manter a Agenda quase full-width, com grade semanal limpa, topo compacto e eventos pequenos/legiveis;
+   - abrir detalhes do atendimento apenas por clique no agendamento, usando drawer/modal temporario com paciente, horario, status, financeiro, evolucao e acoes;
+   - evitar blocos roxos grandes: usar roxo apenas como acento, borda esquerda, estado ativo ou acao primaria;
+   - refinar cards/listas de Pacientes para visual master-detail profissional: selecionado com borda/acento discreto, hover neutro e badges pequenos;
+   - compactar formularios: labels menores, inputs mais baixos, grid alinhado, botoes principais no rodape da ficha e acoes destrutivas em area separada;
+   - refinar topbar como barra de sistema: busca global discreta/alinhada, status Backend/WhatsApp menores, usuario no canto direito e botao sair menos dominante.
+
+13. Reorganizacao Cadastros:
+   - substituir a pagina/menu `Evolucoes` por `Cadastros` no proximo update;
+   - concentrar dentro de `Cadastros`: Pacientes, Evolucoes por paciente e Financeiro individual;
+   - usar layout de ficha clinica master-detail com lista de pacientes e abas `Resumo`, `Cadastro`, `Agenda`, `Evolucoes` e `Financeiro`;
+   - manter a rota/estrutura antiga desacoplada o suficiente para fallback, mas a navegacao principal deve apontar para o novo modulo Cadastros.
+
+14. Linguagem humana, recuperacao de acesso e seguranca de cadastro:
+   - adicionar intents de linguagem natural para perguntas simples no WhatsApp, Telegram e/ou web, como `Paciente Bernardo esta cadastrado?`;
+   - resposta esperada deve consultar o cadastro real do usuario autenticado, aceitar variacoes de nome e retornar resumo curto: encontrado/nao encontrado, status ativo/inativo, telefone e ultima data relevante quando existir;
+   - tratar ambiguidade com pergunta de confirmacao quando houver mais de um paciente parecido;
+   - adicionar fluxo para perda/troca de celular: permitir editar o numero vinculado pela web com confirmacao de senha e registro em auditoria;
+   - implementar menu do usuario na topbar com entrada `Configuracoes` e `Editar perfil`;
+   - em `Editar perfil`, permitir edicao do cadastro do usuario logado, incluindo nome, e-mail, telefone/numero vinculado e dados operacionais permitidos;
+   - em `Editar perfil`, bloquear edicao de CPF diretamente pela interface comum; CPF deve ficar somente leitura ou exigir fluxo administrativo separado;
+   - ao trocar numero, invalidar/atualizar vinculos antigos de WhatsApp/Telegram conforme regra definida e enviar notificacao ao numero antigo quando ainda acessivel;
+   - implementar `Recuperar senha` na tela de login com pagina simples fora da SPA, usando codigo por WhatsApp/Telegram/e-mail conforme cadastro disponivel;
+   - nao permitir dois usuarios com o mesmo login, usuario, e-mail normalizado ou telefone normalizado;
+   - login deve aceitar e-mail, telefone ou nome de usuario no mesmo campo, resolvendo para um unico usuario;
+   - cadastro e login devem ter botao para mostrar/ocultar senha digitada, mantendo o input como `password` por padrao e alternando visibilidade apenas enquanto o usuario solicitar;
+   - cadastro de usuario deve validar senha minima, confirmacao de senha e unicidade antes de gravar;
+   - permitir excluir/inativar paciente pela interface web com confirmacao de senha do usuario logado;
+   - permitir excluir/inativar paciente via WhatsApp com confirmacao explicita em duas etapas, por exemplo: `excluir paciente Bernardo` -> resumo -> `confirmar excluir Bernardo`;
+   - exclusao de paciente deve ser logica por padrao, preservando historico financeiro/evolucoes para auditoria, salvo se for criado fluxo separado de purga administrativa;
+   - respostas de exclusao devem informar claramente se o paciente foi inativado, se nao foi encontrado ou se havia ambiguidade.
+
+15. Cadastros premium, ficha completa do paciente e agenda anual:
+   - adicionar visualizacao anual na Agenda, alem de semana e mes;
+   - na visualizacao anual, exibir uma grade de 12 meses com contadores por mes: atendimentos executados, abertos e cancelados;
+   - manter a visualizacao anual como leitura agregada e leve, carregando somente estatisticas por periodo em vez de todos os eventos do ano;
+   - criar ou adaptar endpoint backend para resumo anual: `GET /api/web/agenda/resumo-anual?ano=YYYY`, retornando por mes `{executados, abertos, cancelados, total}`;
+   - mapear status da agenda de forma defensiva: executados/concluidos, abertos/futuros/em aberto, cancelados; status desconhecido entra em total e deve ser logado para ajuste posterior;
+   - adicionar valor padrao dos atendimentos nas configuracoes do usuario/profissional;
+   - valor padrao em configuracoes sera usado como default para novos pacientes e novos atendimentos quando o paciente nao tiver valor especifico;
+   - permitir que o valor do atendimento seja sobrescrito por paciente, mantendo `valorPadraoAtendimento` na ficha do paciente;
+   - exibir e editar o valor padrao/especifico do atendimento tambem na tela de cadastro do paciente, dentro da aba `Cadastro` ou bloco administrativo/financeiro da ficha;
+   - na UI, deixar claro quando o paciente esta usando o valor global das configuracoes e quando possui valor proprio sobrescrito;
+   - expandir o cadastro do paciente mantendo todos os campos opcionais neste momento, exceto nome completo;
+   - dados demograficos e pessoais: nome completo, nome social, data de nascimento, idade calculada, genero/sexo, estado civil, naturalidade, nacionalidade, profissao/ocupacao atual e escolaridade;
+   - contatos e endereco: endereco completo, CEP, municipio, telefone residencial, celular, telefone comercial, e-mail, contato de emergencia e telefone do contato de emergencia;
+   - acompanhamento administrativo: profissional/avaliador, numero de registro profissional/CREFITO, data da avaliacao, convenio/plano de saude, numero da carteirinha, encaminhamento, profissional solicitante e CID quando aplicavel;
+   - incluir upload de foto do paciente na ficha; implementar inicialmente como campo visual/preview e preparar backend para arquivo local seguro, sem bloquear o restante do cadastro se foto nao existir;
+   - reorganizar a tela `Cadastros` no padrao da referencia NextFit, mantendo as cores atuais do FisioBot e roxo apenas como acento;
+   - layout desejado: coluna lateral com cards compactos de pacientes por nome, status e informacao curta; ao clicar no nome, abrir um card/ficha visivel do paciente na area principal;
+   - cabecalho da ficha do paciente deve conter foto/avatar, nome, idade quando possivel, status ativo/inativo, telefone principal e acoes principais;
+   - abas da ficha: `Resumo`, `Cadastro`, `Financeiro`, `Evolucoes` e, se fizer sentido no mesmo update, `Agenda`;
+   - `Resumo`: dados clinicos/administrativos principais, totais de atendimentos, ultimo atendimento, proximo atendimento, pendencias financeiras, pendencias de evolucao e observacoes;
+   - `Cadastro`: formulario completo em secoes, parecido com a referencia: dados principais, dados demograficos, contatos/endereco, administrativo, convenio/encaminhamento e observacoes;
+   - `Financeiro`: card/tabela individual com debitos, recebidos, pendentes, distribuicao por mes, valor padrao do paciente e acoes futuras para baixar/editar lancamento;
+   - `Evolucoes`: historico em timeline/cartoes, botao `Nova evolucao`, filtro por atendimento e bloqueio de edicao quando a evolucao ja estiver vinculada/concluida conforme regra existente;
+   - `Agenda` do paciente, se incluida: lista de atendimentos do paciente com status, valor, evolucao pendente/concluida e acao para abrir detalhe;
+   - priorizar UI densa e profissional: fundo neutro, cards brancos, bordas leves, labels discretos, tabelas/linhas alinhadas, sem blocos roxos grandes;
+   - evitar carregar todos os detalhes de todos os pacientes na abertura: listar cards primeiro e carregar ficha completa sob demanda ao clicar no paciente;
+   - manter compatibilidade com os campos atuais (`nomeCompleto`, `telefone`, `cpf`, `endereco`, `observacoes`, `valorPadraoAtendimento`) enquanto os novos campos sao adicionados gradualmente;
+   - atualizar contratos de API/DB antes de ligar UI real: criar migracoes defensivas para novos campos em `web_patients` ou tabela complementar de perfil do paciente;
+   - se o DB atual nao suportar todos os campos de forma limpa, criar camada de serializacao JSON complementar temporaria, mas expor ao frontend como campos estruturados;
+   - testes do update: build tablet, teste local no navegador em Agenda anual e Cadastros, teste de salvar paciente apenas com nome, teste de salvar todos os campos opcionais vazios, teste de valor padrao global e valor especifico por paciente, e teste de carregamento sob demanda da ficha.
 
 ## Observacoes tecnicas
 
@@ -134,3 +182,4 @@ Criado em: 2026-05-25 09:26 -03:00 America/Sao_Paulo
 - Contas a pagar, receber e contas financeiras permanecem no codigo/rotas, mas ocultas ate o contrato com backend estar definido.
 - Evitar criar dependencia direta do React com Baileys, arquivos `.db` ou scripts locais do tablet.
 - O problema de travamento em `onClick`/`onSelect` de campos de texto foi tratado removendo rings de foco dos campos base e substituindo o Select Radix por wrapper nativo no build tablet; manter validacao remota apos cada deploy.
+
