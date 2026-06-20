@@ -43,7 +43,7 @@ function PacienteDetail() {
   const kpis = useMemo(
     () => [
       {
-        label: "Crédito",
+        label: "Credito do paciente",
         value: brl(p?.creditoDisponivel),
         icon: CreditCard,
         tone: "text-success",

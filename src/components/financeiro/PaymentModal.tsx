@@ -30,7 +30,14 @@ type Props = {
   onDone?: () => void;
 };
 
-const FORMAS = ["pix", "dinheiro", "cartão", "transferência", "outro"];
+const FORMAS = [
+  { value: "pix", label: "PIX" },
+  { value: "dinheiro", label: "Dinheiro" },
+  { value: "debito", label: "Debito" },
+  { value: "cartao_credito", label: "Cartao credito" },
+  { value: "transferencia", label: "Transferencia" },
+  { value: "outro", label: "Outro" },
+];
 
 export function PaymentModal({ open, onOpenChange, paciente, onDone }: Props) {
   const [modo, setModo] = useState<"valor" | "quantidade">("valor");
@@ -67,7 +74,7 @@ export function PaymentModal({ open, onOpenChange, paciente, onDone }: Props) {
           formaPagamento: forma,
         });
         toast.success(
-          `${r.quitados.length} atendimento(s) quitado(s).${r.excedente ? ` Crédito atualizado: ${formatCurrency(r.creditoFinal)}` : ""}`,
+          `${r.quitados.length} atendimento(s) quitado(s).${r.excedente ? ` Credito do paciente atualizado: ${formatCurrency(r.creditoFinal)}` : ""}`,
         );
       } else {
         const q = asNumber(quantidade);
@@ -98,7 +105,7 @@ export function PaymentModal({ open, onOpenChange, paciente, onDone }: Props) {
         <DialogHeader>
           <DialogTitle>Registrar pagamento</DialogTitle>
           <DialogDescription>
-            {asText(paciente.nomeCompleto)} - Crédito atual:{" "}
+            {asText(paciente.nomeCompleto)} - Credito do paciente:{" "}
             {formatCurrency(paciente.creditoDisponivel)}
           </DialogDescription>
         </DialogHeader>
@@ -121,7 +128,7 @@ export function PaymentModal({ open, onOpenChange, paciente, onDone }: Props) {
                 placeholder="Ex.: 400"
               />
               <p className="text-xs text-muted-foreground">
-                Quita do mais antigo; excedente vira crédito.
+                Quita do mais antigo; excedente vira credito do paciente.
               </p>
             </div>
           </TabsContent>
@@ -148,8 +155,8 @@ export function PaymentModal({ open, onOpenChange, paciente, onDone }: Props) {
             </SelectTrigger>
             <SelectContent>
               {FORMAS.map((f) => (
-                <SelectItem key={f} value={f}>
-                  {f}
+                <SelectItem key={f.value} value={f.value}>
+                  {f.label}
                 </SelectItem>
               ))}
             </SelectContent>

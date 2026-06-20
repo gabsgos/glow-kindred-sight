@@ -1,9 +1,9 @@
-import { copyFileSync, existsSync, readdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 const outDir = resolve("dist-tablet");
-const source = resolve(outDir, "tablet.index.html");
 const target = resolve(outDir, "index.html");
+const vanillaSource = resolve(outDir, "tablet.index.html");
 const reactSource = resolve(outDir, "tablet.react.html");
 const reactTarget = resolve(outDir, "react.html");
 const staticPages = [
@@ -14,16 +14,21 @@ const staticPages = [
   ["tablet.input-smoke-auth-js.html", "input-smoke-auth-js.html"],
 ];
 const staticAssets = [["tablet.auth-smoke.js", "auth-smoke.js"]];
+const pwaAssets = [
+  ["pwa/manifest.webmanifest", "manifest.webmanifest"],
+  ["pwa/pwa-sw.js", "pwa-sw.js"],
+  ["pwa/icons/icon-192.png", "icons/icon-192.png"],
+  ["pwa/icons/icon-512.png", "icons/icon-512.png"],
+  ["pwa/icons/maskable-512.png", "icons/maskable-512.png"],
+];
 
-if (!existsSync(source)) {
-  throw new Error(`Tablet build entry not found: ${source}`);
+if (!existsSync(vanillaSource)) {
+  throw new Error(`Tablet vanilla build entry not found: ${vanillaSource}`);
 }
-
-copyFileSync(source, target);
-
 if (!existsSync(reactSource)) {
   throw new Error(`Tablet React build entry not found: ${reactSource}`);
 }
+copyFileSync(vanillaSource, target);
 copyFileSync(reactSource, reactTarget);
 
 for (const [pageSource, pageTarget] of staticPages) {
@@ -40,6 +45,16 @@ for (const [assetSource, assetTarget] of staticAssets) {
     throw new Error(`Tablet static asset not found: ${assetSourcePath}`);
   }
   copyFileSync(assetSourcePath, resolve(outDir, assetTarget));
+}
+
+for (const [assetSource, assetTarget] of pwaAssets) {
+  const assetSourcePath = resolve(assetSource);
+  if (!existsSync(assetSourcePath)) {
+    throw new Error(`PWA asset not found: ${assetSourcePath}`);
+  }
+  const targetPath = resolve(outDir, assetTarget);
+  mkdirSync(resolve(targetPath, ".."), { recursive: true });
+  copyFileSync(assetSourcePath, targetPath);
 }
 
 const assetsDir = resolve(outDir, "assets");

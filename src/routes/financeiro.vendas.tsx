@@ -42,10 +42,10 @@ const BRL = formatCurrency;
 const METODOS: MetodoPagamento[] = [
   "Dinheiro",
   "Pix",
-  "C. Crédito",
-  "C. Débito",
+  "Cartao credito",
+  "Debito",
   "Cheque",
-  "Depósito bancário",
+  "Transferencia",
 ];
 
 function VendasPage() {

@@ -361,3 +361,426 @@
 [2026-06-05 12:46:14 -03:00] Backlog proximo update - valor atendimento na ficha do paciente
 - Refinado NEXT_UPDATE.md para explicitar que o valor padrao/especifico do atendimento tambem deve aparecer e ser editavel na tela de cadastro do paciente.
 - Registrada regra visual: indicar quando o paciente usa o valor global das configuracoes e quando possui valor proprio sobrescrito.
+
+[2026-06-05 13:06:24 -03:00] Implementacao local - agenda anual e ficha expandida
+- Adicionada opcao Anual na Agenda vanilla, com grade de 12 meses e contadores de executados, abertos, cancelados e total por mes.
+- Integrado consumo de /api/web/agenda/resumo-anual?ano=YYYY com fallback seguro via Promise.allSettled.
+- Expandido tipo Paciente e formulario de cadastro com nome social, idade calculada exibida, genero, estado civil, naturalidade, nacionalidade, profissao/ocupacao, escolaridade, CEP, municipio, telefones, e-mail, contato de emergencia, dados administrativos, convenio, encaminhamento, CID, foto por URL temporaria, valor do atendimento e flag de uso do valor global.
+- Aba Cadastro dentro de Cadastros agora renderiza o formulario real do paciente e reaproveita o salvamento existente.
+- Modal de perfil/configuracoes passou a exibir e salvar valor padrao global dos atendimentos.
+- CSS atualizado para grade anual, formulario expandido e avatar/foto do paciente.
+- Validacao local: npm run build:tablet OK; rotas locais /dashboard, /agenda e /evolucoes responderam 200. Sem deploy.
+
+[2026-06-05 13:11:34 -03:00] Correcao local - fallback agenda anual no mock
+- Corrigido carregamento da Agenda para tolerar resposta nula/HTML quando /api/web/agenda/resumo-anual nao existir no mock/local, usando lista vazia como fallback.
+- Mock local reiniciado com endpoint /api/web/agenda/resumo-anual e dados anuais de exemplo.
+- Validacao local: npm run build:tablet OK; /api/web/agenda/resumo-anual, /agenda e /evolucoes responderam 200; paginas abertas no navegador. Sem deploy.
+
+[2026-06-05 13:15:21 -03:00] Ajuste local - Cadastro em largura total
+- Aba Cadastro em Cadastros passou a usar classe registry-panel-wide para ocupar as duas colunas da area principal, aproveitando toda a largura da ficha do paciente.
+- Validacao local: npm run build:tablet OK e python -m py_compile app.py OK. Sem deploy.
+
+[2026-06-05 13:19:32 -03:00] Backlog proximo update - pipeline foto paciente
+- Registrado em NEXT_UPDATE.md pipeline completo para foto do paciente com upload original ate 12 MB, preview, crop quadrado, compressao WebP/JPEG para 480x480, envio via FormData e armazenamento fora do SQLite.
+- Registradas regras de seguranca/performance: validar MIME/tamanho/dono do paciente no backend, salvar arquivo otimizado em uploads controlados, gravar apenas foto_url no DB, usar rota autenticada e fallback com inicial do nome.
+
+[2026-06-05 13:25:07 -03:00] Backlog proximo update - pendencias na lista e evolucoes
+- Registradas regras para Cadastros: lista de pacientes ocupando toda a lateral, busca na lateral por paciente, indicadores de pendencia no card do paciente e sinalizacao por atendimento.
+- Registrada remocao da caixa lateral fixa Registrar evolucao; evolucao deve partir do atendimento selecionado, em modal/drawer ou inline sob demanda.
+- Registrada timeline/lista de atendimentos do paciente em largura total com aberto sem evolucao, evoluido nao faturado e evoluido/pago/finalizado.
+
+[2026-06-05 13:26:11 -03:00] Backlog proximo update - linha do tempo operacional
+- Registrada decisao de UI para aba Evolucoes: usar uma linha do tempo operacional unica misturando atendimentos e evolucoes em ordem de data.
+- Registradas acoes contextuais por item: Registrar evolucao, Baixar pagamento, Visualizar/Imprimir, conforme status clinico e financeiro.
+
+[2026-06-05 13:30:22 -03:00] Backlog proximo update - convite cliente e drawer de perfil
+- Registrado fluxo Convidar cliente: token unico, pagina HTML simples fora da SPA, preenchimento pelo proprio cliente, estados do convite e vinculo seguro ao profissional dono.
+- Registrada evolucao visual de Cadastros para cards estilo NextFit com avatar/foto, status, pendencias, Ver perfil e menu de acoes.
+- Registrada abertura da ficha do paciente em painel lateral sobreposto com backdrop/blur, abas internas e carregamento sob demanda de dados detalhados.
+
+[2026-06-05 13:32:19 -03:00] Backlog proximo update - expiracao convite cliente
+- Refinado NEXT_UPDATE.md para definir que o link/token do fluxo Convidar cliente expira em 24 horas por padrao.
+
+[2026-06-05 13:51:45 -03:00] Implementacao local - Cadastros NextFit, convite e foto
+- Refatorada tela Cadastros para lista lateral com busca local, ordenacao e cards de paciente com avatar/foto, idade/genero, status e indicadores de pendencia.
+- Adicionado drawer lateral de perfil do paciente com abas Resumo, Cadastro, Financeiro e Evolucoes, abrindo somente ao clicar no card do paciente.
+- Substituido formulario fixo de evolucao por linha do tempo operacional que mistura atendimentos e evolucoes, com indicadores vermelho, azul e verde e acoes contextuais.
+- Adicionado upload de foto no formulario do paciente com compressao client-side para 480x480 WebP antes do envio por FormData.
+- Adicionado botao Convidar cliente consumindo /api/web/pacientes/convites e copiando o link quando o navegador permitir.
+- Validacao local: npm run build:tablet OK; servidor mock local em http://127.0.0.1:4180/evolucoes; /evolucoes, /agenda, /api/web/pacientes e /api/web/agenda/resumo-anual responderam 200. Playwright indisponivel no ambiente local.
+
+[2026-06-05 14:00:00 -03:00] Ajuste local - topbar e notificacoes
+- Corrigido alinhamento da area direita da topbar usando grid fixo para Backend, WhatsApp, usuario, notificacoes e Sair, evitando desalinhamento com zoom da pagina.
+- Adicionado botao de notificacoes ao lado do nome do usuario.
+- Corrigido caractere do indicador dropdown do chip do usuario.
+- Validacao local: npm run build:tablet OK.
+
+[2026-06-05 14:06:15 -03:00] Deploy tablet - topbar e Cadastros
+- Build tablet publicado no tablet com bundle publico assets/index-B5UAfte5.js e assets/index-6_D2A0wU.css.
+- Validacao remota curta: /dashboard e /evolucoes responderam 200 no ngrok publico.
+
+[2026-06-05 14:35:00 -03:00] Backlog proximo update - prints tablet e animacao drawer
+- Analisados prints do Samsung Browser com anotacoes: topbar, Inicio, Cadastros, drawer de paciente e drawer de Agenda.
+- Registrado em NEXT_UPDATE.md o ajuste para drawer de paciente/agenda deslizar da direita com blur gradual no backdrop e fechamento por clique fora.
+- Registradas correcoes visuais: lista de pacientes ocupar 100% da lateral, remover card grande vazio de selecao, remover metrica pendente geral, melhorar bloco de foto, manter Sair fora do menu do usuario e transformar Registrar Atendimento em popup/modal para atendimento retroativo ou futuro.
+
+[2026-06-05 14:45:00 -03:00] Backlog proximo update - mobile width e drawers
+- Atualizado NEXT_UPDATE.md para aplicar blur gradual e deslize da direita tambem no mobile, alem de PC e tablet.
+- Registrada correcao obrigatoria da interface mobile para ocupar 100% do viewport sem rolagem horizontal em Samsung Browser/Chrome mobile, auditando topbar, grids, calendario, tabs, cards e drawers.
+
+[2026-06-05 15:08:42 -03:00] Implementacao local - drawers e responsividade mobile/tablet
+- Removido card lateral fixo de detalhe/proximo atendimento da tela Inicio; detalhes devem abrir somente sob acao do usuario.
+- Cadastros sem paciente selecionado agora fica limpo, sem card grande vazio e sem metrica Pendente geral, mantendo apenas pacientes cadastrados, ativos e inativos.
+- Adicionado modal local para Registrar Atendimento a partir do Resumo do paciente, preparado para data, horario, servico, valor, status e observacoes.
+- Drawer de paciente e drawer de Agenda receberam animacao de deslize da direita, backdrop com blur gradual e suporte a fechamento por elemento de fechamento/backdrop quando houver area externa visivel.
+- Corrigida contencao responsiva: html/body/app/main/view com largura maxima de 100%, box-sizing global, topbar mobile com quebra controlada, calendario com overflow interno e tabs do drawer com scroll horizontal interno.
+- Ajustados drawers em mobile/tablet para ocupar 100vw/100dvw, evitando rolagem horizontal do documento em Samsung Browser/Chrome mobile.
+- Validacao local: npm run build:tablet OK; mock temporario em 4181 renderizou Cadastros e Agenda autenticados; medicoes DOM em viewport estreito apontaram overflow horizontal 0/negativo, Cadastros sem card vazio e Agenda sem drawer aberto no carregamento inicial. Sem deploy.
+
+[2026-06-05 15:13:18 -03:00] Refinamento local - busca lateral de Cadastros
+- Alterada busca lateral de pacientes em Cadastros para nao re-renderizar a tela a cada tecla; agora aplica o filtro local por botao Buscar ou tecla Enter.
+- Adicionado layout inline responsivo para campo de busca + botao, com quebra vertical em mobile para evitar overflow.
+- Aumentada a coluna lateral de pacientes em desktop/tablet para ocupar melhor a area util dos cards.
+- Validacao local: npm run build:tablet OK; UI mock em 4181 recarregada com 4 cards de paciente, botao Buscar presente e overflow horizontal 0/negativo. Sem deploy.
+
+[2026-06-05 15:29:59 -03:00] Implementacao e deploy - foto paciente e PWA Android
+- Corrigido layout do bloco Foto do paciente no formulario de Cadastro: avatar permanece na coluna esquerda e label, seletor de arquivo e texto de ajuda ficam agrupados na coluna direita, evitando quebra vertical palavra por palavra.
+- Adicionado suporte PWA/web app Android: manifest.webmanifest, service worker pwa-sw.js, meta tags no tablet.index.html e icones PNG 192/512/maskable.
+- Atualizado prepare-tablet-build.mjs para copiar manifest, service worker e icones para dist-tablet.
+- Adicionado registro opcional do service worker na interface vanilla, sem bloquear a aplicacao caso o navegador negue o registro.
+- Validacao local: npm run build:tablet OK; dist-tablet contem manifest.webmanifest, pwa-sw.js e icons/*.png.
+- Deploy tablet: upload/apply chegou a apply_only_ok; readiness inicial falhou porque SSH/8080 ficaram temporariamente indisponiveis, depois SSH voltou e a stack foi reiniciada sem reenviar arquivos.
+- Validacao remota: https://walk-gaming-magazine.ngrok-free.dev/dashboard e /evolucoes responderam 200; /manifest.webmanifest respondeu 200 application/manifest+json; /pwa-sw.js respondeu 200 text/javascript; /icons/icon-192.png respondeu 200 image/png usando header ngrok-skip-browser-warning.
+
+[2026-06-05 15:33:22 -03:00] Redeploy tablet - PWA Android e UI foto
+- Rebuild tablet executado novamente com sucesso para garantir dist-tablet atualizado.
+- Redeploy executado via _tmp_deploy_tablet.py; etapa de apply remoto retornou apply_only_ok e o restart/readiness automatico do script falhou novamente no trecho proot.
+- Stack iniciada manualmente via start-n8n-ngrok-stack.sh sem reenviar arquivos; ngrok publico manteve https://walk-gaming-magazine.ngrok-free.dev.
+- Validacao remota com header ngrok-skip-browser-warning: /dashboard 200 text/html, /evolucoes 200 text/html, /manifest.webmanifest 200 application/manifest+json, /pwa-sw.js 200 text/javascript, /icons/icon-192.png 200 image/png.
+- Observacao: teste direto Windows -> 192.168.0.163:8080 ainda recusou conexao, mas o healthz interno via SSH respondeu durante o start e o acesso publico pelo ngrok esta funcional.
+
+[2026-06-05 17:43:19 -03:00] Backlog proximo update - Inicio Agenda Cadastros Bot Financeiro
+- Atualizado NEXT_UPDATE.md com renomeacao de acoes: Novo paciente/Novo Cadastro para Novo Cliente em Inicio/Cadastros e Novo agendamento mockado na Agenda.
+- Registrado que Novo Cliente deve abrir drawer/modal sobreposto com blur gradual e deslize lateral, sem formulario fixo na tela.
+- Registrado ajuste do bot para diferenciar atendimento retroativo e agendamento futuro por contexto temporal, incluindo ultima/proxima segunda e busca de atendimento pendente existente.
+- Registrado ajuste do card Proximo horario para considerar o horario atual em America/Sao_Paulo e buscar o proximo agendamento futuro corretamente.
+- Registrada correcao de sincronizacao financeira web para refletir pagamentos confirmados via WhatsApp, incluindo recebido, pendente, credito residual e valor padrao.
+- Registrado ajuste de Cadastros para os cards de pacientes ocuparem a area branca principal em grid responsivo quando nenhum drawer estiver aberto.
+
+[2026-06-05 17:47:59 -03:00] Backlog proximo update - atendimento sem data explicita
+- Refinado NEXT_UPDATE.md para o bot tratar frases sem data/hora explicita, como "atendi Michelle Rossini, fizemos braco na academia".
+- Regra registrada: identificar paciente, manter variavel de contexto aberta, verificar agenda do dia, confirmar data/hora, evoluir/faturar atendimento existente quando encontrado, ou perguntar data/hora e depois perguntar se deve adicionar na agenda quando nao houver agendamento compativel.
+
+[2026-06-05 18:03:35 -03:00] Implementacao local - Inicio Agenda Cadastros
+- Renomeadas acoes principais da UI: Inicio e Cadastros usam Novo Cliente; Agenda usa Novo agendamento.
+- Novo Cliente em Inicio/Cadastros abre drawer sobreposto em modo cadastro vazio, reaproveitando o padrao de blur/deslize lateral do perfil do paciente.
+- Novo agendamento na Agenda abre drawer mockado com paciente, servico, data, horario, valor, status e observacoes, sem gravar no DB.
+- Corrigido calculo do Proximo horario no Inicio para considerar apenas agendamentos futuros em relacao ao horario atual.
+- Cadastros passou a usar grid de cards ocupando a area branca principal quando nenhum drawer esta aberto.
+- Aba Financeiro do paciente agora mostra recebido, pendente e credito residual quando os dados chegam pela API.
+- Validacao local: npm run build:tablet OK; navegador interno em http://127.0.0.1:4181/evolucoes e /agenda abriu sem erros de console; drawers Novo Cliente e Novo agendamento abriram corretamente. Sem deploy por solicitacao do usuario.
+[2026-06-05 18:13:56 -03:00] Implementacao local - dashboard compacto mobile
+- Adicionado modo compacto persistente no dashboard web/vanilla via preferencia local do navegador (`fisiobot.dashboardCardsCollapsed`).
+- Incluido botao "Minimizar cards"/"Expandir cards" no cabecalho da tela inicial.
+- Em modo compacto, a tela inicial oculta a agenda semanal e os cards secundarios, mantendo metricas e agenda de hoje para reduzir poluicao no mobile.
+- Ajustadas regras responsivas para metricas compactas em duas colunas no celular/tablet.
+- Validacao: `npm run build:tablet` executado com sucesso e bundle `dist-tablet` gerado com as novas classes/handlers.
+
+[2026-06-05 18:18:20 -03:00] Deploy tablet - dashboard compacto mobile
+- Deploy aplicado no tablet via `_tmp_deploy_tablet.py`; upload/apply retornou `apply_only_ok` e restart da stack foi concluido por comando remoto manual.
+- Stack validada em `https://walk-gaming-magazine.ngrok-free.dev`: `/dashboard`, `/evolucoes`, `/agenda` e `/api/web/session` retornaram 200.
+- Confirmado no remoto que o JS publicado contem `toggle-dashboard-cards` e `fisiobot.dashboardCardsCollapsed`, e que o CSS publicado contem `dashboard-compact`.
+
+[2026-06-05 18:26:32 -03:00] Backlog - topbar usuario/notificacoes
+- Adicionados ao `NEXT_UPDATE.md` os ajustes solicitados para a topbar: remover botao `Sair` fixo, posicionar notificacoes a esquerda do usuario, reduzir largura do botao do usuario em cerca de 20%, exibir nome e sobrenome em vez de login tecnico e usar `Usuario` como fallback.
+
+[2026-06-06 13:13:37 -03:00] Backlog - ownership por internal_user_id
+- Registrada no `NEXT_UPDATE.md` a causa confirmada do financeiro zerado na web: `web_billing.created_by_user_id` e `web_attendances.created_by_user_id` vazios, `web_patients.criado_por_user_id` com WhatsApp/LID e usuario web com `internal_user_id` diferente.
+- Definida regra do proximo update: CPF obrigatorio e unico para usuario/profissional, mas `internal_user_id` permanece como chave tecnica operacional.
+- Adicionada exigencia para WhatsApp/Telegram/telefone resolverem para `internal_user_id` antes de gravar pacientes, atendimentos, evolucoes, financeiro, agenda, pendencias e relatorios.
+- Adicionada exigencia para convite de cliente criado pela web carregar o `owner_id/internal_user_id` do criador ate o cadastro final do paciente.
+- Registrado backfill/migracao e testes de isolamento por usuario para evitar financeiro/evolucoes/pacientes sem dono ou atrelados a identificador de canal.
+
+[2026-06-06 13:51:01 -03:00] Implementacao local - CPF na UI vanilla
+- Adicionados helpers `onlyDigits`, `formatCpf` e `bindCpfMasks` na interface vanilla.
+- Perfil/configuracoes passam a exibir CPF mascarado para leitura do usuario.
+- Formulario de paciente exibe CPF com mascara, mas envia apenas digitos no payload para o backend/SQLite.
+- Fluxos de renderizacao de Cadastros/Evolucoes chamam a mascara apos montar o formulario dinamico.
+- Validacao local: `npm run build:tablet` OK, gerando `dist-tablet` com os ajustes. Sem deploy por tablet indisponivel.
+
+[2026-06-06 18:39:31 -03:00] Backlog - refinamento mobile do dashboard
+- Adicionadas ao `NEXT_UPDATE.md` as correcoes vindas dos prints mobile: topbar compacta/centralizada, remover indicadores textuais e botao Sair no mobile, manter `Novo Cliente`, minimizar cards por secao e persistir estado por card.
+- Registrado ajuste para Agenda da semana reduzir altura no mobile e usar rolagem interna quando expandida.
+- Registrado ajuste para Agenda de hoje virar lista compacta no mobile, sem cabecalhos verticais e sem textos repetidos de servico.
+- Registrados criterios de validacao em 360px, 390px e 412px sem rolagem horizontal e com persistencia apos reload.
+
+[2026-06-06 19:14:35 -03:00] Implementacao e deploy - dashboard mobile compacto e topbar
+- Removido o botao `Sair` fixo da topbar vanilla; logout permanece no menu do usuario.
+- Reposicionado o botao de notificacoes a esquerda do usuario e reduzida a largura do menu do usuario na topbar.
+- Dashboard passou a ter secoes minimizaveis individualmente com persistencia local: agenda semanal, agenda de hoje, ultimas evolucoes, pacientes recentes e acoes rapidas.
+- Agenda de hoje no mobile passou a usar lista compacta sem cabecalhos verticais e sem repetir texto longo de servico.
+- Ajustada a topbar mobile para ocultar textos de status Backend/WhatsApp, evitar rolagem horizontal e manter busca/usuario/notificacoes alinhados.
+- Validacao local: `npm run build:tablet` OK e navegador interno em 390px sem overflow horizontal.
+- Deploy no tablet aplicado; wrapper retornou falso negativo apos `apply_only_ok`, mas stack foi reiniciada manualmente e validada pelo ngrok.
+- Validacao remota: login `gabriel.gosmano`, dashboard mobile sem overflow, cards minimizaveis persistentes e financeiro exibindo recebido no mes.
+- Notificacoes pos-deploy enviadas com sucesso por WhatsApp Baileys e Telegram.
+
+[2026-06-07 14:15:46 -03:00] Backlog - linguagem humana do bot
+- Registrado no `NEXT_UPDATE.md` o ajuste de parser para reconhecer nomes completos cadastrados, com caso alvo `Bernardo Matsuoka`.
+- Adicionados casos de teste para frases compostas com atendimento, evolucao e pagamento na mesma mensagem.
+- Registrada correcao do fluxo de confirmacao para preservar a evolucao extraida antes do `sim`, evitando pedir evolucao de novo.
+- Registrada correcao para pendencias de conflito de agenda preservarem paciente/data/hora ao receber `sim` ou `confirmar conflito`.
+- Registrada revisao de mojibake/UTF-8 e robustez para valores digitados com erro, como `400,pp`.
+
+[2026-06-07 14:39:22 -03:00] Implementacao e deploy - metricas do Inicio
+- Card `Pendencias clinicas` substituido por `Pendencias`, somando atendimentos sem evolucao e pagamentos pendentes como acoes independentes.
+- Card `Pendencias financeiras` substituido por `Financeiro do mes`, com recebido no mes, atendimentos realizados e valor a receber.
+- Adicionados helpers de status/metricas para calcular pendencias operacionais e financeiro mensal a partir da agenda e dos lancamentos.
+- Fluxo de exclusao de paciente ajustado na UI para `Excluir definitivamente`, com botao tambem no drawer do paciente.
+- Validacao local: `npm run build:tablet` OK.
+- Deploy no tablet aplicado; wrapper retornou falso negativo apos `apply_only_ok`, stack foi validada por SSH e ngrok.
+- Validacao remota: login `gabriel.gosmano` OK; bundle publicado contem `Pendencias`, `Financeiro do mes` e `Excluir definitivamente`.
+2026-06-09 21:48:44 -03:00 | Frontend financeiro operacional: adicionado estado de aba do drawer de atendimento, aba Financeiro com valor/status/recebido/saldo, formulario de registro de pagamento, consumo de credito do paciente, chips financeiros na grade/lista da agenda, painel financeiro individual expandido e dashboard Caixa com recebido hoje/mes, contas em aberto, ticket medio e distribuicao por forma de pagamento. Build tablet validado com npm run build:tablet.
+2026-06-09 21:48:44 -03:00 | Validacao local: npm run build:tablet OK; abertura em http://127.0.0.1:4181/dashboard sem erro de console, limitada em Verificando sessao porque Vite local nao esta proxyado para o Flask.
+2026-06-09 22:16:10 -03:00 | frontend financeiro agenda
+- Corrigido estado visual do botao de pagamento no drawer de atendimento para liberar o botao apos retorno do endpoint.
+- Build tablet ja havia sido gerado com sucesso antes da solicitacao de deploy sem nova bateria local.
+2026-06-10 13:35:18 -03:00 | React tablet - cliques e estabilidade
+- Corrigido build tablet para publicar a entrada React como index principal e preservar rota direta por pathname.
+- Adicionada limpeza/unregister de service worker e caches antigos para reduzir congelamento especifico do Chrome no dominio ngrok.
+- Agenda e Pacientes passaram a usar busca com useDeferredValue para evitar recomputacao pesada a cada tecla.
+- Evolucoes limita a lista renderizada a 80 itens e memoiza o historico.
+- Cards de Pacientes agora abrem drawer lateral de perfil em vez de depender de navegacao para uma pagina isolada.
+- Agenda de hoje no Inicio agora abre o modal de atendimento ao clicar no item.
+- Inicio recebeu atalhos Agendar e Novo Cadastro; Agenda recebeu botao mock Novo agendamento.
+- Validacao local: npm run build:tablet OK.
+2026-06-10 13:49:00 -03:00 | React tablet - drawer sem Radix
+- Removido Radix Dialog dos fluxos criticos de perfil do paciente e detalhe do atendimento.
+- Implementado drawer proprio com overlay, blur e slide lateral para evitar travamento/focus-trap no Chrome via ngrok.
+- Validacao local: npm run build:tablet OK.
+2026-06-10 18:42:00 -03:00 | Migracao publicacao tablet para vanilla
+- Alterado `scripts/prepare-tablet-build.mjs` para copiar `tablet.index.html` como `dist-tablet/index.html`, voltando a versao web publica para vanilla.
+- Mantida a SPA React como `dist-tablet/react.html` para auditoria e comparacao, sem ser a entrada principal.
+- Build validado com `npm run build:tablet`; `dist-tablet/index.html` aponta para `assets/index-C-OcCtn9.js` e `dist-tablet/react.html` aponta para `assets/react-DEhV2CT4.js`.
+2026-06-10 19:46:54 -03:00 | Gerenciador de usuarios vanilla
+- Adicionada rota vanilla /usuarios no menu Gestao.
+- Criada tela de usuarios com listagem, exclusao administrativa, resumo de bancos/tabelas, RAM e armazenamento do tablet.
+- Adicionados estilos responsivos para cards de usuarios e detalhes dos bancos.
+- Build validado com npm run build:tablet.
+2026-06-11 13:03:49 -03:00 - NEXT_UPDATE.md atualizado com prioridade de ownership dos dados por CPF: reconciliacao de registros operacionais apos recriacao de usuario, mantendo internal_user_id como chave tecnica e CPF como fallback/auditoria para migracao.
+2026-06-11 13:09:17 -03:00 - NEXT_UPDATE.md atualizado para ajustar fluxo de cadastro/autenticacao: remover tela intermediaria "Vincular dispositivo" quando o cadastro profissional terminar e redirecionar para https://walk-gaming-magazine.ngrok-free.dev/dashboard.
+2026-06-11 13:20:00 -03:00 - NEXT_UPDATE.md atualizado com decisao de evoluir operacional.db para prontuario operacional escalavel: tabelas separadas, indices por owner/paciente/data/status, meta de 10.000 pacientes e dashboard vanilla alinhado ao layout aprovado da SPA React.
+[2026-06-11 14:25:52] UI vanilla - botoes icon-only e build local
+- Dashboard vanilla mantido no padrao compacto com resumo operacional em vez de agenda grande como foco principal.
+- Substituidos botoes visuais de atualizar/minimizar por botoes minimalistas sem texto quando aplicavel.
+- Validacao: npm run build:tablet OK.
+[2026-06-11 22:00:51] UI vanilla - menu do paciente e avaliacoes
+- Menu lateral do paciente atualizado com abas Resumo, Cadastro, Evolucoes, Avaliacoes e Financeiro.
+- Cadastro reorganizado em blocos colapsaveis; Identificacao e Contato ficam abertos por padrao e demais secoes iniciam fechadas.
+- CPF permanece mascarado na UI e segue limpo no payload enviado ao backend.
+- Adicionada aba Avaliacoes com formulario MVP, listagem, duplicacao como reavaliacao e geracao de resumo para evolucao.
+- Ajustado CSS do drawer para manter blur/deslize lateral e reduzir risco de rolagem horizontal no mobile.
+- Adicionado proxy/fallback local no vite.tablet.config.ts para testar a SPA vanilla em /dashboard com API Flask local.
+- Validacao local: npm run build:tablet OK; Vite local em http://127.0.0.1:4181/dashboard HTTP 200.
+[2026-06-11 22:17:14] UI vanilla - cadastro do paciente refinado
+- Aba Cadastro do drawer agora mostra apenas o formulario cadastral; financeiro e evolucoes ficam somente nas abas proprias.
+- Removida numeracao 1.1/1.2/1.3 dos blocos colapsaveis, mantendo apenas nomes de categoria.
+- Blocos colapsaveis receberam fundo e hover para parecerem acionaveis.
+- Troca de abas dentro do drawer nao dispara novamente a animacao de abertura; animacao fica restrita a abertura inicial do perfil/novo cliente.
+- Validacao local: npm run build:tablet OK; rota http://127.0.0.1:4181/evolucoes HTTP 200.
+[2026-06-11 22:26:02] Refinado visual do formulario de cadastro no drawer do paciente: upload de foto como card, accordions mais profissionais, inputs com foco/hover e ajustes responsivos mobile/tablet.
+[2026-06-11 22:27:59] Ajustado foco visual dos campos do cadastro para manter realce profissional consistente no formulario.
+[2026-06-12 09:04:10] NEXT_UPDATE: adicionada pendencia para manter backdrop/blur do drawer do paciente estavel ao trocar abas internas; animacao deve ocorrer apenas na abertura inicial.
+[2026-06-12 09:07:00] NEXT_UPDATE: adicionadas opcoes administrativas de limpeza de DBs, reset financeiro, integridade, backup e reset total com senha fixa backend.
+[2026-06-12 09:40:34] Vanilla UI: substituidos icones literais da sidebar por SVGs inline; corrigido backdrop do drawer para nao reanimar ao trocar abas; adicionada UI de acoes admin para backup, limpeza, reset financeiro, reparo ownership, integridade e reset total.
+[2026-06-16 10:01:04 -03:00] NEXT_UPDATE - melhoria do modelo de linguagem
+- Verificado que os arquivos `update.md` e `update-new.md` nao existem neste projeto; o backlog ativo continua em `NEXT_UPDATE.md`.
+- Adicionada prioridade de proximo update para melhoria do modelo de linguagem do bot, com pipeline deterministico, uso controlado de LLM/Qwen, preservacao de pendencias e bateria de regressao.
+- Registradas regras de seguranca para nao executar acoes com paciente ambiguo, valor ilegivel, data/hora insuficiente ou ownership nao resolvido por `internal_user_id`.
+- Nenhuma alteracao de codigo, build, deploy ou envio para Arduino/ESP32 realizado neste bloco.
+[2026-06-18 10:38:17 -03:00] update-new - fluxo valor coletivo de atendimentos
+- Criado `update-new.md` com especificacao da intent `definir_valor_global_atendimento`.
+- Registrado fluxo em duas etapas: aplicar valor aos pacientes sem valor e depois perguntar se deve substituir pacientes/clientes que ja possuem valor proprio.
+- Adicionadas variantes semanticas para atendimento, sessao, consulta, procedimento, servico, aula e terapia, incluindo plural/singular e marcadores coletivos.
+- Registradas regras de seguranca, contrato de parser, ordem sugerida no pipeline e testes de regressao obrigatorios para evitar queda em agenda/pagamento.
+- Nenhuma alteracao de codigo, build, deploy, git upload ou envio para Arduino/ESP32 realizado neste bloco.
+[2026-06-18 10:44:20 -03:00] update-new - fora de escopo debug intent
+- Atualizado `update-new.md` para registrar que o modo debug por comando `#DEBUG-INTENT` nao entra neste proximo update.
+- Mantida a auditoria apenas como validacao interna/logs/testes da intent coletiva, sem expor novo comando ao usuario final nesta rodada.
+- Nenhuma alteracao de codigo, build, deploy, git upload ou envio para Arduino/ESP32 realizado neste bloco.
+[2026-06-18 10:56:46 -03:00] Parser bot - valor coletivo de atendimentos
+- Implementada no `tablet_backend/intent_pipeline.py` a intent `definir_valor_global_atendimento` para frases coletivas como `Valor de todos os atendimentos 129,35 reais`, `Preco de todos 132`, `Valor de todas as sessoes 130 reais` e `Preco das consultas de todos 150`.
+- Adicionado parser semantico local para marcadores de atendimento/sessao/consulta/procedimento/servico/aula/terapia e marcadores coletivos como todos, geral, global, todo mundo e sem valor.
+- Implementado fluxo em duas etapas: primeira confirmacao aplica o valor somente aos pacientes sem valor proprio; segunda confirmacao opcional substitui pacientes que ja possuem valor definido.
+- Adicionada validacao para valores ilegiveis como `129,pp`, impedindo aplicacao parcial do numero e pedindo correcao do valor.
+- Incrementada versao do backend Poetry de `0.1.118` para `0.1.119`.
+- Validacao local: `python -m py_compile tablet_backend/intent_pipeline.py` OK; testes locais por import validaram classificacao das frases coletivas, nao regressao de valor por paciente/pagamento/agenda, fluxo de execucao em memoria e valor ilegivel.
+- Nenhum build frontend, deploy, git upload ou envio para Arduino/ESP32 realizado neste bloco.
+[2026-06-18 11:05:05 -03:00] Deploy tablet - parser valor coletivo
+- Deploy via Paramiko aplicado no tablet Termux/Debian em `/root/openclaw-port`.
+- Criados backups remotos com sufixo `.bak_20260618_110143` para `intent_pipeline.py` e `pyproject.toml` antes da substituicao.
+- Enviados `tablet_backend/intent_pipeline.py` e `tablet_backend/pyproject.toml`; versao remota confirmada como `0.1.119`.
+- Validacao remota: `python3 -m py_compile intent_pipeline.py` OK.
+- Restart do stack executado por `/data/data/com.termux/files/home/restart_fisiobot_stack.sh`.
+- Health remoto apos subida: `intent_pipeline_worker` OK em `127.0.0.1:8788`, auth OK em `127.0.0.1:5000`, proxy OK em `127.0.0.1:8080` e Baileys OK em `127.0.0.1:3055/health`.
+- Bateria remota por import confirmou `definir_valor_global_atendimento` para `Valor de todos os atendimentos 129,35 reais`, `Preco de todos 132`, `Valor do atendimento de todos 129,84`, `Valor de todas as sessoes 130 reais`, `Preco das consultas de todos 150` e valor ilegivel `129,pp`, preservando `definir_valor_paciente`, `registrar_pagamento` e `agendar_atendimento`.
+- Nenhum build frontend, git upload ou envio para Arduino/ESP32 realizado neste bloco.
+[2026-06-18 15:49:36 -03:00] Hotfix tablet - auth_users pin_hash
+- Investigado erro reportado no WhatsApp apos deploy: todas as mensagens caiam em `Nao consegui processar...`.
+- Log remoto confirmou causa raiz no `intent_pipeline_worker`: `OperationalError: no such column: u.pin_hash` durante autenticacao local, antes da resolucao de intent.
+- Corrigido `tablet_backend/intent_pipeline.py` para migrar colunas modernas faltantes em `auth_users`, incluindo `pin_hash`, `login`, dados profissionais e contadores de falha.
+- Incrementada versao Poetry do backend de `0.1.119` para `0.1.120`.
+- Validacao local: `python -m py_compile tablet_backend/intent_pipeline.py` OK; teste com `brain.db` temporario e tabela antiga `auth_users` confirmou criacao de `pin_hash`, `login`, `nome_completo` e `failed_pin_attempts`.
+- Deploy via Paramiko aplicado no tablet; backups remotos criados com sufixo `.bak_20260618_154532`; `python3 -m py_compile intent_pipeline.py` OK; `ensure_runtime_db()` remoto OK; `brain.db` remoto confirmou colunas `pin_hash` e `failed_pin_attempts`.
+- Restart do stack executado por `/data/data/com.termux/files/home/restart_fisiobot_stack.sh`.
+- Validacao pos-restart ficou parcialmente bloqueada: tablet responde ping e ngrok `/auth` e `/dashboard` retornam HTTP 200, mas SSH Termux nao voltou nas portas 8022, 22 ou 8023 durante a janela de teste; porta LAN 3055 tambem fechada. Necessario reabrir Termux/sshd no tablet ou testar novo comando pelo WhatsApp para confirmar runtime final.
+- Nenhum build frontend, git upload ou envio para Arduino/ESP32 realizado neste bloco.
+[2026-06-18 16:06:12 -03:00] Validacao remota visivel - WhatsApp/Baileys
+- Verificado por SSH que o deploy remoto esta em `0.1.120` e que `/root/openclaw-port/brain.db` contem `auth_users.pin_hash` e `failed_pin_attempts` apos `ensure_runtime_db()`.
+- Restart do stack executado novamente por `/data/data/com.termux/files/home/restart_fisiobot_stack.sh`.
+- Health remoto apos restart: `intent_pipeline_worker` OK, auth OK, proxy OK e Baileys `/health` OK.
+- Teste remoto via worker com payload normalizado Baileys e `dry_run=true`: `Oi` retornou `chat_resposta`/`respondido`; `Valor atendimento de todos 167,66` retornou `definir_valor_global_atendimento`/`pendente`, perguntando para aplicar R$ 167,66 a 4 pacientes sem valor e preservando 2 pacientes com valor proprio.
+- Enviado resumo visivel pelo WhatsApp via Baileys `POST /send` para `34321217937660@lid`; resposta do send API retornou `ok=true`.
+- Worker permaneceu saudavel apos o teste: `processed_count=6`, `error_count=0`, `status=ok`.
+- Nenhum build frontend, git upload ou envio para Arduino/ESP32 realizado neste bloco.
+[2026-06-18 16:21:15 -03:00] Hotfix pendencia/dry-run/saudacao
+- Investigado silencio no WhatsApp apos teste visivel: mensagem `oi` do usuario entrou em subprocesso do pipeline e manteve o worker `in_flight=true`, segurando a fila do chat; o processo foi encerrado e o stack reiniciado para liberar a fila.
+- Confirmado que o teste anterior com `dry_run=true` havia criado pendencia real `SOL-20260618190603-U2SQ91`; por isso o primeiro `oi` do usuario caiu no fluxo de pendencia e aplicou indevidamente R$ 167,66 aos 4 pacientes que estavam sem valor.
+- Corrigido `tablet_backend/intent_pipeline.py`: `append_pending` agora retorna ID `DRYRUN-*` sem gravar pendencia quando `payload["dry_run"]` esta ativo.
+- Corrigido fluxo de saudacao: `oi`, `ola`, `opa`, `bom dia`, `boa tarde` e `boa noite` entram em fast path `chat_resposta`, sem HF/Qwen e sem confirmar pendencia.
+- Corrigido reconhecimento de resposta de pendencia para `oi` nao ser tratado como follow-up nem como nome de paciente.
+- Incrementada versao Poetry do backend de `0.1.120` para `0.1.121`.
+- Validacao local: `python -m py_compile tablet_backend/intent_pipeline.py` OK; teste por import validou saudacao, nao-follow-up de `oi`, classificacao de `Valor atendimento de todos 167,66` e ausencia de registro em `active_pending` no `dry_run`.
+- Deploy remoto aplicado em `/root/openclaw-port`; backup remoto criado com sufixo `.bak_20260618_161444`; versao remota confirmada como `0.1.121`.
+- Stack iniciado manualmente apos restart; validacao remota por payload Baileys com `dry_run=true`: `oi` retornou `chat_resposta` com resposta curta, `Valor atendimento de todos 167,66` retornou `definir_valor_global_atendimento` com `pending_id=DRYRUN-*`, e `active_pending` permaneceu 0 antes/depois.
+- Enviado resumo visivel via WhatsApp `POST /send`; resposta do send API retornou `ok=true`.
+- Pendencia de restauracao de dados: tentativa de reverter os 4 pacientes alterados indevidamente para sem valor ficou bloqueada porque o SSH Termux voltou a fechar na porta 8022; tablet responde ping e ngrok `/auth`/`dashboard` retornam HTTP 200.
+- Nenhum build frontend, git upload ou envio para Arduino/ESP32 realizado neste bloco.
+[2026-06-18 21:11:07 -03:00] Documentacao canon modelo de linguagem
+- Atualizado `C:\Users\gabri\Documents\Dataset MedRag\README.md` com estado atual do modelo em `0.1.121`, funcoes implementadas no bot, normalizadores operacionais, comandos recentes, valor coletivo, dry-run seguro, saudacao fast path e regressoes obrigatorias.
+- Criado `C:\Users\gabri\Desktop\canon.md` com funcionamento detalhado do modelo de linguagem atual, cobrindo entrada Baileys/Telegram, autenticacao, normalizacao, regras fortes, memoria/sinonimos/vetores, Qwen/HF, pendencias, comandos e auditoria.
+- Verificada no algoritmo a presenca de `normalize_operational_typos`, `handle_simple_greeting`, `append_pending` com `DRYRUN-*`, `build_global_value_intent`, `execute_global_value_intent`, `debug_command_name`, `handle_debug_command`, `handle_pending_list_command` e `handle_status_command`.
+- Confirmado Poetry em `tablet_backend/pyproject.toml`; nenhuma dependencia nova foi adicionada.
+- Nenhuma alteracao de codigo, deploy, build frontend, git upload ou envio para Arduino/ESP32 realizado neste bloco.
+
+[2026-06-18 21:58:21 -03:00] Debug local de intents e limpeza financeira
+- Adicionada rota React `/debug-intents` com interface tipo WhatsApp para testar mensagens locais, armazenar ultimos testes em `localStorage` e mostrar intent, confidence, caminho de decisao, campos extraidos, forma de pagamento e motivo.
+- Criado `src/lib/intentDebug.ts` com parser local de debug para pagamento, cartao ambiguo, credito ambiguo, credito do paciente e credito insuficiente.
+- Integrado `api.ia.debugIntent` em `src/lib/api.ts` e item `Debug intents` na sidebar.
+- Atualizadas labels e mocks financeiros para separar `Cartao credito`, `Debito`, `Transferencia`, `Outro` e `Credito do paciente`, evitando uso isolado de `Credito`.
+- Atualizadas telas financeiras, pacientes, dashboard e vanilla para refletir `cartao_credito` e `credito_paciente` como conceitos distintos.
+- Validacao local: `npm run build` OK; rota `http://127.0.0.1:5177/debug-intents` HTTP 200; teste no navegador confirmou cartao ambiguo como pendente, credito do paciente explicito como sucesso e credito insuficiente como erro.
+- Servidor Vite local iniciado na porta 5177 e mantido aberto para inspecao. Nenhum deploy remoto, git upload ou envio para Arduino/ESP32 realizado neste bloco.
+
+[2026-06-19 12:44:02 -03:00] Vanilla UI - debug intents operacional
+- Portada a pagina `/debug-intents` para a interface vanilla/tablet em `src/vanilla/main.ts`, que e a superficie atual do app.
+- Adicionado item `Debug intents` na sidebar vanilla e rota `debug` com URL `/debug-intents`.
+- A rota de debug agora abre sem depender da sessao/backend local, pois e ferramenta local de parser e nao executa operacoes.
+- A tela armazena historico em `localStorage`, mostra conversa estilo WhatsApp, samples de teste, intent, confidence, paciente, valor, termo, forma, credito disponivel, motivo e caminho local.
+- Adicionados estilos em `src/vanilla/styles.css` para a tela de debug.
+- Atualizado `vite.tablet.config.ts` para servir `/debug-intents` pelo fallback da vanilla tablet.
+- Validacao local: `npm run build` OK; `npm run build:tablet` OK; `http://127.0.0.1:5178/debug-intents` HTTP 200. Nenhum deploy remoto, git upload ou envio para Arduino/ESP32 realizado neste bloco.
+
+[2026-06-19 13:15:02 -03:00] Vanilla UI - onboarding inicial
+- Adicionada rota `/onboarding` no fallback tablet e no roteamento da interface vanilla.
+- Implementado onboarding 1/5 com etapas de conta, perfil profissional, rotina, recebimentos e WhatsApp.
+- Criada tela local de cadastro inicial com campos obrigatorios, checagem local de duplicidade por CPF/e-mail/telefone e redirecionamento para o onboarding.
+- Persistencia local em `localStorage` para perfil de onboarding, etapa atual e jobs de lembrete desconectados.
+- Geracao local de jobs desconectados para resumo de agenda do profissional, pendencias de pagamento do profissional, lembrete do paciente, confirmacao do paciente e pagamento pendente do paciente.
+- Adicionados estilos responsivos para onboarding desktop/tablet/mobile em `src/vanilla/styles.css`.
+- Validacao local: `npm run build` OK; `npm run build:tablet` OK; `http://127.0.0.1:5178/onboarding` HTTP 200; teste headless percorreu as 5 etapas e confirmou 14 profissoes na lista e 5 jobs gravados.
+- Nenhum deploy remoto, git upload ou envio para Arduino/ESP32 realizado neste bloco.
+
+[2026-06-19 13:21:59 -03:00] Vanilla UI - cadastro em duas vias
+- Reformulada a tela `Criar conta` para virar o cadastro inicial oficial antes do onboarding.
+- Adicionadas rotas `/cadastro`, `/register` e `/auth` no fallback tablet/vanilla.
+- Implementado caminho de cadastro vindo do WhatsApp com `device_id` ou `token` na URL, marcando o WhatsApp como validado e preservando Device ID/token na conta local.
+- Implementado caminho de cadastro pela pagina inicial com WhatsApp, geracao de codigo local de teste, confirmacao de codigo e liberacao dos dados pessoais.
+- O formulario de conta agora bloqueia continuidade quando o WhatsApp ainda nao foi validado.
+- Adicionados cards de status/caminho de cadastro e estilos responsivos em `src/vanilla/styles.css`.
+- Validacao local: `npm run build` OK; `npm run build:tablet` OK; teste headless confirmou fluxo publico com codigo ate `/onboarding` e fluxo por Device ID ja validado.
+- Nenhum deploy remoto, git upload ou envio para Arduino/ESP32 realizado neste bloco.
+
+[2026-06-19 13:29:25 -03:00] Deploy tablet - cadastro vanilla
+- Executado `npm run build:tablet` e enviado `dist-tablet` para `web_dist` remoto.
+- Backup remoto criado em `admin_backups/deploy_20260619_162605`; `BUILD.txt` remoto atualizado para `0.1.265`.
+- Stack reiniciada no tablet; processos novos de `web_static_server.py`, `web_api_server.py`, `reverse_proxy.py`, `intent_pipeline_worker.py`, `telegram_bridge.py` e `ngrok` ficaram ativos.
+- Validacao remota: `/cadastro`, `/onboarding`, `/debug-intents` e `/manifest.webmanifest` retornaram HTTP 200 no proxy local do tablet; URLs publicas do ngrok retornaram HTTP 200.
+- Teste funcional remoto headless confirmou cadastro publico com codigo e cadastro por `device_id`.
+- Nenhum envio para Arduino/ESP32 realizado neste bloco.
+[2026-06-19 14:23:06 -03:00] build 0.1.266
+- Corrigido frontend vanilla da agenda em src/vanilla/main.ts: estado renomeado para appointmentDrawerOpen, texto de mock removido e submit do novo agendamento ligado a POST /api/web/agenda.
+- Formulario de novo agendamento agora valida paciente/data/hora inicial, resolve paciente por nome localmente e envia payload compatível com backend (pacienteId/pacienteNome, data, horaInicio, horaFim, valorAtendimento, status e observacoes).
+- Build local validado com npm run build:tablet.
+- Deploy remoto validado: web_dist publicado sem referencias a "Mock visual", "Salvar mock" ou "Mock validado"; /agenda publico respondeu 200.
+[2026-06-20 13:35:17 -03:00] NEXT_UPDATE urgente - coerencia financeira e agenda
+- Adicionado bloco urgente no NEXT_UPDATE.md para corrigir divergencias entre card do paciente, agenda e financeiro vistas nos prints.
+- Itens priorizados: botao `Agendar` no lugar de `WhatsApp` no drawer do paciente, agendamento pre-preenchido por patient_id, registro de pagamento no Financeiro com historico e novo pagamento, duracao final automatica conforme configuracao do usuario/profissional, remocao de mocks de registrar atendimento e unificacao da fonte de verdade de valores/contadores.
+- Nenhum codigo alterado neste bloco.
+[2026-06-20 13:51:32 -03:00] build 0.1.269-local - vanilla agenda/financeiro urgente
+- Mantidas alteracoes na interface vanilla em src/vanilla/main.ts.
+- Card/drawer do paciente: botao WhatsApp substituido por Agendar, abrindo o drawer de novo agendamento com paciente, valor padrao e horarios pre-preenchidos por patient_id.
+- Novo agendamento, reagendamento e registrar atendimento passaram a recalcular hora final pela duracao padrao do usuario/onboarding, com fallback de 60 min.
+- Registrar Atendimento deixou de mostrar mensagem de mock e agora envia payload real para POST /api/web/agenda.
+- Cards/detalhes da agenda deixam de mostrar R$ 0,00 como informacao precisa quando o valor esta indefinido, exibindo Valor nao definido/cortesia/pago conforme estado.
+- Financeiro vanilla recebeu botao Registrar pagamento e modal com paciente, valor, data, forma oficial, observacao e vinculo opcional a atendimento.
+- Validacao local: npm run build:tablet OK; preview local /tablet.index.html carregou shell, mas validacao interativa ficou limitada porque nao ha backend local em 127.0.0.1:5099 para /api/web/session.
+- Sem deploy remoto, sem git upload e sem envio para Arduino/ESP32 neste bloco.
+[2026-06-20 13:51:53 -03:00] NEXT_UPDATE status - bloco urgente vanilla
+- Marcado no NEXT_UPDATE.md o status da implementacao urgente: frontend vanilla iniciado/concluido nos pontos de UI e pendencias restantes de backend/validacao remota.
+[2026-06-20 14:03:17 -03:00] build 0.1.125-local - vanilla local DB backend
+- Cancelado uso dos DBs baixados do tablet porque as tabelas web_patients/web_attendances/web_billing/calendar_events estavam vazias.
+- Restaurados DBs locais informativos para tablet_backend a partir de C:\Users\gabri\Documents\FisioBot\tablet_db_snapshot: operacional.db com 20 pacientes, 13 atendimentos/faturamentos; agenda.db com 5 eventos; brain.db com 8 usuarios; audit.db de tablet_pipeline com 373 auditorias.
+- Criado tablet_backend/local_web_backend.py para servir endpoints /api/web/session, pacientes, agenda, financeiro, pagamentos e health local em 127.0.0.1:5099.
+- Servidor vanilla aberto em http://127.0.0.1:5179/agenda via vite.tablet.config.ts, proxyando /api para o backend local.
+- Testes locais: session=True; pacientes=20; agenda=5; financeiro=13; pagina /agenda abriu no navegador sem tela de login.
+[2026-06-20 14:04:46 -03:00] NEXT_UPDATE urgente - tipos de atendimento e modelo financeiro
+- Adicionado ao NEXT_UPDATE.md requisito urgente para tipos de atendimento configuraveis no onboarding/sign up e no drawer/card de agendamento: Presencial, Grupo, Domiciliar, Online e tipos adicionais por profissao.
+- Adicionado modelo financeiro do anexo como urgente: separar forma de pagamento de modelo de cobranca, implementar billing_snapshot em centavos, charges/payments/allocations, pacotes por movimentos, isencao com motivo e desconto preservando valor-base.
+- Sem alteracao funcional neste bloco; item marcado para proximo update.
+[2026-06-20 14:17:28 -03:00] build 0.1.126-local - bloco urgente tipos atendimento e financeiro
+- Implementado no backend local tablet_backend/local_web_backend.py: migracao/seed de appointment_types; tabelas patient_billing_profiles, charges, payments, payment_allocations, package_definitions, patient_packages e package_movements; endpoint /api/web/appointment-types; billing_snapshot em centavos; criacao de charge por agendamento; pagamento com payment/payment_allocation e atualizacao de status da charge.
+- Implementado no vanilla src/vanilla/main.ts: tipos de atendimento ampliados no onboarding; estado e fallback de appointmentTypes; drawer de novo agendamento com tipo de atendimento, modelo de cobranca, desconto e tipo de isencao; recalculo de servico/fim/valor por tipo; aba financeira exibe modelo, valor base, valor final, recebido e saldo.
+- NEXT_UPDATE.md atualizado com status implementado localmente e pendencias para portar ao backend real/WhatsApp/relatorios de pacote.
+- Versao tablet_backend atualizada para 0.1.126.
+- Validacao: python -m py_compile OK; npm run build:tablet OK; /api/web/appointment-types retornou 13 tipos; POST /api/web/agenda criou billing_snapshot com desconto; POST /api/web/agenda/{id}/pagamento mudou status para PAID; navegador local /agenda abriu drawer com Tipo de atendimento, Modelo de cobranca, Desconto e Isento.
+
+[2026-06-20 14:50:36 -03:00] build 0.1.127-local - refatoracao comercial do cadastro vanilla
+- Refatorada a rota /cadastro em src/vanilla/main.ts e src/vanilla/styles.css para um fluxo comercial de criacao de conta.
+- Removidos o painel editorial "Entrada guiada sem tutorial infantil", os cards explicativos antigos e a exposicao visual de Device ID, token e codigo local de teste.
+- Unificada a verificacao de WhatsApp; apos confirmacao, o numero fica mascarado e pode ser alterado.
+- Incluidos progresso de onboarding, dados pessoais obrigatorios, termo de autorizacao e regra de senha com minimo de 8 caracteres, numero e simbolo.
+- Validacao local: npm run build:tablet OK; Playwright em http://127.0.0.1:5179/cadastro sem frases antigas, sem codigo local exposto e sem erros de console; desktop e mobile inspecionados.
+- Sem deploy remoto, upload Git ou envio para Arduino/ESP32 neste bloco.
+
+[2026-06-20 15:02:57 -03:00] build 0.1.128-local - verificacao WhatsApp persistida
+- Substituida a geracao/comparacao de codigo no localStorage por endpoints do backend local para emissao e confirmacao de WhatsApp.
+- Criada a tabela registration_whatsapp_verifications com verification_id, user_id provisiorio, telefone, code_hash, expires_at, created_at e attempts; o codigo nunca e armazenado em texto puro.
+- Cada codigo expira em cinco minutos; um reaper daemon de baixo custo remove expirados a cada 5 segundos, e os endpoints tambem executam limpeza sincrona.
+- A confirmacao exige verification_id + user_id + codigo, compara hash em tempo constante e remove a linha na mesma transacao apos validacao.
+- Vanilla mostra contagem regressiva, nao expoe o codigo no DOM e remove o campo depois da confirmacao; mantido um unico bloco de sucesso.
+- Validacao: py_compile OK; bateria Flask cobriu hash, vinculo ao user_id, consumo apos sucesso e expiracao; Playwright ponta a ponta confirmou UI, ausencia do codigo e console sem erros; npm run build:tablet OK.
+- Backend local reiniciado em 127.0.0.1:5099 somente para teste; sem deploy remoto ou upload Git.
+
+[2026-06-20 15:24:10 -03:00] build 0.1.129 - deploy remoto verificacao WhatsApp vanilla
+- Publicado o build dist-tablet da interface vanilla em /root/openclaw-port/web_dist, incluindo a rota /cadastro com verificacao de WhatsApp por API.
+- Validacao publica em https://walk-gaming-magazine.ngrok-free.dev/cadastro: tela vanilla, titulo FisioBot, campo WhatsApp e nenhum erro de console; aviso gratuito do ngrok ignorado com cabecalho proprio no teste automatizado.
+- Proxy remoto ajustado para encaminhar somente as rotas de verificacao de cadastro ao Flask de autenticacao; APIs operacionais permanecem separadas.
+
+[2026-06-20 16:05:41 -03:00] build 0.1.130-local - ajustes agenda/paciente/onboarding vanilla
+- No card do paciente, o botao Agendar passa a abrir diretamente o drawer lateral de novo agendamento na propria tela de paciente, mantendo paciente, valor e tipo preenchidos.
+- Removidos do drawer de novo agendamento o texto "Preencha os dados para criar o agendamento na agenda real." e o campo Servico duplicado; o servico enviado ao backend deriva do Tipo de atendimento.
+- Onboarding vanilla passou a renderizar fora do AppShell, sem menu lateral e sem duplicidade de branding, com botao Entrar no topo da tela de cadastro/configuracao.
+- Mantida a interface vanilla; nenhuma mudanca feita na SPA React.
+- Validacao local: npm run build:tablet OK.
+
+[2026-06-20 16:08:34 -03:00] build 0.1.130 - deploy remoto vanilla
+- Build dist-tablet publicado no tablet em /root/openclaw-port/web_dist.
+- Backup remoto criado em admin_backups/deploy_20260620_160541_agenda_value_ui/web_dist.
+- Stack reiniciada e proxy publico validado pela health local do tablet.
+
+[2026-06-20 16:13:35 -03:00] limpeza e backup git
+- Removidos diretorios locais desnecessarios/untracked: backup/, deletar/ e dist-tablet/.
+- Adicionado dist-tablet ao .gitignore para evitar commit de build gerado.
+- Mantidos arquivos de codigo, documentacao, pwa/ e update-new.md para entrarem no backup git quando aplicavel.
+- Preparado commit de backup do diretorio glow-kindred-sight na branch main.

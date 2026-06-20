@@ -61,10 +61,10 @@ const fmtData = (iso: string) => {
 
 const METODOS: MetodoPagamento[] = [
   "Dinheiro",
-  "C. Crédito",
-  "C. Débito",
+  "Cartao credito",
+  "Debito",
   "Cheque",
-  "Depósito bancário",
+  "Transferencia",
   "Pix",
 ];
 
@@ -94,10 +94,10 @@ function CaixaPage() {
         .filter((l) => l.tipo === "entrada" && l.metodo === m)
         .reduce((s, l) => s + asNumber(l.valor), 0);
     const dinheiro = grupo("Dinheiro");
-    const credito = grupo("C. Crédito");
-    const debito = grupo("C. Débito");
+    const credito = grupo("Cartao credito");
+    const debito = grupo("Debito");
     const cheque = grupo("Cheque");
-    const deposito = grupo("Depósito bancário") + grupo("Pix");
+    const deposito = grupo("Transferencia") + grupo("Pix");
     const entradas = dinheiro + credito + debito + cheque + deposito;
     const saidas = asArray(lanc)
       .filter((l) => l.tipo === "saida")
@@ -205,10 +205,10 @@ function CaixaPage() {
                 label="Dinheiro"
                 valor={totais.dinheiro}
               />
-              <MetodoLinha icon={CreditCard} label="C. Crédito" valor={totais.credito} />
-              <MetodoLinha icon={CreditCard} label="C. Débito" valor={totais.debito} />
+              <MetodoLinha icon={CreditCard} label="Cartao credito" valor={totais.credito} />
+              <MetodoLinha icon={CreditCard} label="Debito" valor={totais.debito} />
               <MetodoLinha icon={Receipt} label="Cheque" valor={totais.cheque} />
-              <MetodoLinha icon={Building2} label="Depósito / Pix" valor={totais.deposito} />
+              <MetodoLinha icon={Building2} label="Transferencia / Pix" valor={totais.deposito} />
             </CardContent>
           </Card>
 

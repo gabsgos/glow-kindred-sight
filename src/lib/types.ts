@@ -156,10 +156,10 @@ export type ContaFinanceira = {
 
 export type MetodoPagamento =
   | "Dinheiro"
-  | "C. Crédito"
-  | "C. Débito"
+  | "Cartao credito"
+  | "Debito"
   | "Cheque"
-  | "Depósito bancário"
+  | "Transferencia"
   | "Pix";
 
 export type LancamentoCaixa = {

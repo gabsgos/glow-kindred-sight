@@ -4,13 +4,6 @@ import { AlertCircle, CalendarClock, FileText, Receipt, UserRound } from "lucide
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AgendaSlot } from "@/lib/types";
@@ -61,18 +54,24 @@ export function AppointmentModal({
     setRescheduleOpen(false);
   }, [slot]);
 
-  if (!slot) return null;
+  if (!slot || !open) return null;
 
   const pendingBilling = slot.statusFinanceiro === "pendente" || slot.temPendencia;
   const evolutionText = slot.evolucao || patient?.evolucao || "";
 
   return (
-    <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
-      <DialogContent className="max-h-[92vh] max-w-3xl overflow-auto">
-        <DialogHeader>
+    <div className="fixed inset-0 z-50 bg-background/20 backdrop-blur-sm" role="dialog" aria-modal="true">
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default"
+        aria-label="Fechar atendimento"
+        onClick={onClose}
+      />
+      <aside className="absolute right-0 top-0 h-dvh w-[min(760px,100vw)] overflow-auto border-l bg-background p-6 shadow-2xl animate-in slide-in-from-right duration-200">
+        <div>
           <div className="flex flex-wrap items-start justify-between gap-3 pr-7">
             <div>
-              <DialogTitle className="text-xl">{patient?.nomeCompleto || slot.servico}</DialogTitle>
+              <h2 className="text-xl font-semibold">{patient?.nomeCompleto || slot.servico}</h2>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <CalendarClock className="h-4 w-4" />
                 <span>{asText(slot.data).split("-").reverse().join("/")}</span>
@@ -91,9 +90,12 @@ export function AppointmentModal({
                   Faturamento pendente
                 </Badge>
               )}
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                Fechar
+              </Button>
             </div>
           </div>
-        </DialogHeader>
+        </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
           <InfoCard
@@ -197,7 +199,7 @@ export function AppointmentModal({
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="mt-4 gap-2 sm:justify-between">
+        <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <Button variant="destructive" onClick={onCancelar} disabled={!canEdit}>
             Cancelar atendimento
           </Button>
@@ -217,9 +219,9 @@ export function AppointmentModal({
               Fechar
             </Button>
           </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </aside>
+    </div>
   );
 }
 

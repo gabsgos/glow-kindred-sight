@@ -18,6 +18,7 @@ import { Route as IaRouteImport } from './routes/ia'
 import { Route as HistoricoRouteImport } from './routes/historico'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as EvolucoesRouteImport } from './routes/evolucoes'
+import { Route as DebugIntentsRouteImport } from './routes/debug-intents'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as CadastroRouteImport } from './routes/cadastro'
@@ -84,6 +85,11 @@ const FinanceiroRoute = FinanceiroRouteImport.update({
 const EvolucoesRoute = EvolucoesRouteImport.update({
   id: '/evolucoes',
   path: '/evolucoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DebugIntentsRoute = DebugIntentsRouteImport.update({
+  id: '/debug-intents',
+  path: '/debug-intents',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -206,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
+  '/debug-intents': typeof DebugIntentsRoute
   '/evolucoes': typeof EvolucoesRoute
   '/financeiro': typeof FinanceiroRouteWithChildren
   '/historico': typeof HistoricoRoute
@@ -239,6 +246,7 @@ export interface FileRoutesByTo {
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
+  '/debug-intents': typeof DebugIntentsRoute
   '/evolucoes': typeof EvolucoesRoute
   '/financeiro': typeof FinanceiroRouteWithChildren
   '/historico': typeof HistoricoRoute
@@ -273,6 +281,7 @@ export interface FileRoutesById {
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/dashboard': typeof DashboardRoute
+  '/debug-intents': typeof DebugIntentsRoute
   '/evolucoes': typeof EvolucoesRoute
   '/financeiro': typeof FinanceiroRouteWithChildren
   '/historico': typeof HistoricoRoute
@@ -308,6 +317,7 @@ export interface FileRouteTypes {
     | '/cadastro'
     | '/configuracoes'
     | '/dashboard'
+    | '/debug-intents'
     | '/evolucoes'
     | '/financeiro'
     | '/historico'
@@ -341,6 +351,7 @@ export interface FileRouteTypes {
     | '/cadastro'
     | '/configuracoes'
     | '/dashboard'
+    | '/debug-intents'
     | '/evolucoes'
     | '/financeiro'
     | '/historico'
@@ -374,6 +385,7 @@ export interface FileRouteTypes {
     | '/cadastro'
     | '/configuracoes'
     | '/dashboard'
+    | '/debug-intents'
     | '/evolucoes'
     | '/financeiro'
     | '/historico'
@@ -408,6 +420,7 @@ export interface RootRouteChildren {
   CadastroRoute: typeof CadastroRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   DashboardRoute: typeof DashboardRoute
+  DebugIntentsRoute: typeof DebugIntentsRoute
   EvolucoesRoute: typeof EvolucoesRoute
   FinanceiroRoute: typeof FinanceiroRouteWithChildren
   HistoricoRoute: typeof HistoricoRoute
@@ -488,6 +501,13 @@ declare module '@tanstack/react-router' {
       path: '/evolucoes'
       fullPath: '/evolucoes'
       preLoaderRoute: typeof EvolucoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/debug-intents': {
+      id: '/debug-intents'
+      path: '/debug-intents'
+      fullPath: '/debug-intents'
+      preLoaderRoute: typeof DebugIntentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -712,6 +732,7 @@ const rootRouteChildren: RootRouteChildren = {
   CadastroRoute: CadastroRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   DashboardRoute: DashboardRoute,
+  DebugIntentsRoute: DebugIntentsRoute,
   EvolucoesRoute: EvolucoesRoute,
   FinanceiroRoute: FinanceiroRouteWithChildren,
   HistoricoRoute: HistoricoRoute,

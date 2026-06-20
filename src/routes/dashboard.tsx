@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AppointmentModal } from "@/components/agenda/AppointmentModal";
 import { api } from "@/lib/api";
 import type { AgendaSlot, AuditoriaItem, Faturamento, Paciente, Pendencia } from "@/lib/types";
 import { corDoServico } from "@/lib/mocks";
@@ -45,6 +46,28 @@ function DashboardPage() {
   const [faturamentos, setFaturamentos] = useState<Faturamento[]>([]);
   const [pendencias, setPendencias] = useState<Pendencia[]>([]);
   const [auditoria, setAuditoria] = useState<AuditoriaItem[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<AgendaSlot | null>(null);
+
+  async function carregar() {
+    let active = true;
+
+    await Promise.allSettled([
+      api.agenda.list(),
+      api.pacientes.list(),
+      api.pacientes.financeiro(""),
+      api.pendencias.list(),
+      api.auditoria.list(),
+    ]).then(([agendaResult, pacientesResult, faturamentoResult, pendenciaResult, auditoriaResult]) => {
+      if (!active) return;
+      setAgenda(agendaResult.status === "fulfilled" ? asArray(agendaResult.value) : []);
+      setPacientes(pacientesResult.status === "fulfilled" ? asArray(pacientesResult.value) : []);
+      setFaturamentos(
+        faturamentoResult.status === "fulfilled" ? asArray(faturamentoResult.value) : [],
+      );
+      setPendencias(pendenciaResult.status === "fulfilled" ? asArray(pendenciaResult.value) : []);
+      setAuditoria(auditoriaResult.status === "fulfilled" ? asArray(auditoriaResult.value) : []);
+    });
+  }
 
   useEffect(() => {
     let active = true;
@@ -55,18 +78,16 @@ function DashboardPage() {
       api.pacientes.financeiro(""),
       api.pendencias.list(),
       api.auditoria.list(),
-    ]).then(
-      ([agendaResult, pacientesResult, faturamentoResult, pendenciaResult, auditoriaResult]) => {
-        if (!active) return;
-        setAgenda(agendaResult.status === "fulfilled" ? asArray(agendaResult.value) : []);
-        setPacientes(pacientesResult.status === "fulfilled" ? asArray(pacientesResult.value) : []);
-        setFaturamentos(
-          faturamentoResult.status === "fulfilled" ? asArray(faturamentoResult.value) : [],
-        );
-        setPendencias(pendenciaResult.status === "fulfilled" ? asArray(pendenciaResult.value) : []);
-        setAuditoria(auditoriaResult.status === "fulfilled" ? asArray(auditoriaResult.value) : []);
-      },
-    );
+    ]).then(([agendaResult, pacientesResult, faturamentoResult, pendenciaResult, auditoriaResult]) => {
+      if (!active) return;
+      setAgenda(agendaResult.status === "fulfilled" ? asArray(agendaResult.value) : []);
+      setPacientes(pacientesResult.status === "fulfilled" ? asArray(pacientesResult.value) : []);
+      setFaturamentos(
+        faturamentoResult.status === "fulfilled" ? asArray(faturamentoResult.value) : [],
+      );
+      setPendencias(pendenciaResult.status === "fulfilled" ? asArray(pendenciaResult.value) : []);
+      setAuditoria(auditoriaResult.status === "fulfilled" ? asArray(auditoriaResult.value) : []);
+    });
 
     return () => {
       active = false;
@@ -115,6 +136,12 @@ function DashboardPage() {
           <p className="text-sm text-muted-foreground">Visão geral do dia - {formatDatePt(HOJE)}</p>
         </div>
         <div className="flex gap-2">
+          <Button asChild>
+            <Link to="/agenda">Agendar</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to="/cadastro">Novo Cadastro</Link>
+          </Button>
           <Button variant="outline" asChild>
             <Link to="/agenda">Abrir agenda</Link>
           </Button>
@@ -145,7 +172,7 @@ function DashboardPage() {
           label="Pendências"
           value={resumo.pendenciasAbertas.length}
           tone={resumo.pendenciasAbertas.length ? "warning" : "default"}
-          hint={`Crédito em conta: ${formatCurrency(resumo.creditoTotal)}`}
+          hint={`Credito do paciente em conta: ${formatCurrency(resumo.creditoTotal)}`}
         />
       </div>
 
@@ -164,7 +191,12 @@ function DashboardPage() {
               </p>
             )}
             {resumo.slotsHojeVisiveis.map((slot) => (
-              <div key={slot.id} className="flex items-center gap-3 rounded-md border p-3">
+              <button
+                key={slot.id}
+                type="button"
+                className="flex w-full items-center gap-3 rounded-md border p-3 text-left transition-colors hover:bg-accent/40"
+                onClick={() => setSelectedSlot(slot)}
+              >
                 <div
                   className="h-10 w-1 rounded"
                   style={{ background: corDoServico(asText(slot.servico)) }}
@@ -184,7 +216,7 @@ function DashboardPage() {
                   {asNumber(slot.ocupacao)}/
                   {asBoolean(slot.capacidadeIlimitada) ? "Ilimitado" : asNumber(slot.capacidade)}
                 </Badge>
-              </div>
+              </button>
             ))}
             {resumo.slotsHoje.length > resumo.slotsHojeVisiveis.length && (
               <p className="text-xs text-muted-foreground">
@@ -261,6 +293,24 @@ function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <AppointmentModal
+        slot={selectedSlot}
+        open={!!selectedSlot}
+        onClose={() => setSelectedSlot(null)}
+        onCancelar={async () => {
+          if (!selectedSlot) return;
+          await api.agenda.cancelar(selectedSlot.id);
+          setSelectedSlot(null);
+          await carregar();
+        }}
+        onReagendar={async (input) => {
+          if (!selectedSlot) return;
+          await api.agenda.reagendar(selectedSlot.id, input);
+          setSelectedSlot(null);
+          await carregar();
+        }}
+      />
     </div>
   );
 }

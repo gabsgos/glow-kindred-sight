@@ -7,9 +7,20 @@
     <script>
       (() => {
         const params = new URLSearchParams(window.location.search);
-        const requested = params.get("route") || "/dashboard";
+        const currentPath = window.location.pathname && window.location.pathname !== "/" ? window.location.pathname : "";
+        const requested = params.get("route") || currentPath || "/dashboard";
         const target = requested.startsWith("/") && !requested.startsWith("//") ? requested : "/dashboard";
         window.history.replaceState(null, "", target);
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.getRegistrations?.().then((registrations) => {
+            registrations.forEach((registration) => registration.unregister());
+          }).catch(() => {});
+        }
+        if ("caches" in window) {
+          caches.keys().then((keys) => {
+            keys.forEach((key) => caches.delete(key));
+          }).catch(() => {});
+        }
       })();
     </script>
   </head>

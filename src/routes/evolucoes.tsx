@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Mic, Square, Save, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
@@ -34,6 +34,7 @@ function EvolucoesPage() {
   const [estado, setEstado] = useState<EstadoAudio>("ocioso");
   const [duracao, setDuracao] = useState(0);
   const tickRef = useRef<number | null>(null);
+  const visibleEvos = useMemo(() => asArray(evos).slice(0, 80), [evos]);
 
   useEffect(() => {
     void Promise.allSettled([api.pacientes.list(), api.evolucoes.list()]).then(
@@ -148,21 +149,29 @@ function EvolucoesPage() {
 
       <div className="space-y-2">
         <h2 className="text-sm font-medium text-muted-foreground">Últimas evoluções</h2>
-        {asArray(evos).map((e) => (
-          <Card key={e.id} className="p-3">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">
-                {asText(e.pacienteNome) || "Paciente sem nome"}
-              </span>
-              <span>{asText(e.data)}</span>
-            </div>
-            <p className="mt-1 line-clamp-3 text-sm">{asText(e.texto)}</p>
-          </Card>
-        ))}
+        <EvolutionHistoryList items={visibleEvos} />
       </div>
     </div>
   );
 }
+
+const EvolutionHistoryList = memo(function EvolutionHistoryList({ items }: { items: Evolucao[] }) {
+  return (
+    <>
+      {items.map((e) => (
+        <Card key={e.id} className="p-3">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">
+              {asText(e.pacienteNome) || "Paciente sem nome"}
+            </span>
+            <span>{asText(e.data)}</span>
+          </div>
+          <p className="mt-1 line-clamp-3 text-sm">{asText(e.texto)}</p>
+        </Card>
+      ))}
+    </>
+  );
+});
 
 function AudioButton({
   estado,

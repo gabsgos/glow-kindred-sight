@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   BarChart3,
+  Bug,
   Calendar,
   ChevronDown,
   ClipboardList,
@@ -54,6 +55,7 @@ const principal: NavGroup[] = [
     items: [{ title: "Caixa", url: "/financeiro/caixa", icon: Keyboard }],
   },
   { kind: "item", item: { title: "Relatorios", url: "/relatorios", icon: BarChart3 } },
+  { kind: "item", item: { title: "Debug intents", url: "/debug-intents", icon: Bug } },
 ];
 
 export function AppSidebar() {

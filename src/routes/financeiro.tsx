@@ -86,7 +86,7 @@ function FinanceiroPage() {
         <div>
           <h1 className="text-2xl font-semibold">Contas a receber</h1>
           <p className="text-sm text-muted-foreground">
-            Cobranças de pacientes, créditos e quitação de atendimentos.
+            Cobrancas de pacientes, credito do paciente e quitacao de atendimentos.
           </p>
         </div>
       </div>
@@ -107,7 +107,7 @@ function FinanceiroPage() {
         />
         <KpiCard
           icon={<Wallet className="size-4" />}
-          label="Crédito de pacientes"
+          label="Credito do paciente"
           value={BRL(kpis.credito)}
           tone="info"
         />
@@ -139,7 +139,7 @@ function FinanceiroPage() {
               <div>
                 <div className="font-medium">{asText(p.nomeCompleto) || "Paciente sem nome"}</div>
                 <div className="text-xs text-muted-foreground">
-                  Pendente: {BRL(p.totalPendente)} - Crédito: {BRL(p.creditoDisponivel)}
+                  Pendente: {BRL(p.totalPendente)} - Credito do paciente: {BRL(p.creditoDisponivel)}
                 </div>
               </div>
               <Button size="sm" onClick={() => setPagModal(p)}>

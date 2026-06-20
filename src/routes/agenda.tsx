@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -71,6 +71,7 @@ function AgendaPage() {
   const [selected, setSelected] = useState<AgendaSlot | null>(null);
   const [status, setStatus] = useState("todos");
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const initialScrollDoneRef = useRef(false);
 
@@ -106,7 +107,7 @@ function AgendaPage() {
   );
 
   const filteredSlots = useMemo(() => {
-    const term = asSearchTerm(search);
+    const term = asSearchTerm(deferredSearch);
     return weekSlots.filter((slot) => {
       if (status !== "todos" && slot.status !== status) return false;
       if (!term) return true;
@@ -116,7 +117,7 @@ function AgendaPage() {
         asArray(slot.clientes).some((client) => matchesText(client.nomeCompleto, term))
       );
     });
-  }, [search, status, weekSlots]);
+  }, [deferredSearch, status, weekSlots]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, AgendaSlot[]>();
@@ -167,6 +168,12 @@ function AgendaPage() {
             {formatDate(weekDays[0].date)} - {formatDate(weekDays[6].date)}
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => toast.message("Novo agendamento ainda esta em preparacao.")}
+            >
+              Novo agendamento
+            </Button>
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input

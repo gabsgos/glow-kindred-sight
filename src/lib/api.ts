@@ -31,6 +31,8 @@ import type {
   Venda,
 } from "./types";
 import { asArray, asNumber, asSearchTerm, matchesText } from "./safe";
+import { debugIntentLocal } from "./intentDebug";
+import type { DebugIntentResult } from "./intentDebug";
 
 const wait = <T>(value: T, ms = 220): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), ms));
@@ -275,6 +277,19 @@ export const api = {
     },
     buscarHorarios: async () =>
       wait(agenda.filter((s) => (s.capacidadeIlimitada ? true : s.ocupacao < (s.capacidade ?? 0)))),
+    consumirCredito: async (id: string) =>
+      withBackend(
+        () =>
+          sendJson<AgendaSlot | null>(
+            `/api/web/agenda/${encodeURIComponent(id)}/consumir-credito`,
+            "POST",
+          ),
+        async () => {
+          const slot = agenda.find((s) => s.id === id);
+          if (slot) slot.statusFinanceiro = "pago";
+          return wait(slot ?? null);
+        },
+      ),
   },
 
   // ---- pacientes
@@ -364,6 +379,24 @@ export const api = {
             ? fetchJson<Faturamento[]>(`/api/web/pacientes/${encodeURIComponent(id)}/financeiro`)
             : fetchJson<Faturamento[]>("/api/web/financeiro"),
         () => wait(id ? faturamentos.filter((f) => f.pacienteId === id) : faturamentos),
+      ),
+    financeiroResumo: (id: string) =>
+      withBackend(
+        () => fetchJson(`/api/web/pacientes/${encodeURIComponent(id)}/financeiro/resumo`),
+        () =>
+          wait({
+            pacienteId: id,
+            creditoDisponivel: pacientes.find((p) => p.id === id)?.creditoDisponivel ?? 0,
+            totalCobrado: 0,
+            totalRecebido: 0,
+            totalPendente: 0,
+            contasEmAberto: 0,
+            contasPagas: 0,
+            contasParciais: 0,
+            contasIsentas: 0,
+            distribuicaoMensal: [],
+            ultimosLancamentos: faturamentos.filter((f) => f.pacienteId === id),
+          }),
       ),
     evolucoes: (id: string) =>
       withBackend(
@@ -464,6 +497,7 @@ export const api = {
 
   // ---- IA
   ia: {
+    debugIntent: async (texto: string): Promise<DebugIntentResult> => wait(debugIntentLocal(texto), 120),
     comando: async (texto: string): Promise<ComandoIaResposta> => {
       const t = asSearchTerm(texto);
       if (t.startsWith("#")) {
