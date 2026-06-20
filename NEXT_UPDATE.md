@@ -1262,3 +1262,367 @@ motivo da decisao
 9. `oi` com confirmacao aberta nao confirma nada.
 10. Multi-intent `atendi Michelle hoje, fizemos marcha e pagou 150` pergunta apenas forma de pagamento.
 
+### Refinamento de escopo - iniciar pelo active_pending 2.0
+
+Decisao apos revisao do anexo de 2026-06-20:
+
+```text
+Nao implementar memoria consolidada/dreaming junto com a primeira fase.
+Comecar pelo active_pending 2.0 e pela orquestracao conversacional.
+```
+
+Motivo:
+
+1. memoria consolidada depende de workflows, slots e auditoria bem organizados;
+2. o bug atual (`Busca pacientes` -> `6`) nao exige memoria de longo prazo, exige estado conversacional correto;
+3. implementar tudo junto aumenta risco de regressao no WhatsApp, pagamentos, agenda e confirmacoes;
+4. o pipeline atual ja e grande; a mudanca precisa ser incremental e compativel.
+
+Ordem correta:
+
+```text
+active_pending atual
+-> workflow conversacional compativel
+-> slots nomeados e versionados
+-> confirmacao/expiracao/idempotencia
+-> conversation_sessions
+-> interrupcoes e retomadas
+-> memoria consolidada
+```
+
+#### Entra agora
+
+```text
+workflow_state
+workflow_id
+intent
+required_slots_json
+resolved_slots_json
+missing_slots_json
+confirmation_policy
+risk_level
+expires_at
+version
+superseded_by
+idempotency_key
+last_question_slot
+updated_at
+```
+
+Tambem entra agora:
+
+```text
+pergunta de um campo por vez
+respostas curtas antes do classificador global
+correcao natural de slots
+invalidacao de confirmacao antiga
+TTL por intent
+idempotencia por channel_message_id
+versionamento otimista
+compatibilidade com pendencias/ver 1/sim/nao/#CACHE/#RESET
+dry_run sem side effects
+logs estruturados de workflow
+```
+
+#### Nao entra agora
+
+```text
+memoria inferida
+consolidacao noturna
+embeddings novos
+painel de memorias
+varios workflows simultaneos
+pilha completa de interrupcoes
+execucao automatica por padrao aprendido
+novas chamadas LLM para toda mensagem
+refatoracao total do intent_pipeline.py
+```
+
+### Migration incremental sugerida
+
+Manter a tabela atual `active_pending` e adicionar colunas, sem desmontar a implementacao antiga:
+
+```sql
+ALTER TABLE active_pending ADD COLUMN workflow_id TEXT;
+ALTER TABLE active_pending ADD COLUMN workflow_state TEXT DEFAULT 'COLLECTING_SLOTS';
+ALTER TABLE active_pending ADD COLUMN intent TEXT;
+ALTER TABLE active_pending ADD COLUMN required_slots_json TEXT DEFAULT '[]';
+ALTER TABLE active_pending ADD COLUMN resolved_slots_json TEXT DEFAULT '{}';
+ALTER TABLE active_pending ADD COLUMN missing_slots_json TEXT DEFAULT '[]';
+ALTER TABLE active_pending ADD COLUMN confirmation_policy TEXT DEFAULT 'explicit';
+ALTER TABLE active_pending ADD COLUMN risk_level TEXT DEFAULT 'medium';
+ALTER TABLE active_pending ADD COLUMN expires_at TEXT;
+ALTER TABLE active_pending ADD COLUMN version INTEGER DEFAULT 1;
+ALTER TABLE active_pending ADD COLUMN superseded_by TEXT;
+ALTER TABLE active_pending ADD COLUMN idempotency_key TEXT;
+ALTER TABLE active_pending ADD COLUMN last_question_slot TEXT;
+ALTER TABLE active_pending ADD COLUMN updated_at TEXT;
+```
+
+Indices:
+
+```sql
+CREATE INDEX IF NOT EXISTS idx_pending_owner_status
+ON active_pending(internal_user_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_pending_chat_state
+ON active_pending(chat_id, workflow_state);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pending_idempotency
+ON active_pending(idempotency_key)
+WHERE idempotency_key IS NOT NULL;
+```
+
+Se a tabela real usar outro nome para `chat_id`, adaptar ao campo existente do canal.
+
+### Arquivo novo de servico
+
+Criar:
+
+```text
+tablet_backend/conversation_workflow.py
+```
+
+Objetivo: impedir que `intent_pipeline.py` vire ainda mais monolitico.
+
+Interface minima:
+
+```python
+create_workflow(...)
+get_focused_workflow(...)
+patch_workflow_slots(...)
+build_next_question(...)
+build_confirmation_summary(...)
+confirm_workflow(...)
+cancel_workflow(...)
+expire_workflows(...)
+```
+
+### Estados oficiais
+
+Centralizar constantes:
+
+```text
+COLLECTING_SLOTS
+READY_TO_CONFIRM
+WAITING_CONFIRMATION
+EXECUTING
+COMPLETED
+CANCELLED
+EXPIRED
+FAILED
+SUPERSEDED
+```
+
+Estados de slot:
+
+```text
+MISSING
+RESOLVED
+AMBIGUOUS
+SUGGESTED
+CONFIRMED
+INVALID
+STALE
+```
+
+Formato de slot:
+
+```json
+{
+  "patient_id": {
+    "value": "ACE9EWH",
+    "status": "RESOLVED",
+    "source": "explicit",
+    "confidence": 1.0
+  }
+}
+```
+
+### Workflow definitions iniciais
+
+Comecar com:
+
+```text
+agendar_atendimento
+registrar_pagamento
+registrar_evolucao
+cancelar_agendamento
+reagendar_agendamento
+definir_valor_paciente
+selecionar_paciente
+```
+
+Cada definicao deve conter:
+
+```text
+required_slots
+optional_slots
+slot_order
+confirmation_policy
+risk_level
+ttl_minutes
+```
+
+### Ordem de tratamento da mensagem
+
+Nova prioridade:
+
+```text
+1. Resolver usuario
+2. Normalizar texto
+3. Detectar saudacao simples
+4. Detectar comandos globais
+5. Carregar workflow ativo
+6. Se a mensagem responde ao slot esperado, tratar no workflow
+7. Patchar slots e recalcular estado
+8. So depois chamar classificador global / Qwen
+```
+
+Respostas como abaixo nunca devem ir primeiro para pendencia generica:
+
+```text
+6
+11h
+amanha
+a primeira
+no pix
+180
+domiciliar
+```
+
+### Caso alvo imediato
+
+```text
+Usuario: Busca pacientes
+Bot: lista pacientes com opcoes 1-6
+Usuario: 6
+```
+
+Esperado:
+
+```text
+Paciente selecionado: Rafael Bonfim
+
+Valor padrao: R$ 167,66
+Credito disponivel: R$ 2.000,00
+Em aberto: R$ 167,66
+
+O que deseja fazer?
+1. Agendar
+2. Registrar atendimento
+3. Registrar pagamento
+4. Ver historico
+```
+
+Regra:
+
+```text
+numero puro so e indice de pendencia se o workflow ativo for pending_list
+```
+
+### Hardening para 10 mil cadastros antes da memoria avancada
+
+Os mesmos SQLite podem suportar 10 mil cadastros, desde que o sistema seja endurecido antes de ampliar memoria/inferencias.
+
+Nao migrar para PostgreSQL apenas por 10 mil pacientes. Migracao so deve ser considerada se houver alta concorrencia de escrita, SaaS centralizado, multiplos profissionais simultaneos em escala ou necessidade de replicacao/alta disponibilidade.
+
+Antes da memoria consolidada, executar etapa obrigatoria:
+
+```text
+auditar queries criticas
+adicionar indices
+ativar WAL
+implementar paginacao/cursor
+separar logs/memoria do operacional quando necessario
+criar fila local de escrita para operacoes criticas
+impedir scans completos em pacientes/memorias/eventos
+medir latencia no tablet real
+criar banco sintetico de carga
+```
+
+Pragmas SQLite recomendados:
+
+```sql
+PRAGMA journal_mode=WAL;
+PRAGMA synchronous=NORMAL;
+PRAGMA foreign_keys=ON;
+PRAGMA busy_timeout=5000;
+```
+
+Indices obrigatorios a auditar/adicionar conforme nomes reais das tabelas:
+
+```sql
+-- pacientes
+internal_user_id + normalized_name
+internal_user_id + normalized_cpf
+internal_user_id + normalized_phone
+
+-- agenda
+internal_user_id + starts_at
+internal_user_id + patient_id
+internal_user_id + status + starts_at
+
+-- financeiro
+internal_user_id + paid_at
+internal_user_id + patient_id
+internal_user_id + status + due_date
+
+-- evolucoes
+internal_user_id + patient_id + created_at
+
+-- workflows
+internal_user_id + chat_id + workflow_state
+workflow_state + expires_at
+idempotency_key unico parcial
+```
+
+Metas de desempenho no tablet:
+
+```text
+Busca de paciente: < 100 ms
+Agenda semanal: < 200 ms
+Perfil basico: < 200 ms
+Consultar saldo: < 150 ms
+Criar workflow: < 50 ms
+Recuperar contexto: < 100 ms
+Pagamento local: < 300 ms
+Resposta sem LLM: < 500 ms
+```
+
+Teste de carga alvo:
+
+```text
+10.000 pacientes
+200.000 agendamentos
+200.000 pagamentos
+200.000 evolucoes
+1.000.000 eventos
+50.000 memorias
+```
+
+Medir:
+
+```text
+p50
+p95
+p99
+EXPLAIN QUERY PLAN
+RAM
+tamanho dos DBs
+tempo de startup
+database locked
+```
+
+### Guardrail de deploy
+
+Antes de qualquer deploy de nova versao:
+
+```text
+1. fazer backup completo no tablet;
+2. validar o backup no tablet com tar -tzf ou equivalente;
+3. somente depois aplicar deploy.
+```
+
+Se SSH/tablet estiver indisponivel e o backup completo nao puder ser confirmado, bloquear o deploy.
+

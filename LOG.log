@@ -796,3 +796,10 @@
 - Planejamento de chat operacional/memoria consolidada commitado e enviado ao GitHub no commit 427d6bc.
 - Backup local compactado do workspace validado em C:\Users\gabri\Documents\Dataset MedRag\backups\fisiobot_dataset_medrag_backup_20260620_163141.tar.gz.
 - Backup remoto do tablet tentado, mas ficou pendente porque o SSH 192.168.0.163:8022 recusou conexao apos a primeira tentativa.
+
+[2026-06-20 16:58:25 -03:00] NEXT_UPDATE - refinamento active_pending 2.0 primeiro
+- Incorporadas ao NEXT_UPDATE.md as sugestoes do anexo 61cb8020: comecar pela orquestracao conversacional e adiar memoria consolidada/dreaming.
+- Primeira fase definida como active_pending 2.0 incremental, mantendo compatibilidade com a tabela e comandos atuais.
+- Incluidos migration sugerida, estados oficiais, estados de slots, conversation_workflow.py, workflow definitions iniciais, ordem de tratamento de mensagens e caso alvo `Busca pacientes` -> `6`.
+- Incluido hardening para 10 mil cadastros mantendo SQLite: WAL, indices, paginacao, fila de escrita, cache seletivo, teste sintetico e metricas p50/p95/p99.
+- Reforcado que deploy futuro depende de backup completo validado no tablet.
