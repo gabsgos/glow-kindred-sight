@@ -791,3 +791,8 @@
 - Proposto active_pending 2.0 com workflow_type, state, expected_reply_type, slots nomeados, options_json, versionamento e superseded_by.
 - Propostos conversation_sessions, workflow stack, patch de slots, confirmacao proporcional ao risco e memoria operacional consolidada com worker de consolidacao.
 - Sem alteracao funcional de codigo neste bloco.
+
+[2026-06-20 16:50:36 -03:00] backup e git do planejamento
+- Planejamento de chat operacional/memoria consolidada commitado e enviado ao GitHub no commit 427d6bc.
+- Backup local compactado do workspace validado em C:\Users\gabri\Documents\Dataset MedRag\backups\fisiobot_dataset_medrag_backup_20260620_163141.tar.gz.
+- Backup remoto do tablet tentado, mas ficou pendente porque o SSH 192.168.0.163:8022 recusou conexao apos a primeira tentativa.
