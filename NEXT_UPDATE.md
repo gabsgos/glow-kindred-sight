@@ -850,3 +850,415 @@ Status em 2026-06-20:
    - `Rubens dos Santos pagou 400,pp` deve pedir correcao do valor, nao criar pagamento incorreto;
    - `Buscar bernardo matsuoka` deve retornar a ficha correta do paciente cadastrado.
 
+## Proximo update urgente - chat operacional, memoria consolidada e workflows conversacionais
+
+Base: `C:\Users\gabri\OneDrive\Desktop\dreaming.txt` e erro real de 2026-06-20:
+
+```text
+Busca pacientes
+Bot lista 6 pacientes e pede numero.
+Usuario responde 6.
+Bot interpreta como pendencia numero 6 em vez de selecionar Rafael Bonfim.
+```
+
+### Diagnostico
+
+O chat mistura pelo menos tres conceitos em uma unica camada de `pendencia`:
+
+1. pendencia conversacional: falta uma informacao ou escolha;
+2. pendencia de confirmacao: uma acao esta pronta aguardando `sim`/`nao`;
+3. pendencia operacional: tarefa clinica/financeira real, como evolucao ou pagamento em aberto.
+
+Essa mistura faz uma resposta curta, como `6`, cair no resolvedor errado. O bot prometeu selecao de paciente, mas o pipeline leu a resposta como indice de pendencia.
+
+### Principio do novo desenho
+
+Memoria e contexto ajudam a interpretar e sugerir. O banco operacional continua sendo a autoridade.
+
+O sistema nao deve criar um "cerebro" paralelo. Deve adicionar uma camada organizada de sessao, workflows e memoria consolidada entre contexto operacional e fallback Qwen.
+
+Pipeline alvo:
+
+```text
+1. Resolver identidade e ownership
+2. Normalizar mensagem
+3. Carregar sessao ativa do chat
+4. Expirar contextos vencidos
+5. Detectar comandos globais
+6. Verificar se a mensagem responde ao workflow em foco
+7. Extrair/patchar slots
+8. Resolver nova intencao clara, se houver
+9. Recuperar dados oficiais e memorias relevantes
+10. Confirmar conforme risco
+11. Executar transacionalmente
+12. Registrar evento para consolidacao futura
+```
+
+### Active pending 2.0
+
+Evoluir a pendencia atual para workflow nomeado, sem refatorar tudo de uma vez.
+
+Adicionar campos consultaveis:
+
+```text
+workflow_id
+workflow_type
+intent
+state
+risk_level
+expected_reply_type
+required_slots_json
+resolved_slots_json
+missing_slots_json
+options_json
+confirmation_policy
+expires_at
+version
+superseded_by
+```
+
+Estados minimos:
+
+```text
+COLLECTING_SLOTS
+WAITING_SELECTION
+WAITING_CONFIRMATION
+SUSPENDED
+COMPLETED
+CANCELLED
+EXPIRED
+SUPERSEDED
+```
+
+Tipos iniciais:
+
+```text
+patient_selection
+appointment_creation
+attendance_registration
+payment_registration
+global_value_update
+patient_value_update
+conversation_question
+```
+
+### Regra de prioridade para respostas curtas
+
+Antes de qualquer resolvedor generico:
+
+```text
+se existe workflow ativo com expected_reply_type=number_selection:
+  interpretar numero como escolha desse workflow
+  nunca como pendencia generica
+```
+
+Exemplo correto:
+
+```text
+Usuario: Busca pacientes
+Bot: 1. Aurea ... 6. Rafael Bonfim
+Usuario: 6
+Bot: Paciente selecionado: Rafael Bonfim
+     O que deseja fazer?
+     1. Agendar
+     2. Registrar atendimento
+     3. Registrar pagamento
+     4. Ver historico
+```
+
+So tratar `6` como pendencia quando o ultimo contexto ativo for `pending_list`.
+
+### Sessao conversacional
+
+Criar ou adaptar uma tabela:
+
+```text
+conversation_sessions
+- id
+- internal_user_id
+- channel
+- chat_id
+- focused_workflow_id
+- focused_patient_id
+- focused_appointment_id
+- focused_date
+- last_intent
+- last_message_at
+- expires_at
+- status
+```
+
+TTL recomendado:
+
+```text
+Paciente em foco: 4 horas
+Data em foco: ate virar o dia
+Selecao numerica: 30 minutos
+Confirmacao de agendamento: 15 minutos
+Confirmacao de pagamento: 10 minutos
+Confirmacao de exclusao/reset: 5 minutos
+Workflow suspenso: 24 horas
+Pendencia clinica/financeira: sem expiracao automatica
+```
+
+### Workflow stack
+
+Permitir:
+
+```text
+1 workflow ativo
+ate 3 workflows suspensos
+```
+
+Quando o usuario interromper:
+
+```text
+Usuario: agenda Michelle amanha
+Bot: Qual horario?
+Usuario: quanto a Ana esta devendo?
+Bot: Ana possui R$ 300,00 em aberto.
+     Retomando: qual horario amanha para Michelle?
+```
+
+### Perguntar uma coisa por vez
+
+Cada intent deve declarar:
+
+```json
+{
+  "required_slots": ["patient_id", "date", "time"],
+  "optional_slots": ["duration", "value", "modality"],
+  "slot_order": ["patient_id", "date", "time"],
+  "defaults_allowed": ["duration", "value"],
+  "confirmation_policy": "when_inferred"
+}
+```
+
+O bot deve perguntar apenas o primeiro slot realmente faltante.
+
+Ruim:
+
+```text
+Informe paciente, data, hora, duracao e modalidade.
+```
+
+Bom:
+
+```text
+Qual horario amanha para a Michelle?
+```
+
+### Slot patching e correcao natural
+
+Criar funcao central:
+
+```text
+patch_workflow_slots(workflow_id, extracted_slots, source_message_id)
+```
+
+Regras:
+
+1. substituir somente os slots mencionados;
+2. preservar os demais;
+3. invalidar confirmacao antiga se algum slot mudar;
+4. marcar pending_action anterior como `SUPERSEDED`;
+5. gerar novo resumo canonico.
+
+Exemplo:
+
+```text
+Bot: Registrar R$ 150,00 no PIX para Michelle?
+Usuario: na verdade 180 no debito
+Bot: Certo. Registrar R$ 180,00 no debito para Michelle?
+```
+
+### Confirmacao proporcional ao risco
+
+Baixo risco: executar direto.
+
+```text
+buscar paciente
+consultar agenda
+mostrar saldo
+```
+
+Medio risco: confirmar quando houver inferencia.
+
+```text
+criar agendamento
+registrar atendimento
+registrar evolucao
+```
+
+Alto risco: confirmacao explicita.
+
+```text
+pagamento
+credito do paciente
+pacote
+cancelamento
+alterar valor global
+```
+
+Muito alto risco:
+
+```text
+exclusao definitiva
+reset financeiro
+acao em massa
+```
+
+Exigir frase forte, como `EXCLUIR` ou `RESETAR`.
+
+### Sim/nao inteligentes
+
+Aceitar `sim`, `pode`, `confirma`, `isso`, `beleza` somente quando:
+
+```text
+ha exatamente uma acao WAITING_CONFIRMATION
+ela nao expirou
+ela pertence ao mesmo internal_user_id/chat_id
+nao houve patch de slot depois da confirmacao
+```
+
+Mensagens neutras (`oi`, `bom dia`, `ok?`) nunca devem confirmar nada.
+
+### Memoria operacional consolidada
+
+Implementar depois da fase de workflows, como camada incremental.
+
+Tabelas propostas:
+
+```text
+memory_items
+memory_evidence
+memory_audit
+conversation_summaries
+```
+
+Categorias de memoria:
+
+```text
+operational_database: verdade oficial
+short_context: conversa atual
+explicit: usuario pediu para lembrar
+inferred: padrao aprendido
+derived: resumo calculado
+system_default: padrao do sistema
+```
+
+Politicas de uso:
+
+```text
+EXECUTION_ALLOWED
+PREFILL_ALLOWED
+SUGGESTION_ONLY
+CONTEXT_ONLY
+```
+
+Exemplos:
+
+```text
+Alias confirmado "Mi" = Michelle Rossini -> EXECUTION_ALLOWED
+Forma frequente de pagamento PIX -> SUGGESTION_ONLY
+Valor cadastrado do paciente -> EXECUTION_ALLOWED, mas vem do banco operacional
+Preferencia por respostas curtas -> CONTEXT_ONLY
+```
+
+### Consolidador tipo "dreaming"
+
+Nome interno recomendado:
+
+```text
+memory_consolidation_worker
+```
+
+Nao usar "Dreaming" na UI.
+
+Fluxo:
+
+```text
+Interacoes recentes
+-> eventos estruturados
+-> candidatos a memoria
+-> deduplicacao
+-> contradicoes
+-> atualizacao de confianca/validade
+-> salvar, sugerir confirmacao ou rejeitar
+```
+
+Periodicidade:
+
+```text
+apos cada mensagem: atualizar contexto imediato
+a cada 20-50 interacoes: consolidacao leve
+uma vez por noite: consolidacao completa
+ao alterar configuracao oficial: invalidar memorias conflitantes
+```
+
+### O que nao memorizar por inferencia
+
+Nao gravar por inferencia:
+
+```text
+diagnosticos nao registrados formalmente
+condicoes psicologicas supostas
+opinioes sobre personalidade do paciente
+capacidade financeira inferida
+informacao intima sem finalidade clinica
+comentario casual tratado como fato
+```
+
+### Debug comercial e tecnico
+
+Adicionar debug de workflow:
+
+```text
+#DEBUG-CHAT Busca pacientes
+```
+
+Resposta deve mostrar:
+
+```text
+intent
+workflow_type
+state
+expected_reply_type
+focused_patient_id
+missing_slots
+resolved_slots
+active_pending_id
+decision_path
+```
+
+Adicionar pagina web de debug:
+
+```text
+/debug-chat
+```
+
+Com:
+
+```text
+ultimas mensagens
+workflow atual
+workflows suspensos
+slots resolvidos
+pendencias de confirmacao
+memorias usadas
+motivo da decisao
+```
+
+### Testes obrigatorios
+
+1. `Busca pacientes` -> `6` seleciona Rafael Bonfim, nao pendencia 6.
+2. `Busca pacientes` -> `ver 1` nao tenta ver pendencia se workflow ativo for selecao de paciente.
+3. `pendencias` -> `ver 1` continua funcionando como pendencia.
+4. `agenda Michelle amanha` -> pergunta somente horario.
+5. `11h` completa o workflow de agendamento.
+6. Interrupcao: `quanto a Ana deve?` responde e retoma o workflow anterior.
+7. Correcao: `na verdade 14h` atualiza horario sem criar outra pendencia.
+8. Confirmacao antiga fica `SUPERSEDED` apos qualquer correcao de slot.
+9. `oi` com confirmacao aberta nao confirma nada.
+10. Multi-intent `atendi Michelle hoje, fizemos marcha e pagou 150` pergunta apenas forma de pagamento.
+

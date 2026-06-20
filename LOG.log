@@ -784,3 +784,10 @@
 - Adicionado dist-tablet ao .gitignore para evitar commit de build gerado.
 - Mantidos arquivos de codigo, documentacao, pwa/ e update-new.md para entrarem no backup git quando aplicavel.
 - Preparado commit de backup do diretorio glow-kindred-sight na branch main.
+
+[2026-06-20 16:32:51 -03:00] NEXT_UPDATE - chat operacional e memoria consolidada
+- Adicionado ao NEXT_UPDATE.md o planejamento urgente baseado em dreaming.txt para melhorar o chat do FisioBot.
+- Registrado o bug `Busca pacientes` -> resposta numerica interpretada como pendencia em vez de selecao de paciente.
+- Proposto active_pending 2.0 com workflow_type, state, expected_reply_type, slots nomeados, options_json, versionamento e superseded_by.
+- Propostos conversation_sessions, workflow stack, patch de slots, confirmacao proporcional ao risco e memoria operacional consolidada com worker de consolidacao.
+- Sem alteracao funcional de codigo neste bloco.
