@@ -803,3 +803,28 @@
 - Incluidos migration sugerida, estados oficiais, estados de slots, conversation_workflow.py, workflow definitions iniciais, ordem de tratamento de mensagens e caso alvo `Busca pacientes` -> `6`.
 - Incluido hardening para 10 mil cadastros mantendo SQLite: WAL, indices, paginacao, fila de escrita, cache seletivo, teste sintetico e metricas p50/p95/p99.
 - Reforcado que deploy futuro depende de backup completo validado no tablet.
+
+[2026-06-20 22:56:07] Proximo update - chat contextual por paciente e agenda
+- Atualizado `update-new.md` com o bloco urgente de chat contextual.
+- Documentada a diferenca entre `agenda hj` apos busca de paciente, que deve consultar agenda global, e `agenda ela hj`, que deve puxar o paciente em contexto e pedir horario para agendamento.
+- Incluidos marcadores contextuais, TTLs, prioridade de resolucao, ambiguidade com multiplos pacientes e testes obrigatorios.
+- Sem alteracao de codigo neste bloco; build mantida.
+
+[2026-06-20 23:02:00] Refinamento do proximo update contextual
+- Incorporadas sugestoes do anexo 215481b4 em `update-new.md`.
+- Adicionada regra de autoridade entre `conversation_contexts` e `active_pending/workflow`.
+- Definido corte inicial para reduzir risco: 1 contexto ativo, 1 workflow sensivel, ate 2 standbys e 1 contexto leve de agenda.
+- Adicionados testes de protecao para `Michelle -> amanha 11h`, `Michelle -> 200 pix -> agenda hoje -> sim`, `financeiro`, `cancelar` e pronome contextual.
+- Sem alteracao de codigo neste bloco; build mantida.
+
+[2026-06-20 23:08:00] Proximo update visual
+- Adicionado a `update-new.md` o bloco "Proximo update visual - Design system clinico operacional".
+- Criado documento detalhado no Desktop: `proximo-update-visual-fisiobot.md`.
+- Escopo: tokens CSS, Inter, paleta clinica menos roxa, onboarding com menos carga cognitiva, dashboard com modo produto/admin, cards-filtro, pendencias melhores, acoes na agenda e responsividade tablet/mobile.
+- Sem alteracao de codigo neste bloco; build mantida.
+
+[2026-06-20 23:06:53] Proximo update contextual - busca de paciente
+- Adicionado a `update-new.md` o requisito urgente de busca de paciente como resumo operacional acionavel.
+- Especificado formatter `build_patient_search_summary(...)`, com resposta compacta por padrao e ficha completa apenas sob demanda.
+- Incluidos payload operacional, alertas de inconsistencia, traducao de status, formatacao de datas, ocultacao de campos vazios/sensiveis e menu numerado integrado ao contexto.
+- Sem alteracao de codigo neste bloco; build mantida.
