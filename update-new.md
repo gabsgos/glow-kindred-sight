@@ -1050,3 +1050,15 @@ C:/Users/gabri/OneDrive/Desktop/pipeline-chat-contextual-fisiobot.md
 - Nao incluir neste update o modo debug por comando, como `#DEBUG-INTENT Valor de todos os atendimentos 129,35`.
 - A resposta detalhada com `intent`, `confidence`, caminho local/Qwen, campos extraidos e motivo da decisao fica reservada para update posterior.
 - Neste update, a auditoria deve ficar limitada aos logs/testes internos necessarios para validar a intent coletiva sem expor um comando novo ao usuario final.
+
+## Implementado no build 0.1.136 - update visual vanilla e agenda
+
+- Cadastro vanilla ajustado para produto comercial: removida duplicidade de marca no painel lateral, removidos textos tecnicos e mantida acao `Salvar e sair` sem limpar a verificacao de WhatsApp.
+- Login e tela de codigo deixam de mencionar React/SPA e passam a usar linguagem de produto.
+- Onboarding segue fora do AppShell e sem menu lateral quando aberto pelo fluxo inicial.
+- Menu lateral separado por perfil: usuario comum ve operacao e gestao basica; `Recursos`, `Usuarios` e `Debug intents` ficam restritos a admin.
+- Dashboard produto ganhou cards superiores clicaveis como filtros para agenda e financeiro.
+- Drawer de novo agendamento remove texto de mock e so exibe aviso durante erro/salvamento.
+- Novo agendamento e registro de atendimento usam `Tipo de atendimento` como fonte unica; `Servico` duplicado foi removido dos formularios editaveis.
+- Horario final continua obedecendo a duracao padrao do usuario/onboarding e e recalculado quando o tipo de atendimento muda.
+- Validacao local: `npm run build:tablet` OK.

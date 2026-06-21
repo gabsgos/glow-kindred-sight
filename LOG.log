@@ -828,3 +828,14 @@
 - Especificado formatter `build_patient_search_summary(...)`, com resposta compacta por padrao e ficha completa apenas sob demanda.
 - Incluidos payload operacional, alertas de inconsistencia, traducao de status, formatacao de datas, ocultacao de campos vazios/sensiveis e menu numerado integrado ao contexto.
 - Sem alteracao de codigo neste bloco; build mantida.
+
+[2026-06-20 23:46:37 -03:00] build 0.1.136 - update visual vanilla e agenda
+- Frontend vanilla atualizado; nenhuma alteracao feita na SPA React.
+- Cadastro comercial limpo: removida duplicidade de marca no painel lateral, textos tecnicos removidos e acao `Recomecar` trocada por `Salvar e sair` sem limpar a verificacao de WhatsApp.
+- Login/codigo de acesso removem referencias a React/SPA e passam a usar linguagem de produto.
+- Menu lateral agora separa usuario comum de admin: Recursos, Usuarios e Debug intents ficam ocultos e bloqueados para nao-admin.
+- Dashboard produto: cards superiores viraram filtros clicaveis para agenda/financeiro.
+- Drawer de novo agendamento deixou de exibir texto de mock e mostra aviso apenas durante erro/salvamento.
+- Registrar Atendimento do card do paciente passou a usar `Tipo de atendimento` como fonte unica; `Servico` duplicado foi removido e o payload deriva o servico do tipo selecionado.
+- Regra de duracao padrao preservada: alteracao de tipo recalcula o horario final em novo agendamento e registro de atendimento.
+- Validacao local: `npm run build:tablet` OK.

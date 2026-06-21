@@ -9,6 +9,9 @@ type User = {
   nomeCompleto?: string;
   nomeExibicao?: string;
   login?: string;
+  role?: string;
+  papel?: string;
+  isAdmin?: boolean;
   cpf?: string;
   telefone?: string;
   email?: string;
@@ -597,7 +600,7 @@ function dashboardNextAppointmentHtml(slot: AgendaSlot | null, today: string): s
   }
   const patientName = slot.clientes?.[0]?.nomeCompleto || "sem paciente";
   const prefix = slot.data && slot.data !== today ? `${formatDate(slot.data)} ` : "";
-  return `<button class="metric-action" type="button" data-event-id="${escapeHtml(slot.id)}"><strong>${escapeHtml(`${prefix}${slot.horaInicio || "--:--"}`)}</strong><small>${escapeHtml(patientName)}</small></button>`;
+  return `<strong>${escapeHtml(`${prefix}${slot.horaInicio || "--:--"}`)}</strong><small>${escapeHtml(patientName)}</small>`;
 }
 
 function addDaysISO(days: number): string {
@@ -700,16 +703,14 @@ function bindAutoEndTime(root: ParentNode, startName = "horaInicio", endName = "
 
 function bindAppointmentTypeDefaults(root: ParentNode): void {
   const select = root.querySelector<HTMLSelectElement>('select[name="tipoAtendimentoId"]');
-  const service = root.querySelector<HTMLInputElement>('input[name="servico"]');
   const start = root.querySelector<HTMLInputElement>('input[name="horaInicio"]');
   const end = root.querySelector<HTMLInputElement>('input[name="horaFim"]');
-  const value = root.querySelector<HTMLInputElement>('input[name="valor"]');
+  const value = root.querySelector<HTMLInputElement>('input[name="valor"], input[name="valorAtendimento"]');
   const patientId = root.querySelector<HTMLInputElement>('input[name="pacienteId"]')?.value || "";
   const patient = patientId ? state.pacientes.find((item) => item.id === patientId) || null : null;
   if (!select) return;
   select.addEventListener("change", () => {
     const type = appointmentTypeById(select.value);
-    if (service && (!service.value || appointmentTypeLabels().includes(service.value))) service.value = type.nome;
     if (start && end) end.value = addMinutesToTime(start.value || "08:00", type.duracaoPadrao || defaultAppointmentDurationMinutes());
     if (value && !parseMoneyInput(value.value)) {
       const nextValue = Number(patient?.valorPadraoAtendimento || type.valorPadrao || state.user?.valorPadraoAtendimento || 0);
@@ -1115,12 +1116,12 @@ function renderLogin(errorMessage = ""): void {
       </section>
       <section class="auth-copy" aria-hidden="true">
         <div>
-          <h2>Rotina clinica rapida, sem carregar o painel React.</h2>
-          <p>Esta versao usa HTML e JavaScript simples para validar o foco em campos, navegar pela agenda e consumir os dados do backend local.</p>
+          <h2>Operacao clinica em uma tela clara.</h2>
+          <p>Agenda, pacientes, recebimentos e pendencias aparecem no mesmo fluxo para reduzir retrabalho no atendimento.</p>
           <div class="feature-grid">
-            <div class="feature"><strong>Login</strong><span>Sessao pelo Flask, sem SPA.</span></div>
-            <div class="feature"><strong>Inicio</strong><span>Resumo carregado sob demanda.</span></div>
-            <div class="feature"><strong>Agenda</strong><span>Eventos vindos do banco do tablet.</span></div>
+            <div class="feature"><strong>Agenda</strong><span>Horarios, status e pendencias visiveis.</span></div>
+            <div class="feature"><strong>Pacientes</strong><span>Cadastro, evolucao e financeiro conectados.</span></div>
+            <div class="feature"><strong>WhatsApp</strong><span>Entrada e validacao preparadas para rotina real.</span></div>
           </div>
         </div>
       </section>
@@ -1288,13 +1289,6 @@ function renderRegister(errorMessage = ""): void {
       </section>
       <section class="register-commercial-layout" aria-label="Criacao de conta">
         <aside class="register-commercial-side">
-          <div class="brand">
-            <div class="brand-mark" aria-hidden="true">F</div>
-            <div>
-              <p class="brand-title">FisioBot</p>
-              <div class="brand-subtitle">clinica conectada</div>
-            </div>
-          </div>
           <div>
             <p class="eyebrow">Etapa 1 de 4</p>
             <h1>Crie sua conta profissional</h1>
@@ -1379,7 +1373,7 @@ function renderRegister(errorMessage = ""): void {
             </label>
             <div class="button-row register-actions">
               <button class="primary-button" type="submit">Continuar</button>
-              <button class="ghost-button" id="clear-register-flow" type="button">Recomecar</button>
+              <button class="ghost-button" id="save-exit-register" type="button">Salvar e sair</button>
             </div>
           </form>
         </div>
@@ -1389,9 +1383,9 @@ function renderRegister(errorMessage = ""): void {
   bindCpfMasks();
   bindPasswordToggles();
   document.querySelector<HTMLButtonElement>("#back-to-login")?.addEventListener("click", () => renderLogin());
-  document.querySelector<HTMLButtonElement>("#clear-register-flow")?.addEventListener("click", () => {
-    clearRegisterVerification();
-    renderRegister();
+  document.querySelector<HTMLButtonElement>("#save-exit-register")?.addEventListener("click", () => {
+    history.replaceState(null, "", "/");
+    renderLogin();
   });
   document.querySelector<HTMLButtonElement>("#change-register-phone")?.addEventListener("click", () => {
     clearRegisterVerification();
@@ -1557,7 +1551,7 @@ function renderLoginCode(login: string, message: string): void {
       <section class="auth-copy" aria-hidden="true">
         <div>
           <h2>Confirme o codigo para liberar esta sessao.</h2>
-          <p>A tela permanece fora do bundle React para isolar travamentos de foco e teclado.</p>
+          <p>Esse codigo protege o acesso ao painel clinico e vincula o dispositivo autorizado.</p>
         </div>
       </section>
     </main>
@@ -1650,6 +1644,18 @@ function renderAppShell(): void {
   if (!app) return;
   const active = state.route;
   const userName = state.user?.nomeExibicao || state.user?.nomeCompleto || state.user?.login || "Usuario";
+  const adminUser = isAdminUser();
+  const managementItems: Array<{ route: AppState["route"]; icon: string; title: string }> = [
+    { route: "financeiro", icon: "finance", title: "Financeiro" },
+    { route: "relatorios", icon: "reports", title: "Relatorios" },
+  ];
+  if (adminUser) {
+    managementItems.push(
+      { route: "recursos", icon: "resources", title: "Recursos" },
+      { route: "usuarios", icon: "users", title: "Usuarios" },
+      { route: "debug", icon: "debug", title: "Debug intents" },
+    );
+  }
   const navGroups: Array<{ label: string; items: Array<{ route: AppState["route"]; icon: string; title: string }> }> = [
     { label: "Geral", items: [{ route: "dashboard", icon: "home", title: "Inicio" }] },
     {
@@ -1661,13 +1667,7 @@ function renderAppShell(): void {
     },
     {
       label: "Gestao",
-      items: [
-        { route: "financeiro", icon: "finance", title: "Financeiro" },
-        { route: "relatorios", icon: "reports", title: "Relatorios" },
-        { route: "recursos", icon: "resources", title: "Recursos" },
-        { route: "usuarios", icon: "users", title: "Usuarios" },
-        { route: "debug", icon: "debug", title: "Debug intents" },
-      ],
+      items: managementItems,
     },
   ];
   app.innerHTML = `
@@ -1752,6 +1752,13 @@ function renderAppShell(): void {
   });
   bindUserMenu();
   renderCurrentRoute();
+}
+
+function isAdminUser(user: User | null = state.user): boolean {
+  if (!user) return false;
+  if (user.isAdmin === true) return true;
+  const role = normalizeStatus(user.role || user.papel || "");
+  return ["admin", "administrador", "owner", "proprietario", "gestor", "super_admin"].includes(role);
 }
 
 function bindUserMenu(): void {
@@ -2000,6 +2007,10 @@ function isAppRoute(value: unknown): value is AppState["route"] {
 }
 
 function renderCurrentRoute(): void {
+  if (["recursos", "usuarios", "debug"].includes(state.route) && !isAdminUser()) {
+    state.route = "dashboard";
+    history.replaceState(null, "", "/");
+  }
   if (state.route === "agenda") renderAgenda();
   else if (state.route === "pacientes") renderPacientes();
   else if (state.route === "evolucoes") renderEvolucoes();
@@ -2013,6 +2024,10 @@ function renderCurrentRoute(): void {
 }
 
 async function loadCurrentRoute(): Promise<void> {
+  if (["recursos", "usuarios", "debug"].includes(state.route) && !isAdminUser()) {
+    state.route = "dashboard";
+    history.replaceState(null, "", "/");
+  }
   if (state.route === "agenda") {
     await loadAgenda();
     return;
@@ -2640,10 +2655,10 @@ function renderDashboardPro(
       </div>
     </header>
     <section class="metric-strip">
-      <div class="metric"><span>Atendimentos hoje</span><strong>${agendaHoje.length}</strong><small>${slotsAbertos} abertos</small></div>
-      <div class="metric"><span>Proximo horario</span>${dashboardNextAppointmentHtml(nextSlot, hoje)}</div>
-      <div class="metric"><span>Pendencias</span><strong>${dashboardMetrics.pendenciasOperacionaisTotal}</strong><small>${dashboardMetrics.semEvolucaoCount} sem evolucao - ${dashboardMetrics.pagamentoPendenteCount} pagamento pendente</small></div>
-      <div class="metric"><span>Financeiro do mes</span><strong>${formatMoney(dashboardMetrics.recebidoMes)}</strong><small>${dashboardMetrics.atendimentosRealizadosMes} atendimentos - ${formatMoney(dashboardMetrics.valorPendentePagamento)} a receber</small></div>
+      <button class="metric metric-action-card" type="button" data-dashboard-route="agenda"><span>Atendimentos hoje</span><strong>${agendaHoje.length}</strong><small>${slotsAbertos} abertos</small></button>
+      <button class="metric metric-action-card" type="button" data-dashboard-route="agenda"><span>Proximo horario</span>${dashboardNextAppointmentHtml(nextSlot, hoje)}</button>
+      <button class="metric metric-action-card" type="button" data-dashboard-route="agenda"><span>Pendencias</span><strong>${dashboardMetrics.pendenciasOperacionaisTotal}</strong><small>${dashboardMetrics.semEvolucaoCount} sem evolucao - ${dashboardMetrics.pagamentoPendenteCount} pagamento pendente</small></button>
+      <button class="metric metric-action-card" type="button" data-dashboard-route="financeiro"><span>Financeiro do mes</span><strong>${formatMoney(dashboardMetrics.recebidoMes)}</strong><small>${dashboardMetrics.atendimentosRealizadosMes} atendimentos - ${formatMoney(dashboardMetrics.valorPendentePagamento)} a receber</small></button>
     </section>
     <section class="today-layout">
       ${dashboardSectionHtml(
@@ -2733,6 +2748,13 @@ function renderDashboardPro(
     });
   });
   document.querySelector<HTMLButtonElement>("#refresh-dashboard")?.addEventListener("click", loadDashboard);
+  view.querySelectorAll<HTMLButtonElement>("[data-dashboard-route]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const route = button.dataset.dashboardRoute;
+      setDocumentRoute(isAppRoute(route) ? route : "dashboard");
+      await loadCurrentRoute();
+    });
+  });
   document.querySelector<HTMLButtonElement>("#go-agenda")?.addEventListener("click", async () => {
     setDocumentRoute("agenda");
     await loadAgenda();
@@ -3899,8 +3921,10 @@ function renderRetroAttendanceModal(patient: Paciente): void {
             <label>Data
               <input name="data" type="date" value="${todayISO()}" required />
             </label>
-            <label>Servico
-              <input name="servico" type="text" value="Atendimento" required />
+            <label>Tipo de atendimento
+              <select name="tipoAtendimentoId">
+                ${appointmentTypeOptions(appointmentTypeById().id)}
+              </select>
             </label>
           </div>
           <div class="form-columns">
@@ -3943,7 +3967,10 @@ function renderRetroAttendanceModal(patient: Paciente): void {
   });
   root.querySelector<HTMLElement>("[data-modal-panel]")?.addEventListener("click", (event) => event.stopPropagation());
   const form = root.querySelector<HTMLFormElement>("#retro-attendance-form");
-  if (form) bindAutoEndTime(form);
+  if (form) {
+    bindAutoEndTime(form);
+    bindAppointmentTypeDefaults(form);
+  }
   root.querySelector<HTMLFormElement>("#retro-attendance-form")?.addEventListener("submit", (event) => {
     event.preventDefault();
     void submitRetroAttendance(event.currentTarget as HTMLFormElement, patient);
@@ -3955,7 +3982,9 @@ async function submitRetroAttendance(form: HTMLFormElement, patient: Paciente): 
   const date = String(data.get("data") || "").trim();
   const start = String(data.get("horaInicio") || "").trim();
   const end = String(data.get("horaFim") || "").trim();
-  const service = String(data.get("servico") || "Atendimento").trim() || "Atendimento";
+  const appointmentTypeId = String(data.get("tipoAtendimentoId") || "").trim();
+  const appointmentType = appointmentTypeById(appointmentTypeId);
+  const service = appointmentType.nome || "Atendimento";
   const value = parseMoneyInput(data.get("valorAtendimento")) || Number(patient.valorPadraoAtendimento || state.user?.valorPadraoAtendimento || 0);
   const status = String(data.get("status") || "aberto").trim() || "aberto";
   const observation = String(data.get("observacao") || "").trim();
@@ -3980,6 +4009,8 @@ async function submitRetroAttendance(form: HTMLFormElement, patient: Paciente): 
       nomeCompleto: patient.nomeCompleto,
       servico: service,
       service,
+      tipoAtendimentoId: appointmentTypeId,
+      appointmentTypeId,
       data: date,
       horaInicio: start,
       horaFim: end,
@@ -5234,7 +5265,7 @@ function newAppointmentDrawerHtml(): string {
           <h2>Novo agendamento</h2>
           <button class="ghost-button" type="button" data-close-drawer="true">Fechar</button>
         </div>
-        <div class="notice" role="status"></div>
+        <div class="notice" role="status" hidden></div>
         <form id="new-appointment-form" class="form-grid">
           <input name="pacienteId" type="hidden" value="${escapeHtml(patient?.id || "")}" />
           <label>Paciente
@@ -5359,6 +5390,7 @@ async function submitNewAppointment(form: HTMLFormElement): Promise<void> {
   const notice = document.querySelector<HTMLDivElement>(".appointment-drawer .notice");
   if (!patientName || !appointmentDate || !startTime) {
     if (notice) {
+      notice.hidden = false;
       notice.className = "notice error";
       notice.textContent = "Informe paciente, data e horario inicial.";
     }
@@ -5391,6 +5423,7 @@ async function submitNewAppointment(form: HTMLFormElement): Promise<void> {
     observacoes: observation,
   };
   if (notice) {
+    notice.hidden = false;
     notice.className = "notice info";
     notice.textContent = "Salvando agendamento...";
   }
@@ -5405,6 +5438,7 @@ async function submitNewAppointment(form: HTMLFormElement): Promise<void> {
     }
   } catch (error) {
     if (notice) {
+      notice.hidden = false;
       notice.className = "notice error";
       notice.textContent = error instanceof Error ? error.message : "Falha ao salvar agendamento.";
     }
