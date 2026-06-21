@@ -851,3 +851,7 @@
 [2026-06-21 00:24:00 -03:00] build 0.1.138 - correcao dashboard local
 - Corrigido erro de runtime `formatPhone is not defined` no bloco de WhatsApp do dashboard.
 - Dashboard agora usa `maskRegisterPhone`, formatador existente no frontend vanilla.
+
+[2026-06-21 00:27:00 -03:00] build 0.1.139 - escala visual dashboard
+- Interface vanilla em desktop ampliada em 20% para dashboard, sidebar e topo.
+- Dashboard usa escala CSS com largura compensada para manter o painel dentro do viewport sem corte horizontal.

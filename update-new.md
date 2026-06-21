@@ -1074,3 +1074,7 @@ C:/Users/gabri/OneDrive/Desktop/pipeline-chat-contextual-fisiobot.md
 ## Correcao 0.1.138
 
 - Corrigida a formatacao de WhatsApp no dashboard vanilla para usar o helper existente, eliminando o erro de runtime ao abrir a rota `/dashboard`.
+
+## Ajuste visual 0.1.139
+
+- Interface do dashboard vanilla ampliada em 20% no desktop, com largura compensada para preservar o encaixe no viewport.
