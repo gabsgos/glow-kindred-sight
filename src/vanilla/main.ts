@@ -1644,6 +1644,9 @@ function renderAppShell(): void {
   if (!app) return;
   const active = state.route;
   const userName = state.user?.nomeExibicao || state.user?.nomeCompleto || state.user?.login || "Usuario";
+  const firstName = String(userName).trim().split(/\s+/)[0] || "profissional";
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
   const adminUser = isAdminUser();
   const managementItems: Array<{ route: AppState["route"]; icon: string; title: string }> = [
     { route: "financeiro", icon: "finance", title: "Financeiro" },
@@ -1701,20 +1704,25 @@ function renderAppShell(): void {
             )
             .join("")}
         </nav>
+        <footer class="sidebar-footer">
+          <div class="sidebar-user"><span>${escapeHtml(firstName.slice(0, 2).toUpperCase())}</span><div><strong>${escapeHtml(userName)}</strong><small>${escapeHtml(state.user?.profissaoCategoria || "Profissional de saude")}</small></div></div>
+          <button type="button" id="open-settings-sidebar">Configuracoes</button>
+          <button type="button" id="logout-sidebar">Sair</button>
+        </footer>
       </aside>
       <section class="main">
-        <header class="global-topbar">
+        <header class="global-topbar ${active === "dashboard" ? "dashboard-topbar" : ""}">
           <button class="sidebar-toggle" type="button" aria-label="Menu">Menu</button>
-          <div class="global-search" role="search">
-            <span aria-hidden="true" class="search-label">Buscar</span>
-            <input id="global-search" type="text" placeholder="Pesquisar paciente, atendimento ou relatorio" autocomplete="off" />
-          </div>
+          ${
+            active === "dashboard"
+              ? `<div class="dashboard-greeting"><strong>${greeting}, ${escapeHtml(firstName)} <span aria-hidden="true">&#128075;</span></strong><small>${formatDate(todayISO())}</small></div>`
+              : `<div class="global-search" role="search"><span aria-hidden="true" class="search-label">Buscar</span><input id="global-search" type="text" placeholder="Pesquisar paciente, atendimento ou relatorio" autocomplete="off" /></div>`
+          }
           <div class="topbar-actions">
-            <span class="system-status"><span class="status-dot ok"></span><b>Backend</b><small>Ativo</small></span>
-            <span class="system-status"><span class="status-dot ok"></span><b>WhatsApp</b><small>Conectado</small></span>
             <button class="notification-button" id="notifications" type="button" title="Notificacoes" aria-label="Notificacoes">
               <span aria-hidden="true">!</span>
             </button>
+            <button class="secondary-button topbar-new-appointment" id="new-appointment-topbar" type="button">+ Nova consulta</button>
             <div class="user-menu">
               <button class="user-chip" id="user-menu-button" type="button" aria-expanded="false">${escapeHtml(userName)}</button>
               <div class="user-menu-panel" id="user-menu-panel" hidden>
@@ -1743,6 +1751,13 @@ function renderAppShell(): void {
     setDocumentRoute("pacientes");
     await loadPacientes();
   });
+  document.querySelector<HTMLButtonElement>("#new-appointment-topbar")?.addEventListener("click", async () => {
+    setDocumentRoute("agenda");
+    state.appointmentDrawerOpen = true;
+    await loadAgenda();
+  });
+  document.querySelector<HTMLButtonElement>("#open-settings-sidebar")?.addEventListener("click", renderSecurityModal);
+  document.querySelector<HTMLButtonElement>("#logout-sidebar")?.addEventListener("click", logoutFromWeb);
   document.querySelectorAll<HTMLButtonElement>("[data-route]").forEach((button) => {
     button.addEventListener("click", async () => {
       const nextRoute = button.dataset.route;
@@ -2626,6 +2641,123 @@ function renderDashboard(
 }
 
 function renderDashboardPro(
+  pacientes: Paciente[] = state.pacientes,
+  agenda: AgendaSlot[] = state.agenda,
+  evolucoes: Evolucao[] = state.evolucoes,
+  financeiro: Faturamento[] = state.financeiro,
+): void {
+  const view = document.querySelector<HTMLDivElement>("#view");
+  if (!view) return;
+  const hoje = todayISO();
+  const agendaHoje = agenda.filter((slot) => slot.data === hoje && !isCanceledStatus(slot.status));
+  const metrics = calculateDashboardMetrics(agenda, financeiro);
+  const nextSlot = nextAppointmentSlot(agenda);
+  const firstName = String(state.user?.nomeExibicao || state.user?.nomeCompleto || "profissional").trim().split(/\s+/)[0];
+  const pendingValue = metrics.valorPendentePagamento;
+  const profile = loadOnboardingProfile();
+  const setupStep = onboardingCurrentStep();
+  const statusLabel = (value?: string) => {
+    const normalized = normalizeStatus(value || "aberto");
+    if (normalized === "concluido" || normalized === "completed") return "Concluido";
+    if (normalized === "cancelado" || normalized === "cancelled") return "Cancelado";
+    if (normalized === "confirmado" || normalized === "scheduled") return "Confirmado";
+    return normalized === "aberto" ? "Aberto" : String(value || "Aberto");
+  };
+  const financeLabel = (slot: AgendaSlot) => isPaidStatus(slotFinancialStatus(slot)) ? "Pago" : "Pendente";
+  const appointmentType = (slot: AgendaSlot) => state.appointmentTypes.find((type) => type.id === slot.tipoAtendimentoId)?.nome || slot.servico || "Presencial";
+  const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "P";
+  view.innerHTML = `
+    <div class="dashboard-v2">
+      <section class="dashboard-overview-grid">
+        <button class="overview-card next" type="button" data-dashboard-route="agenda">
+          <span class="overview-icon calendar">${navIcon("calendar")}</span>
+          <span class="overview-content"><small>Proximo atendimento</small><strong>${escapeHtml(nextSlot?.clientes?.[0]?.nomeCompleto || "Sem agendamento")}</strong><em>${nextSlot ? `${formatDate(nextSlot.data)} · ${nextSlot.horaInicio || "--:--"}` : "Sua agenda esta livre"}</em><b>Ver agenda</b></span>
+        </button>
+        <button class="overview-card pending" type="button" data-dashboard-route="financeiro">
+          <span class="overview-icon money">${navIcon("finance")}</span>
+          <span class="overview-content"><small>Pagamentos pendentes</small><strong>${formatMoney(pendingValue)}</strong><em>${metrics.pagamentoPendenteCount} atendimento${metrics.pagamentoPendenteCount === 1 ? "" : "s"}</em><b>Ver pendencias</b></span>
+        </button>
+        <button class="overview-card revenue" type="button" data-dashboard-route="financeiro">
+          <span class="overview-icon growth">${navIcon("reports")}</span>
+          <span class="overview-content"><small>Recebido este mes</small><strong>${formatMoney(metrics.recebidoMes)}</strong><em>${metrics.atendimentosRealizadosMes} atendimento${metrics.atendimentosRealizadosMes === 1 ? "" : "s"}</em><b>Ver financeiro</b></span>
+        </button>
+        <section class="quick-actions-card" aria-label="Acoes rapidas">
+          <h2>Acoes rapidas</h2>
+          <button type="button" data-dashboard-quick="payment">Registrar pagamento <span>›</span></button>
+          <button type="button" data-dashboard-quick="attendance">Registrar atendimento <span>›</span></button>
+          <button type="button" data-dashboard-quick="evolution">Nova evolucao <span>›</span></button>
+          <button type="button" data-dashboard-quick="reports">Ver relatorios <span>›</span></button>
+        </section>
+      </section>
+
+      <section class="dashboard-agenda-panel">
+        <header class="dashboard-panel-header">
+          <div><h1>Agenda de hoje <span>${formatDate(hoje)}</span></h1><small>${agendaHoje.length} atendimento${agendaHoje.length === 1 ? "" : "s"}</small></div>
+          <div><button class="ghost-button" id="dashboard-week" type="button">Ver semana</button><button class="ghost-button" id="dashboard-filters" type="button">Filtros</button></div>
+        </header>
+        <div class="dashboard-agenda-table" role="table" aria-label="Agenda de hoje">
+          <div class="dashboard-agenda-head" role="row"><span>Horario</span><span>Paciente</span><span>Tipo</span><span>Servico</span><span>Status</span><span>Valor</span><span>Acoes</span></div>
+          ${agendaHoje.length ? agendaHoje.map((slot) => {
+            const patient = slot.clientes?.[0] || {};
+            const patientName = patient.nomeCompleto || "Paciente";
+            const financial = financeLabel(slot);
+            const clinical = statusLabel(slot.status);
+            return `<div class="dashboard-agenda-row" role="row">
+              <strong>${escapeHtml(`${slot.horaInicio || "--:--"} - ${slot.horaFim || "--:--"}`)}</strong>
+              <button class="dashboard-patient-cell" type="button" data-dashboard-event="${escapeHtml(slot.id)}" data-dashboard-action="open"><i>${escapeHtml(initials(patientName))}</i><span>${escapeHtml(patientName)}</span></button>
+              <span><b class="type-chip ${normalizeStatus(appointmentType(slot))}">${escapeHtml(appointmentType(slot))}</b></span>
+              <span>${escapeHtml(slot.servico || "Atendimento")}</span>
+              <span><b class="status-chip ${financial === "Pago" ? "paid" : clinical === "Concluido" ? "done" : "pending"}">${escapeHtml(financial === "Pendente" ? "Pendente" : clinical)}</b></span>
+              <strong>${displaySlotMoney(slot)}</strong>
+              <span class="agenda-row-actions"><button type="button" data-dashboard-event="${escapeHtml(slot.id)}" data-dashboard-action="open">Abrir</button><button type="button" data-dashboard-event="${escapeHtml(slot.id)}" data-dashboard-action="evolve">Evoluir</button><button class="receive" type="button" data-dashboard-event="${escapeHtml(slot.id)}" data-dashboard-action="receive">Receber</button></span>
+            </div>`;
+          }).join("") : `<div class="dashboard-agenda-empty">Nenhum atendimento programado para hoje.</div>`}
+        </div>
+        <button class="dashboard-all-appointments" id="dashboard-all-appointments" type="button">Ver todos os atendimentos de hoje</button>
+      </section>
+
+      <section class="dashboard-setup-grid">
+        <section class="dashboard-setup-form">
+          <header><h2>Cadastro inicial</h2><p>Complete os dados usados para personalizar sua rotina.</p></header>
+          <div class="setup-form-grid">
+            <label>Nome completo<input value="${escapeHtml(profile.conta.nomeCompleto || state.user?.nomeCompleto || "")}" placeholder="Ex.: Gabriel Vinicius da Silva" readonly></label>
+            <label>Nome de exibicao<input value="${escapeHtml(profile.conta.nomeExibicao || state.user?.nomeExibicao || "")}" placeholder="Ex.: Dr. Gabriel, CW Rehab" readonly></label>
+            <label>CPF<input value="${escapeHtml(formatCpf(profile.conta.cpf || state.user?.cpf || ""))}" placeholder="000.000.000-00" readonly></label>
+            <label>E-mail<input value="${escapeHtml(profile.conta.email || state.user?.email || "")}" placeholder="seu@email.com" readonly></label>
+            <label>WhatsApp<input value="${escapeHtml(formatPhone(profile.conta.telefone || state.user?.telefone || ""))}" placeholder="(11) 99999-9999" readonly></label>
+            <button class="primary-button setup-continue" id="dashboard-onboarding" type="button">${isOnboardingComplete() ? "Editar configuracao" : "Continuar"}</button>
+          </div>
+        </section>
+        <aside class="dashboard-progress-card"><h2>Seu progresso</h2><p>${isOnboardingComplete() ? "Configuracao concluida" : `${setupStep} de 5 completo`}</p><div class="progress-track"><i style="width:${isOnboardingComplete() ? 100 : Math.round((setupStep / 5) * 100)}%"></i></div>${["Dados pessoais", "Perfil profissional", "Agenda e atendimento", "Recebimentos e WhatsApp"].map((item, index) => `<div class="progress-step ${index + 1 < setupStep || isOnboardingComplete() ? "done" : index + 1 === setupStep ? "active" : ""}"><b>${index + 1}</b><span>${escapeHtml(item)}<small>${index === 0 ? "Informacoes basicas da conta" : index === 1 ? "Formacao e especialidades" : index === 2 ? "Horarios e tipos de servico" : "Formas de pagamento e mensagens"}</small></span></div>`).join("")}</aside>
+      </section>
+      ${state.selectedEventId ? dashboardAppointmentDrawerHtml() : ""}
+    </div>
+  `;
+  view.querySelectorAll<HTMLButtonElement>("[data-dashboard-route]").forEach((button) => button.addEventListener("click", async () => { setDocumentRoute(button.dataset.dashboardRoute === "financeiro" ? "financeiro" : "agenda"); await loadCurrentRoute(); }));
+  view.querySelectorAll<HTMLButtonElement>("[data-dashboard-event]").forEach((button) => button.addEventListener("click", async () => {
+    const eventId = button.dataset.dashboardEvent || "";
+    const action = button.dataset.dashboardAction || "open";
+    const slot = state.agenda.find((item) => item.id === eventId);
+    if (!slot) return;
+    if (action === "evolve") { setDocumentRoute("evolucoes"); state.selectedPatientId = slot.clientes?.[0]?.pacienteId || null; state.patientDrawerOpen = Boolean(state.selectedPatientId); state.registryTab = "evolucoes"; await loadEvolucoes(); return; }
+    state.selectedEventId = eventId;
+    state.appointmentTab = action === "receive" ? "financeiro" : "atendimento";
+    renderDashboardPro(pacientes, agenda, evolucoes, financeiro);
+  }));
+  view.querySelectorAll<HTMLButtonElement>("[data-dashboard-quick]").forEach((button) => button.addEventListener("click", async () => {
+    const quick = button.dataset.dashboardQuick;
+    if (quick === "payment") { setDocumentRoute("financeiro"); await loadFinanceiro(); renderFinancePaymentModal(); return; }
+    if (quick === "reports") { setDocumentRoute("relatorios"); await loadRelatorios(); return; }
+    setDocumentRoute("evolucoes"); state.registryTab = quick === "evolution" ? "evolucoes" : "resumo"; await loadEvolucoes();
+  }));
+  view.querySelector<HTMLButtonElement>("#dashboard-week")?.addEventListener("click", async () => { setDocumentRoute("agenda"); await loadAgenda(); });
+  view.querySelector<HTMLButtonElement>("#dashboard-filters")?.addEventListener("click", async () => { setDocumentRoute("agenda"); await loadAgenda(); });
+  view.querySelector<HTMLButtonElement>("#dashboard-all-appointments")?.addEventListener("click", async () => { setDocumentRoute("agenda"); await loadAgenda(); });
+  view.querySelector<HTMLButtonElement>("#dashboard-onboarding")?.addEventListener("click", () => { setDocumentRoute("onboarding"); });
+  bindAppointmentDrawerActions(() => loadDashboard(), () => renderDashboardPro(pacientes, agenda, evolucoes, financeiro));
+}
+
+function renderDashboardLegacy(
   pacientes: Paciente[] = state.pacientes,
   agenda: AgendaSlot[] = state.agenda,
   evolucoes: Evolucao[] = state.evolucoes,

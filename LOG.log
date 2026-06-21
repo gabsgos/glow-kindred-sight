@@ -839,3 +839,11 @@
 - Registrar Atendimento do card do paciente passou a usar `Tipo de atendimento` como fonte unica; `Servico` duplicado foi removido e o payload deriva o servico do tipo selecionado.
 - Regra de duracao padrao preservada: alteracao de tipo recalcula o horario final em novo agendamento e registro de atendimento.
 - Validacao local: `npm run build:tablet` OK.
+
+[2026-06-21 00:20:00 -03:00] build 0.1.137 - dashboard clinico vanilla
+- Dashboard vanilla redesenhado a partir da referencia aprovada: shell branco, sidebar compacta, topo de saudacao, botao Nova consulta, perfil e configuracoes no rodape.
+- Substituida a tela anterior por cards operacionais de proximo atendimento, pagamentos pendentes e recebido no mes, mais painel de acoes rapidas.
+- Agenda do dia agora usa tabela operacional com paciente, tipo, servico, status, valor e acoes Abrir, Evoluir e Receber ligadas aos fluxos existentes.
+- Incluido bloco de configuracao/progresso no dashboard para manter a continuidade do onboarding no produto.
+- Responsividade adicionada para cards, tabela horizontal e configuracao em viewport menor.
+- Nenhuma alteracao feita na SPA React e nenhum deploy realizado.

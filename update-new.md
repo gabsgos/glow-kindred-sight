@@ -1062,3 +1062,11 @@ C:/Users/gabri/OneDrive/Desktop/pipeline-chat-contextual-fisiobot.md
 - Novo agendamento e registro de atendimento usam `Tipo de atendimento` como fonte unica; `Servico` duplicado foi removido dos formularios editaveis.
 - Horario final continua obedecendo a duracao padrao do usuario/onboarding e e recalculado quando o tipo de atendimento muda.
 - Validacao local: `npm run build:tablet` OK.
+
+## Implementado no build 0.1.137 - dashboard clinico vanilla
+
+- Dashboard operacional redesenhado com a referencia visual aprovada: sidebar compacta, topo de saudacao, acao `Nova consulta`, cards de proximo atendimento, pagamentos pendentes e recebido no mes.
+- Acoes rapidas conectadas aos fluxos vanilla existentes de pagamento, atendimento, evolucao e relatorios.
+- Agenda do dia recebeu tabela operacional com acoes `Abrir`, `Evoluir` e `Receber` ligadas a drawer, cadastro/evolucao e financeiro.
+- Bloco de cadastro inicial/progresso incluido no dashboard para manter continuidade da configuracao do profissional.
+- Sem alteracao na SPA React e sem deploy.
