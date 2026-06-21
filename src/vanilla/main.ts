@@ -2724,7 +2724,7 @@ function renderDashboardPro(
             <label>Nome de exibicao<input value="${escapeHtml(profile.conta.nomeExibicao || state.user?.nomeExibicao || "")}" placeholder="Ex.: Dr. Gabriel, CW Rehab" readonly></label>
             <label>CPF<input value="${escapeHtml(formatCpf(profile.conta.cpf || state.user?.cpf || ""))}" placeholder="000.000.000-00" readonly></label>
             <label>E-mail<input value="${escapeHtml(profile.conta.email || state.user?.email || "")}" placeholder="seu@email.com" readonly></label>
-            <label>WhatsApp<input value="${escapeHtml(formatPhone(profile.conta.telefone || state.user?.telefone || ""))}" placeholder="(11) 99999-9999" readonly></label>
+            <label>WhatsApp<input value="${escapeHtml(maskRegisterPhone(profile.conta.telefone || state.user?.telefone || ""))}" placeholder="(11) 99999-9999" readonly></label>
             <button class="primary-button setup-continue" id="dashboard-onboarding" type="button">${isOnboardingComplete() ? "Editar configuracao" : "Continuar"}</button>
           </div>
         </section>

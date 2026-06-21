@@ -847,3 +847,7 @@
 - Incluido bloco de configuracao/progresso no dashboard para manter a continuidade do onboarding no produto.
 - Responsividade adicionada para cards, tabela horizontal e configuracao em viewport menor.
 - Nenhuma alteracao feita na SPA React e nenhum deploy realizado.
+
+[2026-06-21 00:24:00 -03:00] build 0.1.138 - correcao dashboard local
+- Corrigido erro de runtime `formatPhone is not defined` no bloco de WhatsApp do dashboard.
+- Dashboard agora usa `maskRegisterPhone`, formatador existente no frontend vanilla.

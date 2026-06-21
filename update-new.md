@@ -1070,3 +1070,7 @@ C:/Users/gabri/OneDrive/Desktop/pipeline-chat-contextual-fisiobot.md
 - Agenda do dia recebeu tabela operacional com acoes `Abrir`, `Evoluir` e `Receber` ligadas a drawer, cadastro/evolucao e financeiro.
 - Bloco de cadastro inicial/progresso incluido no dashboard para manter continuidade da configuracao do profissional.
 - Sem alteracao na SPA React e sem deploy.
+
+## Correcao 0.1.138
+
+- Corrigida a formatacao de WhatsApp no dashboard vanilla para usar o helper existente, eliminando o erro de runtime ao abrir a rota `/dashboard`.
