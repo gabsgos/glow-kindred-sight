@@ -2,7 +2,7 @@
 
 import { debugIntentLocal, type DebugIntentResult } from "../lib/intentDebug";
 
-registerFisioBotPwa();
+registerFisiaPwa();
 
 type User = {
   internalUserId?: string;
@@ -410,6 +410,7 @@ type AppState = {
   appointmentDraftPatientId: string | null;
   appointmentTab: "atendimento" | "financeiro" | "historico";
   paymentSaving: boolean;
+  sidebarCollapsed: boolean;
   dashboardCardsCollapsed: boolean;
   dashboardCollapsedSections: Record<DashboardSectionKey, boolean>;
   reportTab: "atendimentos" | "financeiro" | "pacientes";
@@ -417,6 +418,8 @@ type AppState = {
   agendaStart: string;
   agendaEnd: string;
   agendaWeekStart: string;
+  agendaMonthPickerOpen: boolean;
+  agendaPickerMonth: string | null;
   agendaSearch: string;
   agendaStatus: string;
   agendaView: "semana" | "mes" | "ano";
@@ -437,6 +440,7 @@ type AgendaYearMonth = {
 
 const app = document.querySelector<HTMLDivElement>("#app");
 const DASHBOARD_CARDS_COLLAPSED_KEY = "fisiobot.dashboardCardsCollapsed";
+const SIDEBAR_COLLAPSED_KEY = "fisiobot.sidebarCollapsed";
 const DASHBOARD_SECTION_COLLAPSED_PREFIX = "fisiobot.dashboard.section.";
 const DEBUG_INTENTS_HISTORY_KEY = "fisiobot.vanilla.debugIntents.messages";
 const LOCAL_ACCOUNTS_KEY = "fisiobot.vanilla.accounts";
@@ -471,6 +475,26 @@ const HEALTH_PROFESSIONS = [
 ];
 const COUNCIL_UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"];
 const TIMEZONES = ["America/Sao_Paulo", "America/Manaus", "America/Cuiaba", "America/Fortaleza", "America/Belem", "America/Recife", "America/Bahia", "America/Rio_Branco", "UTC"];
+const BRAZIL_CALENDAR_2026: Record<string, { label: string; type: "holiday" | "optional" }> = {
+  "2026-01-01": { label: "Confraternizacao Universal", type: "holiday" },
+  "2026-02-16": { label: "Carnaval", type: "optional" },
+  "2026-02-17": { label: "Carnaval", type: "optional" },
+  "2026-02-18": { label: "Quarta-feira de Cinzas (ate 14h)", type: "optional" },
+  "2026-04-03": { label: "Paixao de Cristo", type: "holiday" },
+  "2026-04-21": { label: "Tiradentes", type: "holiday" },
+  "2026-05-01": { label: "Dia Mundial do Trabalho", type: "holiday" },
+  "2026-06-04": { label: "Corpus Christi", type: "optional" },
+  "2026-06-05": { label: "Ponto facultativo", type: "optional" },
+  "2026-09-07": { label: "Independencia do Brasil", type: "holiday" },
+  "2026-10-12": { label: "Nossa Senhora Aparecida", type: "holiday" },
+  "2026-10-28": { label: "Dia do Servidor Publico", type: "optional" },
+  "2026-11-02": { label: "Finados", type: "holiday" },
+  "2026-11-15": { label: "Proclamacao da Republica", type: "holiday" },
+  "2026-11-20": { label: "Dia Nacional de Zumbi e da Consciencia Negra", type: "holiday" },
+  "2026-12-24": { label: "Vespera de Natal (apos 13h)", type: "optional" },
+  "2026-12-25": { label: "Natal", type: "holiday" },
+  "2026-12-31": { label: "Vespera de Ano Novo (apos 13h)", type: "optional" },
+};
 const DEFAULT_APPOINTMENT_TYPES: AppointmentType[] = [
   { id: "presencial", nome: "Presencial", duracaoPadrao: 60, valorPadrao: 0, modalidade: "presencial", aceitaGrupo: false },
   { id: "grupo", nome: "Grupo", duracaoPadrao: 60, valorPadrao: 0, modalidade: "presencial", aceitaGrupo: true },
@@ -487,7 +511,7 @@ const DEFAULT_APPOINTMENT_TYPES: AppointmentType[] = [
   { id: "outro", nome: "Outro", duracaoPadrao: 60, valorPadrao: 0, modalidade: "outro", aceitaGrupo: false },
 ];
 
-function registerFisioBotPwa(): void {
+function registerFisiaPwa(): void {
   if (!("serviceWorker" in navigator)) return;
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/pwa-sw.js").catch(() => {
@@ -517,6 +541,7 @@ const state: AppState = {
   appointmentDraftPatientId: null,
   appointmentTab: "atendimento",
   paymentSaving: false,
+  sidebarCollapsed: loadBooleanPreference(SIDEBAR_COLLAPSED_KEY),
   dashboardCardsCollapsed: loadBooleanPreference(DASHBOARD_CARDS_COLLAPSED_KEY),
   dashboardCollapsedSections: loadDashboardCollapsedSections(),
   reportTab: "atendimentos",
@@ -524,6 +549,8 @@ const state: AppState = {
   agendaStart: todayISO(),
   agendaEnd: addDaysISO(7),
   agendaWeekStart: startOfWeekISO(new Date()),
+  agendaMonthPickerOpen: false,
+  agendaPickerMonth: null,
   agendaSearch: "",
   agendaStatus: "todos",
   agendaView: "semana",
@@ -650,7 +677,7 @@ function displaySlotMoney(slot: AgendaSlot): string {
   const status = slotFinancialStatus(slot);
   if (isExemptStatus(status)) return "Cortesia/isento";
   if (isPaidStatus(status)) return "Pago";
-  return "Valor nao definido";
+  return "Nao faturado";
 }
 
 function parseMoneyInput(value: FormDataEntryValue | null): number {
@@ -728,6 +755,13 @@ function timeDiffMinutes(start: string, end: string): number {
   const b = parse(end);
   if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) return 0;
   return b - a;
+}
+
+function appointmentDurationMinutes(slot: AgendaSlot): number {
+  const explicit = timeDiffMinutes(slot.horaInicio || "", slot.horaFim || "");
+  if (explicit > 0) return explicit;
+  const type = appointmentTypeById(slot.tipoAtendimentoId);
+  return Number(type?.duracaoPadrao || defaultAppointmentDurationMinutes() || 60);
 }
 
 function findPatientByName(name: string): Paciente | null {
@@ -884,6 +918,16 @@ function isRealizedSlot(slot: AgendaSlot): boolean {
   return ["concluido", "concluida", "realizado", "realizada", "finalizado", "finalizada", "completed"].includes(status) || slotHasEvolution(slot);
 }
 
+function calendarHoliday(day: string): { label: string; type: "holiday" | "optional" } | null {
+  return BRAZIL_CALENDAR_2026[day] || null;
+}
+
+function shiftMonthISO(anchorISO: string, amount: number): string {
+  const date = new Date(`${anchorISO.slice(0, 7)}-01T12:00:00`);
+  date.setMonth(date.getMonth() + amount);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
 function calculateDashboardMetrics(agenda: AgendaSlot[], financeiro: Faturamento[]): DashboardMetrics {
   const mesAtual = monthKey();
   const monthSlots = agenda.filter((slot) => String(slot.data || "").startsWith(mesAtual) && !isCanceledStatus(slot.status));
@@ -973,10 +1017,15 @@ function navIcon(name: string): string {
       '<path d="M8 2v4"/><path d="M16 2v4"/><rect x="5" y="6" width="14" height="14" rx="3"/><path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M9 15h6"/><path d="M2 12h3"/><path d="M19 12h3"/>',
     reports:
       '<path d="M4 19V5"/><path d="M4 19h17"/><path d="M8 16V9"/><path d="M13 16V6"/><path d="M18 16v-4"/>',
+    pulse: '<path d="M3 12h4l2.2-6 4 12 2.2-6H21"/>',
+    assistant: '<path d="M12 3l1.7 4.8L18.5 9.5l-4.8 1.7L12 16l-1.7-4.8-4.8-1.7 4.8-1.7L12 3Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/><path d="M5 15l.6 1.6L7 17l-1.4.4L5 19l-.6-1.6L3 17l1.4-.4L5 15Z"/>',
+    chevronLeft: '<path d="m15 18-6-6 6-6"/>',
+    chevronRight: '<path d="m9 18 6-6-6-6"/>',
     resources:
       '<path d="M4 12h4l2-7 4 14 2-7h4"/><path d="M20 12h1"/><path d="M3 12h1"/>',
     users:
       '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    menu: '<path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/>',
   };
   return `<svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${icons[name] || icons.home}</svg>`;
 }
@@ -1079,50 +1128,70 @@ async function bootstrap(): Promise<void> {
 function renderLogin(errorMessage = ""): void {
   if (!app) return;
   app.innerHTML = `
-    <main class="auth-shell">
-      <section class="auth-panel" aria-label="Login FisioBot">
-        <div class="auth-box">
-          <div class="brand">
+    <main class="auth-shell fisia-login-shell">
+      <section class="auth-panel fisia-login-panel" aria-label="Login FISIA">
+        <div class="auth-box fisia-login-box">
+          <header class="fisia-auth-brand">
             <div class="brand-mark" aria-hidden="true">F</div>
             <div>
-              <p class="brand-title">FisioBot</p>
-              <div class="brand-subtitle">cockpit clinico</div>
+              <p class="brand-title">FISIA</p>
+              <div class="brand-subtitle">Gestao inteligente para fisioterapeutas</div>
             </div>
-          </div>
-          <div class="panel login-card">
-            <h1>Entrar</h1>
-            <p class="hint">Acesse agenda, pacientes e rotina clinica com sua conta do FisioBot.</p>
-            <div id="notice" class="notice ${errorMessage ? "error" : ""}" role="status">${escapeHtml(errorMessage)}</div>
-            <form id="login-form" class="form-grid" autocomplete="off" novalidate>
-              <label>Usuario, e-mail ou telefone
-                <input id="login" name="login" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required />
-              </label>
-              <label>Senha
-                <span class="password-field">
-                  <input id="secret" name="secret" type="password" autocomplete="current-password" required />
-                  <button class="ghost-button password-toggle" type="button" data-toggle-password="secret" aria-pressed="false">Mostrar</button>
-                </span>
-              </label>
+          </header>
+          <p class="eyebrow">Bem-vindo de volta</p>
+          <h1>Entre na sua conta</h1>
+          <p class="hint">Acesse sua agenda, seus pacientes e sua rotina clinica.</p>
+          <div id="notice" class="notice ${errorMessage ? "error" : ""}" role="status">${escapeHtml(errorMessage)}</div>
+          <form id="login-form" class="form-grid fisia-login-form" autocomplete="on" novalidate>
+            <label>E-mail, usuario ou WhatsApp
+              <input id="login" name="login" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+            </label>
+            <label>Senha
+              <span class="password-field">
+                <input id="secret" name="secret" type="password" autocomplete="current-password" required />
+                <button class="ghost-button password-toggle" type="button" data-toggle-password="secret" aria-pressed="false">Mostrar</button>
+              </span>
+            </label>
+            <div class="login-options-row">
               <label class="check-row">
                 <input id="remember" name="remember" type="checkbox" checked />
-                Manter este dispositivo autorizado
+                Manter este dispositivo conectado
               </label>
-              <button class="primary-button" id="submit" type="submit">Entrar no sistema</button>
-              <button class="secondary-button" id="open-register" type="button">Criar conta</button>
-              <a class="text-link" href="/recover">Recuperar senha</a>
-            </form>
+              <a class="text-link" href="/recover">Esqueci minha senha</a>
+            </div>
+            <button class="primary-button" id="submit" type="submit">Entrar</button>
+          </form>
+          <div class="fisia-signup-line">
+            <span>Ainda nao usa a FISIA?</span>
+            <button class="secondary-button" id="open-register" type="button">Criar conta</button>
           </div>
         </div>
       </section>
-      <section class="auth-copy" aria-hidden="true">
-        <div>
-          <h2>Operacao clinica em uma tela clara.</h2>
-          <p>Agenda, pacientes, recebimentos e pendencias aparecem no mesmo fluxo para reduzir retrabalho no atendimento.</p>
-          <div class="feature-grid">
-            <div class="feature"><strong>Agenda</strong><span>Horarios, status e pendencias visiveis.</span></div>
-            <div class="feature"><strong>Pacientes</strong><span>Cadastro, evolucao e financeiro conectados.</span></div>
-            <div class="feature"><strong>WhatsApp</strong><span>Entrada e validacao preparadas para rotina real.</span></div>
+      <section class="auth-copy fisia-auth-copy" aria-hidden="true">
+        <div class="fisia-flow-lines"></div>
+        <div class="fisia-auth-copy-content">
+          <h2><span>Voce cuida do paciente.</span><strong>A FISIA cuida da rotina.</strong></h2>
+          <p>Agenda, pacientes, evolucoes e financeiro conectados a uma assistente inteligente feita para fisioterapeutas.</p>
+          <div class="fisia-product-mock">
+            <div class="mock-dashboard">
+              <div class="mock-toolbar"><span></span><b></b></div>
+              <div class="mock-main-card">
+                <small>Proximo atendimento</small>
+                <strong>14:30</strong>
+                <span>Ana Paula Martins</span>
+              </div>
+              <div class="mock-mini-grid">
+                <span>Agenda organizada</span>
+                <span>Evolucoes em dia</span>
+                <span>Financeiro conectado</span>
+              </div>
+            </div>
+            <div class="mock-phone">
+              <i></i><b></b><b></b><b></b>
+            </div>
+            <div class="mock-assistant">Posso revisar suas pendencias de hoje.</div>
           </div>
+          <footer>Quando o fisio precisa, chama a FISIA.</footer>
         </div>
       </section>
     </main>
@@ -1150,8 +1219,8 @@ function saveLocalAccounts(accounts: LocalAccount[]): void {
 }
 
 function loadActiveLocalAccount(): LocalAccount | null {
-  const activeCpf = localStorage.getItem(LOCAL_ACTIVE_ACCOUNT_KEY) || "";
-  return loadLocalAccounts().find((account) => account.cpf === activeCpf) || null;
+  const activeId = localStorage.getItem(LOCAL_ACTIVE_ACCOUNT_KEY) || "";
+  return loadLocalAccounts().find((account) => account.cpf === activeId || account.email === activeId || account.internalUserId === activeId) || null;
 }
 
 function isOnboardingComplete(): boolean {
@@ -1259,7 +1328,7 @@ function registerVerificationBadge(verification: RegisterVerificationState | nul
   if (verification?.verified) {
     return "";
   }
-  return `<div class="registration-status warn"><strong>Confirme seu WhatsApp</strong><span>Usaremos esse numero para seguranca da conta e comunicacao com pacientes.</span></div>`;
+  return `<div class="registration-status warn"><strong>WhatsApp ainda nao confirmado</strong><span>Voce pode preencher os dados agora e confirmar o numero antes de concluir a conta.</span></div>`;
 }
 
 function renderRegister(errorMessage = ""): void {
@@ -1276,13 +1345,13 @@ function renderRegister(errorMessage = ""): void {
       !verification.verified,
   );
   app.innerHTML = `
-    <main class="register-commercial-shell">
-      <section class="register-commercial-topbar" aria-label="Cadastro FisioBot">
-        <div class="brand">
+    <main class="register-commercial-shell fisia-register-shell">
+      <section class="register-commercial-topbar fisia-register-topbar" aria-label="Cadastro FISIA">
+        <div class="brand fisia-auth-brand">
           <div class="brand-mark" aria-hidden="true">F</div>
           <div>
-            <p class="brand-title">FisioBot</p>
-            <div class="brand-subtitle">cadastro profissional</div>
+            <p class="brand-title">FISIA</p>
+            <div class="brand-subtitle">Gestao inteligente para fisioterapeutas</div>
           </div>
         </div>
         <button class="ghost-button" id="back-to-login" type="button">Entrar</button>
@@ -1291,8 +1360,8 @@ function renderRegister(errorMessage = ""): void {
         <aside class="register-commercial-side">
           <div>
             <p class="eyebrow">Etapa 1 de 4</p>
-            <h1>Crie sua conta profissional</h1>
-            <p>Depois desta etapa, voce configura perfil, rotina, recebimentos e mensagens em uma sequencia curta.</p>
+            <h1>Crie sua conta FISIA</h1>
+            <p>Comece pelos dados principais. Depois voce configura perfil, rotina, recebimentos e WhatsApp sem perder o progresso.</p>
           </div>
           <div class="register-commercial-progress" aria-label="Progresso do cadastro">
             <span><strong>25%</strong> concluido</span>
@@ -1305,17 +1374,17 @@ function renderRegister(errorMessage = ""): void {
             <span>Recebimentos e WhatsApp</span>
           </div>
           <div class="register-benefits" aria-label="Resumo">
-            <div><strong>Campos unicos</strong><span>CPF, e-mail e WhatsApp nao podem duplicar.</span></div>
+            <div><strong>Campos unicos</strong><span>E-mail e WhatsApp nao podem duplicar. CPF pode ser informado depois.</span></div>
             <div><strong>Nome de exibicao</strong><span>Usado no painel, links e mensagens.</span></div>
-            <div><strong>Proximo passo</strong><span>O onboarding define rotina, valores e comunicacao.</span></div>
+            <div><strong>Ativacao real</strong><span>O fluxo termina com paciente, convite ou exploracao do painel.</span></div>
           </div>
         </aside>
         <div class="panel register-commercial-card">
           <div class="section-title">
             <div>
               <p class="eyebrow">Dados da conta</p>
-              <h2>Comece pelo acesso principal</h2>
-              <p class="hint">Preencha os dados obrigatorios para liberar a configuracao inicial do consultorio.</p>
+              <h2>Sua conta principal</h2>
+              <p class="hint">Preencha os dados essenciais para liberar a configuracao inicial da rotina.</p>
             </div>
           </div>
           ${registerVerificationBadge(verification)}
@@ -1354,11 +1423,14 @@ function renderRegister(errorMessage = ""): void {
             <label>Nome de exibicao
               <input name="nomeExibicao" type="text" placeholder="Ex.: Dr. Gabriel, CW Rehab" required />
             </label>
-            <label>CPF
-              <input name="cpf" type="text" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" required />
+            <label>CPF <small>opcional agora</small>
+              <input name="cpf" type="text" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" />
             </label>
             <label>E-mail
               <input name="email" type="email" autocomplete="email" placeholder="voce@clinica.com" required />
+            </label>
+            <label>Confirmar senha
+              <input id="register-secret-confirm" name="secretConfirm" type="password" autocomplete="new-password" required />
             </label>
             <label>Senha
               <span class="password-field">
@@ -1369,7 +1441,7 @@ function renderRegister(errorMessage = ""): void {
             </label>
             <label class="terms-block">
               <input name="acceptTerms" type="checkbox" required />
-              <span>Confirmo que os dados informados sao meus e autorizo a criacao da conta FisioBot.</span>
+              <span>Confirmo que os dados informados sao meus e autorizo a criacao da conta FISIA.</span>
             </label>
             <div class="button-row register-actions">
               <button class="primary-button" type="submit">Continuar</button>
@@ -1468,8 +1540,9 @@ function handleRegister(event: SubmitEvent): void {
   const email = String(data.get("email") || "").trim().toLowerCase();
   const telefone = onlyDigits(verification.phone);
   const password = String(data.get("secret") || "");
+  const passwordConfirm = String(data.get("secretConfirm") || "");
   const acceptTerms = data.get("acceptTerms") === "on";
-  if (!nomeCompleto || !nomeExibicao || cpf.length !== 11 || !email || !telefone || !password || !acceptTerms) {
+  if (!nomeCompleto || !nomeExibicao || !email || !telefone || !password || !passwordConfirm || !acceptTerms) {
     showNotice("error", "Preencha todos os campos obrigatorios.");
     return;
   }
@@ -1481,8 +1554,12 @@ function handleRegister(event: SubmitEvent): void {
     showNotice("error", "A senha precisa ter pelo menos 8 caracteres, um numero e um simbolo.");
     return;
   }
+  if (password !== passwordConfirm) {
+    showNotice("error", "As senhas nao conferem.");
+    return;
+  }
   const accounts = loadLocalAccounts();
-  if (accounts.some((account) => account.cpf === cpf)) {
+  if (cpf && accounts.some((account) => account.cpf === cpf)) {
     showNotice("error", "CPF ja cadastrado.");
     return;
   }
@@ -1499,7 +1576,7 @@ function handleRegister(event: SubmitEvent): void {
     login: email,
     nomeCompleto,
     nomeExibicao,
-    cpf,
+    cpf: cpf || "",
     email,
     telefone,
     password: "local-password-defined",
@@ -1510,7 +1587,7 @@ function handleRegister(event: SubmitEvent): void {
     authToken: verification.authToken,
   };
   saveLocalAccounts([...accounts, account]);
-  localStorage.setItem(LOCAL_ACTIVE_ACCOUNT_KEY, cpf);
+  localStorage.setItem(LOCAL_ACTIVE_ACCOUNT_KEY, cpf || email);
   state.user = account;
   const profile = defaultOnboardingProfile(account);
   saveOnboardingProfile({ ...profile, conta: { ...profile.conta, nomeCompleto, nomeExibicao, cpf, email, telefone } });
@@ -1524,12 +1601,12 @@ function renderLoginCode(login: string, message: string): void {
   if (!app) return;
   app.innerHTML = `
     <main class="auth-shell">
-      <section class="auth-panel" aria-label="Codigo FisioBot">
+      <section class="auth-panel" aria-label="Codigo FISIA">
         <div class="auth-box">
           <div class="brand">
             <div class="brand-mark" aria-hidden="true">F</div>
             <div>
-              <p class="brand-title">FisioBot</p>
+              <p class="brand-title">FISIA</p>
               <div class="brand-subtitle">autenticacao</div>
             </div>
           </div>
@@ -1665,7 +1742,7 @@ function renderAppShell(): void {
       label: "Operacao",
       items: [
         { route: "agenda", icon: "calendar", title: "Agenda" },
-        { route: "evolucoes", icon: "cadastro", title: "Cadastros" },
+        { route: "evolucoes", icon: "cadastro", title: "Pacientes" },
       ],
     },
     {
@@ -1674,13 +1751,13 @@ function renderAppShell(): void {
     },
   ];
   app.innerHTML = `
-    <main class="app-shell">
+    <main class="app-shell ${state.sidebarCollapsed ? "sidebar-collapsed" : ""}">
       <aside class="sidebar">
         <div class="brand shell-brand">
           <div class="brand-mark" aria-hidden="true">F</div>
           <div>
-            <p class="brand-title">FisioBot</p>
-            <div class="brand-subtitle">cockpit clinico</div>
+            <p class="brand-title">FISIA</p>
+            <div class="brand-subtitle">Fluxo Inteligente de Saude</div>
           </div>
         </div>
         <nav class="nav" aria-label="Principal">
@@ -1694,7 +1771,7 @@ function renderAppShell(): void {
                       (item) => `
                         <button type="button" data-route="${item.route}" aria-current="${active === item.route ? "page" : "false"}">
                           ${navIcon(item.icon)}
-                          ${item.title}
+                          <span class="nav-label">${item.title}</span>
                         </button>
                       `,
                     )
@@ -1705,24 +1782,28 @@ function renderAppShell(): void {
             .join("")}
         </nav>
         <footer class="sidebar-footer">
-          <div class="sidebar-user"><span>${escapeHtml(firstName.slice(0, 2).toUpperCase())}</span><div><strong>${escapeHtml(userName)}</strong><small>${escapeHtml(state.user?.profissaoCategoria || "Profissional de saude")}</small></div></div>
+          <button class="assistant-sidebar-card" id="assistant-sidebar" type="button">
+            <span>${navIcon("assistant")}</span>
+            <strong>Pergunte a Fisia</strong>
+            <small>Tire duvidas e receba sugestoes inteligentes.</small>
+          </button>
           <button type="button" id="open-settings-sidebar">Configuracoes</button>
           <button type="button" id="logout-sidebar">Sair</button>
         </footer>
       </aside>
       <section class="main">
         <header class="global-topbar ${active === "dashboard" ? "dashboard-topbar" : ""}">
-          <button class="sidebar-toggle" type="button" aria-label="Menu">Menu</button>
+          <button class="sidebar-toggle" type="button" aria-label="Alternar menu">${navIcon("menu")}<span>Menu</span></button>
           ${
             active === "dashboard"
-              ? `<div class="dashboard-greeting"><strong>${greeting}, ${escapeHtml(firstName)} <span aria-hidden="true">&#128075;</span></strong><small>${formatDate(todayISO())}</small></div>`
+              ? `<div class="dashboard-greeting"><strong>${greeting}, ${escapeHtml(firstName)} <span aria-hidden="true">&#128075;</span></strong><small>${formatDate(todayISO())}</small></div><div class="global-search dashboard-search" role="search"><span aria-hidden="true" class="search-label">Buscar</span><input id="global-search" type="text" placeholder="Buscar pacientes, agendamentos, recibos..." autocomplete="off" /></div>`
               : `<div class="global-search" role="search"><span aria-hidden="true" class="search-label">Buscar</span><input id="global-search" type="text" placeholder="Pesquisar paciente, atendimento ou relatorio" autocomplete="off" /></div>`
           }
           <div class="topbar-actions">
             <button class="notification-button" id="notifications" type="button" title="Notificacoes" aria-label="Notificacoes">
               <span aria-hidden="true">!</span>
             </button>
-            <button class="secondary-button topbar-new-appointment" id="new-appointment-topbar" type="button">+ Nova consulta</button>
+            <button class="secondary-button topbar-new-appointment" id="new-appointment-topbar" type="button">+ Novo atendimento</button>
             <div class="user-menu">
               <button class="user-chip" id="user-menu-button" type="button" aria-expanded="false">${escapeHtml(userName)}</button>
               <div class="user-menu-panel" id="user-menu-panel" hidden>
@@ -1740,7 +1821,13 @@ function renderAppShell(): void {
     </main>
   `;
   document.querySelector<HTMLButtonElement>(".sidebar-toggle")?.addEventListener("click", () => {
-    document.querySelector<HTMLElement>(".sidebar")?.classList.toggle("open");
+    if (window.matchMedia("(max-width: 899px)").matches) {
+      document.querySelector<HTMLElement>(".sidebar")?.classList.toggle("open");
+      return;
+    }
+    state.sidebarCollapsed = !state.sidebarCollapsed;
+    saveBooleanPreference(SIDEBAR_COLLAPSED_KEY, state.sidebarCollapsed);
+    document.querySelector<HTMLElement>(".app-shell")?.classList.toggle("sidebar-collapsed", state.sidebarCollapsed);
   });
   document.querySelector<HTMLInputElement>("#global-search")?.addEventListener("keydown", async (event) => {
     if (event.key !== "Enter") return;
@@ -1755,6 +1842,10 @@ function renderAppShell(): void {
     setDocumentRoute("agenda");
     state.appointmentDrawerOpen = true;
     await loadAgenda();
+  });
+  document.querySelector<HTMLButtonElement>("#assistant-sidebar")?.addEventListener("click", async () => {
+    setDocumentRoute("debug");
+    await loadCurrentRoute();
   });
   document.querySelector<HTMLButtonElement>("#open-settings-sidebar")?.addEventListener("click", renderSecurityModal);
   document.querySelector<HTMLButtonElement>("#logout-sidebar")?.addEventListener("click", logoutFromWeb);
@@ -2104,7 +2195,7 @@ async function loadDashboard(): Promise<void> {
 }
 
 function defaultOnboardingProfile(user: Partial<User & LocalAccount> | null = state.user): OnboardingProfile {
-  const displayName = user?.nomeExibicao || user?.nomeCompleto || "FisioBot";
+  const displayName = user?.nomeExibicao || user?.nomeCompleto || "FISIA";
   const now = new Date().toISOString();
   return {
     conta: {
@@ -2184,11 +2275,11 @@ function selectedValues(form: HTMLFormElement, name: string): string[] {
 }
 
 function onboardingCurrentStep(): number {
-  return Math.min(5, Math.max(1, Number(localStorage.getItem(ONBOARDING_STEP_KEY) || "1")));
+  return Math.min(4, Math.max(1, Number(localStorage.getItem(ONBOARDING_STEP_KEY) || "1")));
 }
 
 function setOnboardingStep(step: number): void {
-  localStorage.setItem(ONBOARDING_STEP_KEY, String(Math.min(5, Math.max(1, step))));
+  localStorage.setItem(ONBOARDING_STEP_KEY, String(Math.min(4, Math.max(1, step))));
 }
 
 function optionsHtml(values: string[], selected: string): string {
@@ -2211,7 +2302,7 @@ function checksHtml(name: string, values: string[], selected: string[]): string 
 
 function buildReminderJobs(profile: OnboardingProfile): ReminderJob[] {
   const createdAt = new Date().toISOString();
-  const name = profile.whatsapp.nomeMensagens || profile.conta.nomeExibicao || "FisioBot";
+  const name = profile.whatsapp.nomeMensagens || profile.conta.nomeExibicao || "FISIA";
   const jobs: ReminderJob[] = [
     {
       id: `reminder-${createdAt}-agenda`,
@@ -2292,14 +2383,14 @@ function renderOnboarding(): void {
   if (!app) return;
   const step = onboardingCurrentStep();
   const profile = loadOnboardingProfile();
-  const progress = Math.round((step / 5) * 100);
+  const progress = Math.round((step / 4) * 100);
   app.innerHTML = `
     <main class="register-commercial-shell onboarding-commercial-shell">
-      <section class="register-commercial-topbar" aria-label="Configuracao inicial FisioBot">
+      <section class="register-commercial-topbar" aria-label="Configuracao inicial FISIA">
         <div class="brand">
           <div class="brand-mark" aria-hidden="true">F</div>
           <div>
-            <p class="brand-title">FisioBot</p>
+            <p class="brand-title">FISIA</p>
             <div class="brand-subtitle">configuracao inicial</div>
           </div>
         </div>
@@ -2317,7 +2408,7 @@ function renderOnboarding(): void {
             <div><i style="width:${progress}%"></i></div>
           </div>
           <nav class="onboarding-commercial-steps" aria-label="Etapas">
-            ${["Sua conta", "Perfil profissional", "Sua rotina", "Recebimentos", "WhatsApp"].map((label, index) => {
+            ${["Sua conta", "Perfil profissional", "Rotina clinica", "Recebimentos e WhatsApp"].map((label, index) => {
               const itemStep = index + 1;
               return `<button class="${itemStep === step ? "active" : itemStep < step ? "done" : ""}" type="button" data-onboarding-step="${itemStep}"><span>${itemStep}</span>${escapeHtml(label)}</button>`;
             }).join("")}
@@ -2328,7 +2419,7 @@ function renderOnboarding(): void {
           ${onboardingStepHtml(step, profile)}
           <div class="onboarding-actions">
             ${step > 1 ? `<button class="secondary-button" id="onboarding-back" type="button">Voltar</button>` : ""}
-            <button class="primary-button" type="submit">${step === 5 ? "Concluir configuracao" : "Continuar"}</button>
+            <button class="primary-button" type="submit">${step === 4 ? "Concluir configuracao" : "Continuar"}</button>
           </div>
         </form>
       </section>
@@ -2356,7 +2447,7 @@ function onboardingStepHtml(step: number, profile: OnboardingProfile): string {
       <div class="form-grid">
         <label>Nome completo<input name="nomeCompleto" value="${escapeHtml(profile.conta.nomeCompleto)}" required></label>
         <label>Nome de exibicao<input name="nomeExibicao" value="${escapeHtml(profile.conta.nomeExibicao)}" required></label>
-        <label>CPF<input name="cpf" data-mask="cpf" value="${escapeHtml(profile.conta.cpf)}" required></label>
+        <label>CPF <small>opcional</small><input name="cpf" data-mask="cpf" value="${escapeHtml(profile.conta.cpf)}"></label>
         <label>E-mail<input type="email" name="email" value="${escapeHtml(profile.conta.email)}" required></label>
         <label>Telefone<input name="telefone" value="${escapeHtml(profile.conta.telefone)}" required></label>
         <label>Nome social<input name="nomeSocial" value="${escapeHtml(profile.conta.nomeSocial)}"></label>
@@ -2401,20 +2492,13 @@ function onboardingStepHtml(step: number, profile: OnboardingProfile): string {
       <div class="field-block"><span>Tipos de atendimento</span><div class="onboarding-check-grid">${checksHtml("tiposAtendimento", appointmentTypeLabels(), profile.rotina.tiposAtendimento)}</div></div>
     `;
   }
-  if (step === 4) {
-    return `
-      <div class="section-title"><h2>Recebimentos</h2><span>Financeiro simples, separado de credito do paciente</span></div>
-      <div class="field-block"><span>Formas aceitas</span><div class="onboarding-check-grid">${checksHtml("formasPagamento", ["PIX", "Dinheiro", "Debito", "Cartao credito", "Transferencia", "Outro"], profile.recebimentos.formasPagamento)}</div></div>
-      <div class="form-grid">
-        <label>Cobranca padrao<select name="cobrancaPadrao">${optionsHtml(["No dia do atendimento", "Antecipada", "Por pacote", "Manual"], profile.recebimentos.cobrancaPadrao)}</select></label>
-        <label class="toggle-line"><input type="checkbox" name="permiteCreditoPaciente" ${profile.recebimentos.permiteCreditoPaciente ? "checked" : ""}> Permite credito do paciente</label>
-        <label class="toggle-line"><input type="checkbox" name="permitePacoteSessoes" ${profile.recebimentos.permitePacoteSessoes ? "checked" : ""}> Permite pacote de sessoes</label>
-      </div>
-    `;
-  }
   return `
-    <div class="section-title"><h2>WhatsApp</h2><span>Lembretes e confirmacoes ficam planejados, ainda desconectados do envio real</span></div>
+    <div class="section-title"><h2>Recebimentos e WhatsApp</h2><span>Financeiro simples, credito do paciente separado e mensagens planejadas</span></div>
+    <div class="field-block"><span>Formas aceitas</span><div class="onboarding-check-grid">${checksHtml("formasPagamento", ["PIX", "Dinheiro", "Debito", "Cartao credito", "Transferencia", "Outro"], profile.recebimentos.formasPagamento)}</div></div>
     <div class="form-grid">
+      <label>Cobranca padrao<select name="cobrancaPadrao">${optionsHtml(["No dia do atendimento", "Antecipada", "Por pacote", "Manual"], profile.recebimentos.cobrancaPadrao)}</select></label>
+      <label class="toggle-line"><input type="checkbox" name="permiteCreditoPaciente" ${profile.recebimentos.permiteCreditoPaciente ? "checked" : ""}> Permite credito do paciente</label>
+      <label class="toggle-line"><input type="checkbox" name="permitePacoteSessoes" ${profile.recebimentos.permitePacoteSessoes ? "checked" : ""}> Permite pacote de sessoes</label>
       <label>Numero de WhatsApp<input name="numero" value="${escapeHtml(profile.whatsapp.numero)}" required></label>
       <label>Nome exibido nas mensagens<input name="nomeMensagens" value="${escapeHtml(profile.whatsapp.nomeMensagens)}" required></label>
       <label>Horario permitido inicio<input name="whatsappInicio" type="time" value="${escapeHtml(profile.whatsapp.horarioInicio)}"></label>
@@ -2451,7 +2535,7 @@ function handleOnboardingSubmit(event: SubmitEvent): void {
       endereco: String(data.get("endereco") || "").trim(),
       fotoPerfil: String(data.get("fotoPerfil") || "").trim(),
     };
-    if (!profile.conta.nomeCompleto || !profile.conta.nomeExibicao || profile.conta.cpf.length !== 11 || !profile.conta.email || !profile.conta.telefone) {
+    if (!profile.conta.nomeCompleto || !profile.conta.nomeExibicao || !profile.conta.email || !profile.conta.telefone) {
       showNotice("error", "Preencha os dados obrigatorios da conta.");
       return;
     }
@@ -2485,18 +2569,13 @@ function handleOnboardingSubmit(event: SubmitEvent): void {
       showNotice("error", "Complete valor, duracao, dias e tipo de atendimento.");
       return;
     }
-  } else if (step === 4) {
+  } else {
     profile.recebimentos = {
       formasPagamento: selectedValues(form, "formasPagamento"),
       cobrancaPadrao: String(data.get("cobrancaPadrao") || "No dia do atendimento"),
       permiteCreditoPaciente: Boolean(data.get("permiteCreditoPaciente")),
       permitePacoteSessoes: Boolean(data.get("permitePacoteSessoes")),
     };
-    if (!profile.recebimentos.formasPagamento.length) {
-      showNotice("error", "Escolha ao menos uma forma de pagamento.");
-      return;
-    }
-  } else {
     profile.whatsapp = {
       numero: onlyDigits(data.get("numero")),
       nomeMensagens: String(data.get("nomeMensagens") || "").trim(),
@@ -2512,22 +2591,62 @@ function handleOnboardingSubmit(event: SubmitEvent): void {
       telefone: onlyDigits(data.get("primeiroPacienteTelefone")),
       usarTeste: Boolean(data.get("usarTeste")),
     };
-    if (!profile.whatsapp.numero || !profile.whatsapp.nomeMensagens) {
-      showNotice("error", "Informe numero e nome exibido no WhatsApp.");
+    if (!profile.recebimentos.formasPagamento.length || !profile.whatsapp.numero || !profile.whatsapp.nomeMensagens) {
+      showNotice("error", "Escolha uma forma de pagamento e informe os dados do WhatsApp.");
       return;
     }
     profile.completedAt = new Date().toISOString();
     saveOnboardingProfile(profile);
     saveReminderJobs(profile);
-    localStorage.setItem(ONBOARDING_STEP_KEY, "5");
+    localStorage.setItem(ONBOARDING_STEP_KEY, "4");
     state.user = { ...(state.user || {}), nomeCompleto: profile.conta.nomeCompleto, nomeExibicao: profile.conta.nomeExibicao, onboardingCompletedAt: profile.completedAt };
-    setDocumentRoute("dashboard");
-    void loadDashboard();
+    renderOnboardingComplete(profile);
     return;
   }
   saveOnboardingProfile(profile);
   setOnboardingStep(step + 1);
   renderOnboarding();
+}
+
+function renderOnboardingComplete(profile: OnboardingProfile): void {
+  if (!app) return;
+  app.innerHTML = `
+    <main class="register-commercial-shell onboarding-complete-shell">
+      <section class="onboarding-complete-card">
+        <div class="brand fisia-auth-brand">
+          <div class="brand-mark" aria-hidden="true">F</div>
+          <div>
+            <p class="brand-title">FISIA</p>
+            <div class="brand-subtitle">Voce cuida do paciente. A FISIA cuida da rotina.</div>
+          </div>
+        </div>
+        <p class="eyebrow">Configuracao concluida</p>
+        <h1>Tudo pronto. Vamos colocar sua clinica em movimento.</h1>
+        <p>Seu painel ja pode usar a rotina de ${escapeHtml(profile.rotina.duracaoPadrao || "60")} minutos, recebimentos configurados e mensagens planejadas.</p>
+        <div class="onboarding-complete-actions">
+          <button class="primary-button" id="complete-first-patient" type="button">Cadastrar primeiro paciente</button>
+          <button class="secondary-button" id="complete-invite-link" type="button">Gerar link de convite</button>
+          <button class="ghost-button" id="complete-dashboard" type="button">Explorar a FISIA</button>
+        </div>
+      </section>
+    </main>
+  `;
+  document.querySelector<HTMLButtonElement>("#complete-first-patient")?.addEventListener("click", async () => {
+    setDocumentRoute("evolucoes");
+    state.selectedPatientId = null;
+    state.patientDrawerOpen = true;
+    state.patientDrawerAnimate = true;
+    await loadPacientes();
+  });
+  document.querySelector<HTMLButtonElement>("#complete-invite-link")?.addEventListener("click", () => {
+    void navigator.clipboard?.writeText(`${window.location.origin}/cadastro`);
+    const button = document.querySelector<HTMLButtonElement>("#complete-invite-link");
+    if (button) button.textContent = "Link copiado";
+  });
+  document.querySelector<HTMLButtonElement>("#complete-dashboard")?.addEventListener("click", async () => {
+    setDocumentRoute("dashboard");
+    await loadDashboard();
+  });
 }
 
 function renderDashboard(
@@ -2650,6 +2769,7 @@ function renderDashboardPro(
   if (!view) return;
   const hoje = todayISO();
   const agendaHoje = agenda.filter((slot) => slot.data === hoje && !isCanceledStatus(slot.status));
+  const slotsAbertos = agendaHoje.filter((slot) => normalizeStatus(slot.status) === "aberto").length;
   const metrics = calculateDashboardMetrics(agenda, financeiro);
   const nextSlot = nextAppointmentSlot(agenda);
   const firstName = String(state.user?.nomeExibicao || state.user?.nomeCompleto || "profissional").trim().split(/\s+/)[0];
@@ -2666,74 +2786,173 @@ function renderDashboardPro(
   const financeLabel = (slot: AgendaSlot) => isPaidStatus(slotFinancialStatus(slot)) ? "Pago" : "Pendente";
   const appointmentType = (slot: AgendaSlot) => state.appointmentTypes.find((type) => type.id === slot.tipoAtendimentoId)?.nome || slot.servico || "Presencial";
   const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "P";
+  const nextPatientName = nextSlot?.clientes?.[0]?.nomeCompleto || "Sem agendamento";
+  const nextService = nextSlot?.servico || "Atendimento";
+  const nextType = nextSlot ? appointmentType(nextSlot) : "Agenda livre";
+  const nextDuration = nextSlot ? `${appointmentDurationMinutes(nextSlot)} min` : "0 min";
+  const todayPercent = Math.min(100, Math.round((agendaHoje.length / Math.max(agendaHoje.length + slotsAbertos, 1)) * 100));
+  const revenueGoal = Math.max(metrics.recebidoMes + pendingValue, metrics.recebidoMes, 1);
+  const revenuePercent = Math.min(100, Math.round((metrics.recebidoMes / revenueGoal) * 100));
+  const futureSlots = agenda.filter((slot) => slot.data >= hoje && !isCanceledStatus(slot.status)).length;
+  const priorityItems = [
+    {
+      icon: "calendar",
+      title: `${agenda.filter((slot) => slot.data >= hoje && normalizeStatus(slot.status) === "scheduled").length} agendamentos aguardando confirmacao`,
+      detail: "Entre hoje e os proximos dias",
+      action: "Precisam de atencao",
+      tone: "warn",
+      route: "agenda",
+    },
+    {
+      icon: "pulse",
+      title: `${metrics.semEvolucaoCount} evolucoes pendentes`,
+      detail: "Atendimentos sem evolucao vinculada",
+      action: "Hoje",
+      tone: "info",
+      route: "evolucoes",
+    },
+    {
+      icon: "finance",
+      title: `${metrics.pagamentoPendenteCount} recebimentos em aberto`,
+      detail: `Total de ${formatMoney(pendingValue)}`,
+      action: "Ver agora",
+      tone: "success",
+      route: "financeiro",
+    },
+    {
+      icon: "cadastro",
+      title: `${pacientes.filter((patient) => patient.ativo !== false).length} pacientes ativos`,
+      detail: `${futureSlots} atendimento${futureSlots === 1 ? " futuro" : "s futuros"}`,
+      action: "Ver pacientes",
+      tone: "assistant",
+      route: "evolucoes",
+    },
+    {
+      icon: "reports",
+      title: "Relatorios mensais disponiveis",
+      detail: "Faturamento e atendimentos",
+      action: "Acessar",
+      tone: "gold",
+      route: "relatorios",
+    },
+  ];
   view.innerHTML = `
-    <div class="dashboard-v2">
-      <section class="dashboard-overview-grid">
-        <button class="overview-card next" type="button" data-dashboard-route="agenda">
-          <span class="overview-icon calendar">${navIcon("calendar")}</span>
-          <span class="overview-content"><small>Proximo atendimento</small><strong>${escapeHtml(nextSlot?.clientes?.[0]?.nomeCompleto || "Sem agendamento")}</strong><em>${nextSlot ? `${formatDate(nextSlot.data)} · ${nextSlot.horaInicio || "--:--"}` : "Sua agenda esta livre"}</em><b>Ver agenda</b></span>
+    <div class="dashboard-v2 fisia-dashboard">
+      <section class="fisia-dashboard-top">
+        <article class="fisia-next-card">
+          <header>
+            <span>${navIcon("calendar")}</span>
+            <strong>Proximo atendimento</strong>
+          </header>
+          <div class="fisia-next-body">
+            <div class="fisia-next-time">
+              <strong>${escapeHtml(nextSlot?.horaInicio || "--:--")}</strong>
+              <span>${nextSlot ? `${formatDate(nextSlot.data)} · ${nextDuration}` : "Agenda livre"}</span>
+            </div>
+            <div class="fisia-next-patient">
+              <i>${escapeHtml(initials(nextPatientName))}</i>
+              <div>
+                <strong>${escapeHtml(nextPatientName)}</strong>
+                <span>${escapeHtml(nextService)} · ${escapeHtml(nextType)}</span>
+              </div>
+            </div>
+            <div class="fisia-next-actions">
+              <button class="primary-button" type="button" data-dashboard-route="agenda">Ver detalhes</button>
+              <button class="ghost-button" type="button" data-dashboard-quick="attendance">Registrar atendimento</button>
+            </div>
+          </div>
+          <footer>
+            <span>${navIcon("calendar")} ${escapeHtml(nextDuration)}</span>
+          </footer>
+        </article>
+        <button class="fisia-stat-card" type="button" data-dashboard-route="agenda">
+          <span class="fisia-stat-icon">${navIcon("calendar")}</span>
+          <strong>Atendimentos hoje</strong>
+          <b>${agendaHoje.length}</b>
+          <em>${todayPercent}% da agenda</em>
+          <i style="--progress-width:${todayPercent}%"></i>
         </button>
-        <button class="overview-card pending" type="button" data-dashboard-route="financeiro">
-          <span class="overview-icon money">${navIcon("finance")}</span>
-          <span class="overview-content"><small>Pagamentos pendentes</small><strong>${formatMoney(pendingValue)}</strong><em>${metrics.pagamentoPendenteCount} atendimento${metrics.pagamentoPendenteCount === 1 ? "" : "s"}</em><b>Ver pendencias</b></span>
+        <button class="fisia-stat-card" type="button" data-dashboard-route="financeiro">
+          <span class="fisia-stat-icon money">${navIcon("finance")}</span>
+          <strong>Faturamento do mes</strong>
+          <b>${formatMoney(metrics.recebidoMes)}</b>
+          <em>${revenuePercent}% do previsto</em>
+          <i style="--progress-width:${revenuePercent}%"></i>
         </button>
-        <button class="overview-card revenue" type="button" data-dashboard-route="financeiro">
-          <span class="overview-icon growth">${navIcon("reports")}</span>
-          <span class="overview-content"><small>Recebido este mes</small><strong>${formatMoney(metrics.recebidoMes)}</strong><em>${metrics.atendimentosRealizadosMes} atendimento${metrics.atendimentosRealizadosMes === 1 ? "" : "s"}</em><b>Ver financeiro</b></span>
+        <button class="fisia-stat-card" type="button" data-dashboard-route="evolucoes">
+          <span class="fisia-stat-icon patients">${navIcon("cadastro")}</span>
+          <strong>Pacientes ativos</strong>
+          <b>${pacientes.filter((patient) => patient.ativo !== false).length}</b>
+          <em>${futureSlots} atendimento${futureSlots === 1 ? " futuro" : "s futuros"}</em>
+          <i style="--progress-width:${Math.min(100, pacientes.length * 4)}%"></i>
         </button>
-        <section class="quick-actions-card" aria-label="Acoes rapidas">
-          <h2>Acoes rapidas</h2>
-          <button type="button" data-dashboard-quick="payment">Registrar pagamento <span>›</span></button>
-          <button type="button" data-dashboard-quick="attendance">Registrar atendimento <span>›</span></button>
-          <button type="button" data-dashboard-quick="evolution">Nova evolucao <span>›</span></button>
-          <button type="button" data-dashboard-quick="reports">Ver relatorios <span>›</span></button>
-        </section>
       </section>
 
-      <section class="dashboard-agenda-panel">
-        <header class="dashboard-panel-header">
-          <div><h1>Agenda de hoje <span>${formatDate(hoje)}</span></h1><small>${agendaHoje.length} atendimento${agendaHoje.length === 1 ? "" : "s"}</small></div>
-          <div><button class="ghost-button" id="dashboard-week" type="button">Ver semana</button><button class="ghost-button" id="dashboard-filters" type="button">Filtros</button></div>
-        </header>
-        <div class="dashboard-agenda-table" role="table" aria-label="Agenda de hoje">
-          <div class="dashboard-agenda-head" role="row"><span>Horario</span><span>Paciente</span><span>Tipo</span><span>Servico</span><span>Status</span><span>Valor</span><span>Acoes</span></div>
-          ${agendaHoje.length ? agendaHoje.map((slot) => {
+      <section class="fisia-dashboard-main">
+        <section class="fisia-agenda-card">
+          <header class="fisia-section-header">
+            <div><span>${navIcon("calendar")}</span><h2>Agenda do dia</h2></div>
+            <button class="ghost-button" id="dashboard-week" type="button">Ver agenda completa</button>
+          </header>
+          <div class="fisia-agenda-list">
+            ${agendaHoje.length ? agendaHoje.map((slot) => {
             const patient = slot.clientes?.[0] || {};
             const patientName = patient.nomeCompleto || "Paciente";
             const financial = financeLabel(slot);
             const clinical = statusLabel(slot.status);
-            return `<div class="dashboard-agenda-row" role="row">
-              <strong>${escapeHtml(`${slot.horaInicio || "--:--"} - ${slot.horaFim || "--:--"}`)}</strong>
-              <button class="dashboard-patient-cell" type="button" data-dashboard-event="${escapeHtml(slot.id)}" data-dashboard-action="open"><i>${escapeHtml(initials(patientName))}</i><span>${escapeHtml(patientName)}</span></button>
-              <span><b class="type-chip ${normalizeStatus(appointmentType(slot))}">${escapeHtml(appointmentType(slot))}</b></span>
-              <span>${escapeHtml(slot.servico || "Atendimento")}</span>
-              <span><b class="status-chip ${financial === "Pago" ? "paid" : clinical === "Concluido" ? "done" : "pending"}">${escapeHtml(financial === "Pendente" ? "Pendente" : clinical)}</b></span>
-              <strong>${displaySlotMoney(slot)}</strong>
-              <span class="agenda-row-actions"><button type="button" data-dashboard-event="${escapeHtml(slot.id)}" data-dashboard-action="open">Abrir</button><button type="button" data-dashboard-event="${escapeHtml(slot.id)}" data-dashboard-action="evolve">Evoluir</button><button class="receive" type="button" data-dashboard-event="${escapeHtml(slot.id)}" data-dashboard-action="receive">Receber</button></span>
-            </div>`;
+            const slotDuration = `${appointmentDurationMinutes(slot)} min`;
+            return `<button class="fisia-agenda-item" type="button" data-dashboard-event="${escapeHtml(slot.id)}" data-dashboard-action="open">
+              <time><strong>${escapeHtml(slot.horaInicio || "--:--")}</strong><span>${escapeHtml(slotDuration)}</span></time>
+              <i class="${financial === "Pago" ? "ok" : clinical === "Confirmado" ? "ok" : "warn"}"></i>
+              <span class="fisia-agenda-patient"><strong>${escapeHtml(patientName)}</strong><small>${escapeHtml(appointmentType(slot))} · ${escapeHtml(slot.servico || "Atendimento")}</small></span>
+              <b class="status-chip ${financial === "Pago" ? "paid" : clinical === "Concluido" ? "done" : "pending"}">${escapeHtml(financial === "Pendente" ? "Pendente" : clinical)}</b>
+              <span class="fisia-item-chevron">›</span>
+            </button>`;
           }).join("") : `<div class="dashboard-agenda-empty">Nenhum atendimento programado para hoje.</div>`}
-        </div>
-        <button class="dashboard-all-appointments" id="dashboard-all-appointments" type="button">Ver todos os atendimentos de hoje</button>
-      </section>
+          </div>
+          <button class="dashboard-all-appointments" id="dashboard-all-appointments" type="button">Ver todos os agendamentos</button>
+        </section>
 
-      <section class="dashboard-setup-grid">
-        <section class="dashboard-setup-form">
-          <header><h2>Cadastro inicial</h2><p>Complete os dados usados para personalizar sua rotina.</p></header>
-          <div class="setup-form-grid">
-            <label>Nome completo<input value="${escapeHtml(profile.conta.nomeCompleto || state.user?.nomeCompleto || "")}" placeholder="Ex.: Gabriel Vinicius da Silva" readonly></label>
-            <label>Nome de exibicao<input value="${escapeHtml(profile.conta.nomeExibicao || state.user?.nomeExibicao || "")}" placeholder="Ex.: Dr. Gabriel, CW Rehab" readonly></label>
-            <label>CPF<input value="${escapeHtml(formatCpf(profile.conta.cpf || state.user?.cpf || ""))}" placeholder="000.000.000-00" readonly></label>
-            <label>E-mail<input value="${escapeHtml(profile.conta.email || state.user?.email || "")}" placeholder="seu@email.com" readonly></label>
-            <label>WhatsApp<input value="${escapeHtml(maskRegisterPhone(profile.conta.telefone || state.user?.telefone || ""))}" placeholder="(11) 99999-9999" readonly></label>
-            <button class="primary-button setup-continue" id="dashboard-onboarding" type="button">${isOnboardingComplete() ? "Editar configuracao" : "Continuar"}</button>
+        <section class="fisia-priority-card">
+          <header class="fisia-section-header">
+            <div><span>${navIcon("assistant")}</span><h2>Prioridades</h2></div>
+            <button class="ghost-button" id="dashboard-filters" type="button">Ver todas</button>
+          </header>
+          <div class="fisia-priority-list">
+            ${priorityItems.map((item) => `
+              <button class="fisia-priority-item ${escapeHtml(item.tone)}" type="button" data-dashboard-route="${escapeHtml(item.route)}">
+                <span>${navIcon(item.icon)}</span>
+                <strong>${escapeHtml(item.title)}<small>${escapeHtml(item.detail)}</small></strong>
+                <em>${escapeHtml(item.action)}</em>
+                <i>›</i>
+              </button>
+            `).join("")}
           </div>
         </section>
-        <aside class="dashboard-progress-card"><h2>Seu progresso</h2><p>${isOnboardingComplete() ? "Configuracao concluida" : `${setupStep} de 5 completo`}</p><div class="progress-track"><i style="width:${isOnboardingComplete() ? 100 : Math.round((setupStep / 5) * 100)}%"></i></div>${["Dados pessoais", "Perfil profissional", "Agenda e atendimento", "Recebimentos e WhatsApp"].map((item, index) => `<div class="progress-step ${index + 1 < setupStep || isOnboardingComplete() ? "done" : index + 1 === setupStep ? "active" : ""}"><b>${index + 1}</b><span>${escapeHtml(item)}<small>${index === 0 ? "Informacoes basicas da conta" : index === 1 ? "Formacao e especialidades" : index === 2 ? "Horarios e tipos de servico" : "Formas de pagamento e mensagens"}</small></span></div>`).join("")}</aside>
       </section>
+
+      ${
+        !isOnboardingComplete()
+          ? `<section class="dashboard-setup-grid">
+              <section class="dashboard-setup-form">
+                <header><h2>Cadastro inicial</h2><p>Complete os dados usados para personalizar sua rotina.</p></header>
+                <div class="setup-form-grid">
+                  <label>Nome completo<input value="${escapeHtml(profile.conta.nomeCompleto || state.user?.nomeCompleto || "")}" placeholder="Ex.: Gabriel Vinicius da Silva" readonly></label>
+                  <label>Nome de exibicao<input value="${escapeHtml(profile.conta.nomeExibicao || state.user?.nomeExibicao || "")}" placeholder="Ex.: Dr. Gabriel, CW Rehab" readonly></label>
+                  <label>CPF<input value="${escapeHtml(formatCpf(profile.conta.cpf || state.user?.cpf || ""))}" placeholder="000.000.000-00" readonly></label>
+                  <label>E-mail<input value="${escapeHtml(profile.conta.email || state.user?.email || "")}" placeholder="seu@email.com" readonly></label>
+                  <label>WhatsApp<input value="${escapeHtml(maskRegisterPhone(profile.conta.telefone || state.user?.telefone || ""))}" placeholder="(11) 99999-9999" readonly></label>
+                  <button class="primary-button setup-continue" id="dashboard-onboarding" type="button">Continuar</button>
+                </div>
+              </section>
+              <aside class="dashboard-progress-card"><h2>Seu progresso</h2><p>${setupStep} de 5 completo</p><div class="progress-track"><i style="width:${Math.round((setupStep / 5) * 100)}%"></i></div>${["Dados pessoais", "Perfil profissional", "Agenda e atendimento", "Recebimentos e WhatsApp"].map((item, index) => `<div class="progress-step ${index + 1 < setupStep ? "done" : index + 1 === setupStep ? "active" : ""}"><b>${index + 1}</b><span>${escapeHtml(item)}<small>${index === 0 ? "Informacoes basicas da conta" : index === 1 ? "Formacao e especialidades" : index === 2 ? "Horarios e tipos de servico" : "Formas de pagamento e mensagens"}</small></span></div>`).join("")}</aside>
+            </section>`
+          : ""
+      }
       ${state.selectedEventId ? dashboardAppointmentDrawerHtml() : ""}
     </div>
   `;
-  view.querySelectorAll<HTMLButtonElement>("[data-dashboard-route]").forEach((button) => button.addEventListener("click", async () => { setDocumentRoute(button.dataset.dashboardRoute === "financeiro" ? "financeiro" : "agenda"); await loadCurrentRoute(); }));
+  view.querySelectorAll<HTMLButtonElement>("[data-dashboard-route]").forEach((button) => button.addEventListener("click", async () => { const route = button.dataset.dashboardRoute; setDocumentRoute(isAppRoute(route) ? route : "agenda"); await loadCurrentRoute(); }));
   view.querySelectorAll<HTMLButtonElement>("[data-dashboard-event]").forEach((button) => button.addEventListener("click", async () => {
     const eventId = button.dataset.dashboardEvent || "";
     const action = button.dataset.dashboardAction || "open";
@@ -2838,7 +3057,7 @@ function renderDashboardLegacy(
         `
           <div class="dashboard-count-block">
             <strong>${activePatientsCount}</strong>
-            <span>Cadastros ativos no sistema</span>
+            <span>Pacientes ativos no sistema</span>
             <button class="ghost-button" id="go-patient-list" type="button">Abrir lista</button>
           </div>
         `,
@@ -3296,7 +3515,7 @@ function patientInitial(patient: Paciente): string {
 
 function patientAgeGender(patient: Paciente): string {
   const parts = [patient.idade ? `${patient.idade} anos` : "", patient.genero || ""].filter(Boolean);
-  return parts.join(" - ") || "Ficha sem dados demograficos";
+  return parts.join(" - ") || "Ficha incompleta";
 }
 
 function patientPendingFlags(patient: Paciente): string {
@@ -3330,7 +3549,7 @@ function patientRowHtml(patient: Paciente): string {
       <span class="patient-card-actions">
         ${patientPendingFlags(patient)}
         <span class="pill ${patient.ativo === false ? "warn" : "ok"}">${patient.ativo === false ? "inativo" : "ativo"}</span>
-        <strong>Ver perfil</strong>
+        <strong>Abrir paciente</strong>
       </span>
     </button>
   `;
@@ -3763,7 +3982,7 @@ function renderEvolucoes(loading = false): void {
   view.innerHTML = `
     <header class="page-header">
       <div>
-        <h1>Cadastros</h1>
+        <h1>Pacientes</h1>
         <p>Pacientes, ficha clinica, financeiro e linha do tempo operacional em um unico lugar.</p>
       </div>
       <div class="button-row">
@@ -3797,8 +4016,8 @@ function renderEvolucoes(loading = false): void {
               <select id="patient-sort">
                 <option value="alpha" ${state.patientSort === "alpha" ? "selected" : ""}>Alfabetico</option>
                 <option value="last_attendance" ${state.patientSort === "last_attendance" ? "selected" : ""}>Ultimo atendimento</option>
-                <option value="newest" ${state.patientSort === "newest" ? "selected" : ""}>Cadastros recentes</option>
-                <option value="oldest" ${state.patientSort === "oldest" ? "selected" : ""}>Cadastros antigos</option>
+                <option value="newest" ${state.patientSort === "newest" ? "selected" : ""}>Pacientes recentes</option>
+                <option value="oldest" ${state.patientSort === "oldest" ? "selected" : ""}>Pacientes mais antigos</option>
               </select>
             </label>
           </div>
@@ -4406,7 +4625,7 @@ async function handleEvolutionSubmit(event: SubmitEvent): Promise<void> {
       texto,
       conduta: String(data.get("conduta") || "").trim(),
       data: todayISO(),
-      profissionalNome: state.user?.nomeCompleto || state.user?.login || "FisioBot",
+      profissionalNome: state.user?.nomeCompleto || state.user?.login || "FISIA",
     });
     state.evolucoes = [saved, ...state.evolucoes];
     state.patientEvolutions = [saved, ...state.patientEvolutions];
@@ -4746,7 +4965,7 @@ function exportFinanceCsv(): void {
     ["Data", "Paciente", "Status", "Valor"].join(";"),
     ...state.financeiro.map((item) => [item.data || "", item.nomeCompleto || "", item.statusFinanceiro || "", String(item.valorAtendimento || 0)].join(";")),
   ].join("\n");
-  downloadText(`fisiobot-financeiro-${todayISO()}.csv`, rows);
+  downloadText(`fisia-financeiro-${todayISO()}.csv`, rows);
 }
 
 async function loadRelatorios(): Promise<void> {
@@ -4798,7 +5017,7 @@ function renderRelatorios(loading = false): void {
   });
   document.querySelector<HTMLButtonElement>("#export-report")?.addEventListener("click", () => {
     const rows = [["Tipo", "Chave", "Valor"], ...report.byDay.map(([k, v]) => ["Atendimentos por dia", k, String(v)]), ["Financeiro", "Recebido", String(report.finance.paid)], ["Financeiro", "Pendente", String(report.finance.pending)]];
-    downloadText(`fisiobot-relatorio-${todayISO()}.csv`, rows.map((row) => row.join(";")).join("\n"));
+    downloadText(`fisia-relatorio-${todayISO()}.csv`, rows.map((row) => row.join(";")).join("\n"));
   });
 }
 
@@ -4952,7 +5171,7 @@ function renderDebugIntents(): void {
     <section class="debug-intents-layout">
       <div class="content-panel debug-phone">
         <div class="debug-phone-header">
-          <strong>FisioBot local</strong>
+          <strong>FISIA local</strong>
           <span>${totals.total} testes</span>
         </div>
         <div class="debug-chat-list" aria-live="polite">
@@ -5117,7 +5336,7 @@ function renderRecursos(
       </div>
       <aside class="content-panel resource-detail">
         <div class="resource-badge">F</div>
-        <h2>FisioBot operacional</h2>
+        <h2>FISIA operacional</h2>
         <p>Esta tela segue o modelo de recursos do NextFit, mas com os modulos realmente ativos no tablet. Os itens ocultos ficam fora da navegacao principal e continuam desconectados ate nova etapa.</p>
         <div class="detail-row"><span>Modo de interface</span><strong>Vanilla HTML/CSS/JS</strong></div>
         <div class="detail-row"><span>Banco de dados</span><strong>Acesso somente via backend</strong></div>
@@ -5416,7 +5635,7 @@ function newAppointmentDrawerHtml(): string {
               <input name="data" type="date" value="${todayISO()}" />
             </label>
             <label>Valor
-              <input name="valor" type="text" inputmode="decimal" value="${escapeHtml(value ? String(value).replace(".", ",") : "")}" placeholder="Valor nao definido" />
+              <input name="valor" type="text" inputmode="decimal" value="${escapeHtml(value ? String(value).replace(".", ",") : "")}" placeholder="Nao faturado" />
             </label>
           </div>
           <div class="form-columns">
@@ -5600,16 +5819,21 @@ function renderAgenda(loading = false): void {
     </header>
     <section class="calendar-shell">
       <div class="calendar-topline">
-        <div class="calendar-nav">
+        <div class="calendar-nav-stack">
+          <div class="calendar-nav">
           <button class="ghost-button icon-button arrow-button" id="prev-week" type="button" title="Semana anterior">&laquo;</button>
           <button class="secondary-button" id="today-week" type="button">HOJE</button>
           <button class="ghost-button icon-button arrow-button" id="next-week" type="button" title="Proxima semana">&raquo;</button>
-          <strong>${escapeHtml(monthLabel)}</strong>
+            <button class="calendar-month-trigger" id="agenda-month-picker" type="button" aria-expanded="${state.agendaMonthPickerOpen}">${escapeHtml(monthLabel)}</button>
+            ${state.agendaMonthPickerOpen ? `<div class="agenda-month-popover">${agendaMonthPickerHtml(state.agendaPickerMonth || state.agendaWeekStart)}</div>` : ""}
+          </div>
+          <div class="status-strip">
+            <span>Futuros: ${totals.future}</span>
+            <span>Retroativos: ${totals.retro}</span>
+            <span>Pend. faturamento: ${totals.pending}</span>
+          </div>
         </div>
         <div class="calendar-actions calendar-inline-controls">
-          <label>Buscar
-            <input id="agenda-search" type="text" value="${escapeHtml(state.agendaSearch)}" placeholder="Paciente, servico ou profissional" />
-          </label>
           <label>Status
             <select id="agenda-status">
               <option value="todos" ${state.agendaStatus === "todos" ? "selected" : ""}>Todos</option>
@@ -5628,23 +5852,21 @@ function renderAgenda(loading = false): void {
           <button class="ghost-button" id="apply-agenda-filter" type="button">Filtros</button>
         </div>
       </div>
-      <div class="calendar-filterbar">
-        <div class="status-strip">
-          <span>Futuros: ${totals.future}</span>
-          <span>Retroativos: ${totals.retro}</span>
-          <span>Pend. faturamento: ${totals.pending}</span>
-        </div>
+      <div class="agenda-month-rail" aria-label="Navegar por meses">
+        ${agendaMonthRailHtml(state.agendaWeekStart)}
       </div>
       ${loading ? `<div class="loading">Carregando agenda...</div>` : ""}
       <div class="calendar-workspace">
         <div class="calendar-main">
-          ${
-            state.agendaView === "ano"
-              ? yearGridHtml(state.agendaWeekStart, state.agendaYearSummary)
-              : state.agendaView === "mes"
-                ? monthGridHtml(state.agendaWeekStart, filteredAgenda)
-                : weekGridHtml(weekDays, filteredAgenda)
-          }
+          <div class="calendar-grid-scroller">
+            ${
+              state.agendaView === "ano"
+                ? yearGridHtml(state.agendaWeekStart, state.agendaYearSummary)
+                : state.agendaView === "mes"
+                  ? monthGridHtml(state.agendaWeekStart, filteredAgenda)
+                  : weekGridHtml(weekDays, filteredAgenda)
+            }
+          </div>
           <div class="content-panel agenda-list-panel dense-panel">
             <div class="section-title"><h2>Atendimentos da semana</h2></div>
             <div class="agenda-list">
@@ -5669,32 +5891,56 @@ function renderAgenda(loading = false): void {
     state.selectedEventId = null;
     await loadAgenda();
   });
-  document.querySelector<HTMLButtonElement>("#today-week")?.addEventListener("click", async () => {
-    state.agendaWeekStart = startOfWeekISO(new Date());
-    state.selectedEventId = null;
-    await loadAgenda();
+  document.querySelector<HTMLButtonElement>("#today-week")?.addEventListener("click", () => {
+    state.agendaMonthPickerOpen = !state.agendaMonthPickerOpen;
+    state.agendaPickerMonth = state.agendaMonthPickerOpen ? state.agendaWeekStart : null;
+    renderAgenda();
+  });
+  document.querySelector<HTMLButtonElement>("#agenda-month-picker")?.addEventListener("click", () => {
+    state.agendaMonthPickerOpen = !state.agendaMonthPickerOpen;
+    state.agendaPickerMonth = state.agendaMonthPickerOpen ? state.agendaWeekStart : null;
+    renderAgenda();
+  });
+  view.querySelector<HTMLButtonElement>("#agenda-picker-prev")?.addEventListener("click", () => {
+    state.agendaPickerMonth = shiftMonthISO(state.agendaPickerMonth || state.agendaWeekStart, -1);
+    renderAgenda();
+  });
+  view.querySelector<HTMLButtonElement>("#agenda-picker-next")?.addEventListener("click", () => {
+    state.agendaPickerMonth = shiftMonthISO(state.agendaPickerMonth || state.agendaWeekStart, 1);
+    renderAgenda();
   });
   document.querySelector<HTMLButtonElement>("#next-week")?.addEventListener("click", async () => {
     state.agendaWeekStart = addDaysToISO(state.agendaWeekStart, 7);
     state.selectedEventId = null;
     await loadAgenda();
   });
+  view.querySelectorAll<HTMLButtonElement>("[data-agenda-month]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const month = button.dataset.agendaMonth;
+      if (!month) return;
+      state.agendaWeekStart = startOfWeekISO(new Date(`${month}-01T12:00:00`));
+      state.selectedEventId = null;
+      await loadAgenda();
+    });
+  });
+  view.querySelectorAll<HTMLButtonElement>("[data-agenda-picker-day]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const day = button.dataset.agendaPickerDay;
+      if (!day) return;
+      state.agendaWeekStart = startOfWeekISO(new Date(`${day}T12:00:00`));
+      state.agendaMonthPickerOpen = false;
+      state.agendaPickerMonth = null;
+      state.selectedEventId = null;
+      await loadAgenda();
+    });
+  });
   document.querySelector<HTMLButtonElement>("#apply-agenda-filter")?.addEventListener("click", () => {
-    state.agendaSearch = document.querySelector<HTMLInputElement>("#agenda-search")?.value.trim() || "";
     state.agendaStatus = document.querySelector<HTMLSelectElement>("#agenda-status")?.value || "todos";
     state.agendaView = (document.querySelector<HTMLSelectElement>("#agenda-view")?.value as AppState["agendaView"]) || "semana";
     renderAgenda();
   });
   document.querySelector<HTMLSelectElement>("#agenda-view")?.addEventListener("change", (event) => {
     state.agendaView = event.currentTarget.value as AppState["agendaView"];
-    renderAgenda();
-  });
-  document.querySelector<HTMLInputElement>("#agenda-search")?.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    state.agendaSearch = event.currentTarget.value.trim();
-    state.agendaStatus = document.querySelector<HTMLSelectElement>("#agenda-status")?.value || "todos";
-    state.agendaView = (document.querySelector<HTMLSelectElement>("#agenda-view")?.value as AppState["agendaView"]) || "semana";
     renderAgenda();
   });
   bindNewAppointmentDrawer(() => renderAgenda());
@@ -5707,6 +5953,36 @@ function renderAgenda(loading = false): void {
   });
   bindAppointmentCards(() => renderAgenda());
   bindAppointmentDrawerActions(() => loadAgenda(), () => renderAgenda());
+}
+
+function agendaMonthRailHtml(anchorISO: string): string {
+  const anchor = new Date(`${anchorISO}T12:00:00`);
+  const selectedMonth = `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, "0")}`;
+  const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  return Array.from({ length: 9 }, (_, index) => {
+    const date = new Date(anchor.getFullYear(), anchor.getMonth() + index - 4, 1, 12);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const label = monthNames[date.getMonth()];
+    return `<button class="agenda-month-option ${key === selectedMonth ? "active" : ""}" type="button" data-agenda-month="${key}" aria-pressed="${key === selectedMonth}">${escapeHtml(label)}</button>`;
+  }).join("");
+}
+
+function agendaMonthPickerHtml(anchorISO: string): string {
+  const anchor = new Date(`${anchorISO}T12:00:00`);
+  const year = anchor.getFullYear();
+  const month = anchor.getMonth();
+  const label = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(anchor);
+  const firstWeekday = new Date(year, month, 1, 12).getDay();
+  const daysInMonth = new Date(year, month + 1, 0, 12).getDate();
+  const weekdays = ["D", "S", "T", "Q", "Q", "S", "S"];
+  const days = Array.from({ length: firstWeekday + daysInMonth }, (_, index) => {
+    if (index < firstWeekday) return `<span class="agenda-picker-blank" aria-hidden="true"></span>`;
+    const dayNumber = index - firstWeekday + 1;
+    const day = `${year}-${String(month + 1).padStart(2, "0")}-${String(dayNumber).padStart(2, "0")}`;
+    const holiday = calendarHoliday(day);
+    return `<button class="agenda-picker-day ${day === todayISO() ? "today" : ""} ${holiday ? `is-${holiday.type}` : ""}" type="button" data-agenda-picker-day="${day}" title="${escapeHtml(holiday?.label || formatDate(day))}">${dayNumber}</button>`;
+  }).join("");
+  return `<div class="agenda-picker-header"><button class="agenda-picker-arrow" id="agenda-picker-prev" type="button" aria-label="Mes anterior">${navIcon("chevronLeft")}</button><div class="agenda-picker-title">${escapeHtml(label)}</div><button class="agenda-picker-arrow" id="agenda-picker-next" type="button" aria-label="Proximo mes">${navIcon("chevronRight")}</button></div><div class="agenda-picker-weekdays">${weekdays.map((day) => `<span>${day}</span>`).join("")}</div><div class="agenda-picker-days">${days}</div><div class="agenda-picker-legend"><span class="holiday">Feriado</span><span class="optional">Ponto facultativo</span></div>`;
 }
 
 async function saveAppointmentPayment(
@@ -5763,7 +6039,8 @@ function weekGridHtml(weekDays: string[], slots: AgendaSlot[]): string {
       ${weekDays
         .map((day) => {
           const date = new Date(`${day}T12:00:00`);
-          return `<div class="week-head ${day === todayISO() ? "today" : ""}"><span>${labels[date.getDay()]}.</span><strong>${date.getDate()}</strong></div>`;
+          const holiday = calendarHoliday(day);
+          return `<div class="week-head ${day === todayISO() ? "today" : ""} ${holiday ? `is-${holiday.type}` : ""}" title="${escapeHtml(holiday?.label || "")}"><span>${labels[date.getDay()]}.</span><strong>${date.getDate()}</strong>${holiday ? `<small>${escapeHtml(holiday.label)}</small>` : ""}</div>`;
         })
         .join("")}
       ${hours
@@ -5773,7 +6050,8 @@ function weekGridHtml(weekDays: string[], slots: AgendaSlot[]): string {
             ${weekDays
               .map((day) => {
                 const cellSlots = slots.filter((slot) => slot.data === day && Number((slot.horaInicio || "0").slice(0, 2)) === hour);
-                return `<div class="week-cell ${day === todayISO() ? "today-bg" : ""}">
+                const holiday = calendarHoliday(day);
+                return `<div class="week-cell ${day === todayISO() ? "today-bg" : ""} ${holiday ? `is-${holiday.type}` : ""}" title="${escapeHtml(holiday?.label || "")}">
                   ${cellSlots.map(calendarChipHtml).join("")}
                 </div>`;
               })
@@ -5803,9 +6081,11 @@ function monthGridHtml(anchorISO: string, slots: AgendaSlot[]): string {
         .map((day) => {
           const date = new Date(`${day}T12:00:00`);
           const daySlots = slots.filter((slot) => slot.data === day);
+          const holiday = calendarHoliday(day);
           return `
-            <button class="month-cell ${date.getMonth() === anchor.getMonth() ? "" : "muted-month"} ${day === todayISO() ? "today" : ""}" type="button">
+            <button class="month-cell ${date.getMonth() === anchor.getMonth() ? "" : "muted-month"} ${day === todayISO() ? "today" : ""} ${holiday ? `is-${holiday.type}` : ""}" type="button" title="${escapeHtml(holiday?.label || "")}">
               <strong>${date.getDate()}</strong>
+              ${holiday ? `<small>${escapeHtml(holiday.label)}</small>` : ""}
               ${daySlots
                 .slice(0, 3)
                 .map((slot) => `<span>${escapeHtml(slot.horaInicio || "")} ${escapeHtml(slot.clientes?.[0]?.nomeCompleto || slot.servico || "Atendimento")}</span>`)

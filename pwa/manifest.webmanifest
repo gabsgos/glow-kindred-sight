@@ -1,14 +1,14 @@
 {
-  "name": "FisioBot",
-  "short_name": "FisioBot",
-  "description": "Cockpit clinico FisioBot para agenda, cadastros, financeiro e rotina operacional.",
+  "name": "FISIA",
+  "short_name": "FISIA",
+  "description": "Gestao inteligente para fisioterapeutas: agenda, pacientes, financeiro e rotina operacional.",
   "lang": "pt-BR",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#f6f7fb",
-  "theme_color": "#6f2cf4",
+  "background_color": "#f5f7f6",
+  "theme_color": "#086B54",
   "categories": ["medical", "productivity", "business"],
   "icons": [
     {

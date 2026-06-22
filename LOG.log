@@ -538,6 +538,49 @@
 - Adicionados helpers de status/metricas para calcular pendencias operacionais e financeiro mensal a partir da agenda e dos lancamentos.
 - Fluxo de exclusao de paciente ajustado na UI para `Excluir definitivamente`, com botao tambem no drawer do paciente.
 - Validacao local: `npm run build:tablet` OK.
+
+[2026-06-21 00:36:00 -03:00] build 0.1.141 - agenda com viewport e faixa temporal
+- Corrigido o dimensionamento do conteudo para usar integralmente a largura restante ao lado do drawer fixo, sem corte da pagina.
+- A agenda recebeu uma faixa rolavel com 6 meses antes e 6 depois do mes atual; selecionar um mes atualiza a semana exibida.
+- A grade semanal, mensal e anual passou a rolar horizontalmente somente dentro do calendario quando o espaco for insuficiente.
+- Nenhuma alteracao feita na SPA React e nenhum deploy realizado.
+
+[2026-06-21 15:24:00 -03:00] build 0.1.142 - dashboard sem coluna residual e mini calendario
+- Dashboard vanilla passa a ocupar 100% da largura util sem a compensacao de zoom que deixava uma coluna vazia a direita.
+- Faixa de meses agora rotula explicitamente `Dez De 2025`, `Jan De 2026` e demais meses relativos ao mes selecionado.
+- Adicionado mini calendario tradicional do mes vigente ao lado da faixa temporal; dias sao clicaveis e carregam a semana correspondente.
+- Nenhuma alteracao feita na SPA React, Git ou deploy.
+
+[2026-06-21 15:33:00 -03:00] build 0.1.143 - agenda compacta e onboarding condicional
+- Mini calendario foi movido para a coluna de apoio ao lado da grade semanal, eliminando o espaco vertical vazio na faixa de meses.
+- O mini calendario segue exibindo somente o mes vigente e permite selecionar um dia para abrir sua semana.
+- Quando `completedAt` existe, Cadastro inicial e Seu progresso deixam de ser renderizados no dashboard; permanecem visiveis somente durante onboarding incompleto.
+- Nenhuma alteracao feita na SPA React, Git ou deploy.
+
+[2026-06-21 15:38:00 -03:00] build 0.1.144 - mini calendario junto da faixa mensal
+- Revertida a coluna lateral da agenda: a grade semanal voltou a ocupar toda a largura abaixo da navegacao temporal.
+- Mini calendario foi reduzido e movido para a lateral imediata dos botoes de meses, sem competir com a grade semanal.
+- Mantida a regra de ocultar Cadastro inicial e Seu progresso apos onboarding concluido.
+- Nenhuma alteracao feita na SPA React, Git ou deploy.
+
+[2026-06-21 15:43:00 -03:00] build 0.1.145 - faixa mensal simplificada
+- Removido o mini calendario da agenda e todo o CSS associado.
+- Rotulos mensais simplificados de `Set De 2025` para `Set 2025`, reduzindo a largura da faixa rolavel.
+- Nenhuma alteracao feita na SPA React, Git ou deploy.
+
+[2026-06-21 16:02:00 -03:00] build 0.1.146 - dashboard em tres colunas e agenda alinhada
+- Dashboard vanilla reorganizado em duas linhas de tres cards: resumo financeiro/agenda, acoes rapidas, pacientes ativos e evolucoes pendentes; agenda do dia ocupa linha integral abaixo.
+- Cards e tabela do dashboard tiveram tipografia, espacamento e detalhes operacionais ampliados para melhor aproveitar a largura do desktop.
+- Agenda removeu campo de busca, centralizou a faixa de nove meses (quatro anteriores e quatro posteriores) e removeu o ano dos rotulos.
+- Mes vigente e botao HOJE agora alternam um popover de calendario compacto para selecao de dia, no padrao de navegacao do Google Agenda.
+- Controles Status, Visualizacao e Filtros foram alinhados em uma unica linha de referencia.
+- Nenhuma alteracao feita na SPA React, Git ou deploy.
+
+[2026-06-21 16:18:00 -03:00] build 0.1.147 - seletor mensal navegavel e feriados 2026
+- Popover mensal da agenda ganhou setas para navegar por meses sem alterar a semana ate a selecao de um dia.
+- Incluido calendario federal de 2026: feriados nacionais em vermelho claro e pontos facultativos em ambar, no popover e nas visoes semanal/mensal.
+- Datas e classificacoes foram conferidas na publicacao oficial do Ministerio da Gestao sobre o calendario de 2026.
+- Nenhuma alteracao feita na SPA React, Git ou deploy.
 - Deploy no tablet aplicado; wrapper retornou falso negativo apos `apply_only_ok`, stack foi validada por SSH e ngrok.
 - Validacao remota: login `gabriel.gosmano` OK; bundle publicado contem `Pendencias`, `Financeiro do mes` e `Excluir definitivamente`.
 2026-06-09 21:48:44 -03:00 | Frontend financeiro operacional: adicionado estado de aba do drawer de atendimento, aba Financeiro com valor/status/recebido/saldo, formulario de registro de pagamento, consumo de credito do paciente, chips financeiros na grade/lista da agenda, painel financeiro individual expandido e dashboard Caixa com recebido hoje/mes, contas em aberto, ticket medio e distribuicao por forma de pagamento. Build tablet validado com npm run build:tablet.
@@ -855,3 +898,35 @@
 [2026-06-21 00:27:00 -03:00] build 0.1.139 - escala visual dashboard
 - Interface vanilla em desktop ampliada em 20% para dashboard, sidebar e topo.
 - Dashboard usa escala CSS com largura compensada para manter o painel dentro do viewport sem corte horizontal.
+
+[2026-06-21 00:31:00 -03:00] build 0.1.140 - drawer lateral fixo
+- Removido espaco residual no lado direito: dashboard ampliado passa a ocupar toda a largura util do painel.
+- Agenda vazia deixou de exibir barra horizontal interna.
+- Sidebar desktop passou de sticky/rolavel para drawer fixo sem barra de rolagem propria.
+- Adicionado botao de recolher/expandir; no estado recolhido a navegacao exibe somente icones, mantendo o conteudo principal amplo.
+
+[2026-06-21 16:38:50 -03:00] build 0.1.148 - FISIA UX/UI local
+- Restaurada a interface vanilla aprovada com sidebar fixa, dashboard em duas linhas de cards e agenda sem mini calendario permanente.
+- Aplicada camada visual FISIA: verde clinico como cor operacional principal, roxo reservado para acentos de inteligencia/assistente.
+- Atualizadas nomenclaturas visiveis: FisioBot para FISIA nas telas de acesso/onboarding, Cadastros para Pacientes, Ver perfil para Abrir paciente e Valor nao definido para Nao faturado.
+- Reforcados overrides responsivos para manter dashboard e agenda encaixados ao lado da sidebar sem coluna residual lateral.
+
+[2026-06-21 16:49:00 -03:00] build 0.1.149 - dashboard FISIA mock operacional
+- Dashboard vanilla redesenhado no padrao do mock de produto: proximo atendimento, metricas, agenda do dia e prioridades.
+- Removido o uso visual do logo real; mantido somente o marcador temporario `F` na sidebar.
+- Card `Pergunte a Fisia` preservado na lateral e ligado a rota local de debug/assistente.
+- Removidos assets temporarios de logo do pacote local.
+- Sem git e sem deploy.
+
+[2026-06-21 17:14:00 -03:00] build 0.1.150 - hotfix dashboard FISIA
+- Corrigido erro `slotsAbertos is not defined` no novo dashboard.
+- Criado helper `appointmentDurationMinutes` para calcular duracao por hora inicial/final com fallback para tipo de atendimento e duracao padrao.
+- Dashboard FISIA volta a carregar sem erro de runtime.
+- Sem git e sem deploy.
+
+[2026-06-21 18:47:22 -03:00] build 0.1.151 - login e cadastro FISIA
+- Tela de login vanilla redesenhada conforme especificacao FISIA: split 42/58, painel branco de autenticacao e painel verde com promessa de marca/produto.
+- Cadastro inicial atualizado para a identidade FISIA, com CPF opcional, confirmacao de senha e WhatsApp mantido no pipeline existente.
+- Onboarding reduzido para 4 etapas, combinando recebimentos e WhatsApp, e tela final com acoes de ativacao.
+- Metadados HTML/PWA e downloads exportados atualizados para FISIA.
+- Build local `npm run build:tablet` validado. Sem git e sem deploy.

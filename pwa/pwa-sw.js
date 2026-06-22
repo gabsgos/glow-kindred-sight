@@ -1,4 +1,4 @@
-const CACHE_PREFIX = "fisiobot-";
+const CACHE_PREFIX = "fisia-";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();

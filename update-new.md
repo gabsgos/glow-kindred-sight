@@ -1078,3 +1078,1334 @@ C:/Users/gabri/OneDrive/Desktop/pipeline-chat-contextual-fisiobot.md
 ## Ajuste visual 0.1.139
 
 - Interface do dashboard vanilla ampliada em 20% no desktop, com largura compensada para preservar o encaixe no viewport.
+
+## Ajuste visual 0.1.140
+
+- Navegacao lateral desktop convertida em drawer fixo e recolhivel, sem barra de rolagem propria.
+- Dashboard passa a ocupar a largura util restante e agenda vazia nao mostra barra horizontal.
+
+## Ajuste visual 0.1.141
+
+- Drawer desktop permanece fixo enquanto o conteudo usa 100% da largura residual do viewport.
+- Agenda recebeu uma trilha temporal horizontal com seis meses anteriores e seis posteriores para navegacao direta.
+- A barra horizontal ficou restrita ao calendario quando a grade semanal, mensal ou anual precisar de largura adicional.
+
+## Ajuste visual 0.1.142
+
+- Dashboard usa toda a largura residual do viewport, sem uma coluna vazia a direita.
+- Faixa de meses usa rotulos operacionais e um intervalo deslizante de seis meses antes e depois do mes ativo.
+- Mini calendario tradicional do mes ativo permite selecionar um dia e carregar diretamente sua semana na agenda.
+
+## Ajuste visual 0.1.143
+
+- Mini calendario passou para a coluna lateral da agenda, preservando uma faixa de meses compacta e rolavel.
+- Blocos Cadastro inicial e Seu progresso sao condicionais: aparecem apenas enquanto o onboarding estiver pendente e somem depois de `completedAt`.
+
+## Ajuste visual 0.1.144
+
+- Mini calendario compacto foi posicionado junto da faixa de meses; a grade semanal permanece em largura total.
+- Mantida a regra de ocultar os paineis de onboarding depois da conclusao.
+
+## Ajuste visual 0.1.145
+
+- Mini calendario removido por decisao de usabilidade.
+- Faixa de meses usa rotulos reduzidos para preservar mais espaco horizontal.
+
+## Ajuste visual 0.1.146
+
+- Dashboard passa a distribuir seis cards operacionais em duas linhas de tres, seguido da agenda do dia em largura total.
+- Agenda usa faixa centralizada de nove meses sem ano e seletor mensal em popover ativado por Hoje ou pelo mes vigente.
+- Busca foi removida do cabeçalho da agenda e os controles restantes foram alinhados.
+
+## Ajuste visual 0.1.147
+
+- Popover de mes ganhou setas para navegacao entre meses.
+- Feriados nacionais e pontos facultativos federais de 2026 foram destacados no popover e nas grades da agenda.
+
+## Ajuste visual 0.1.148
+
+- Interface vanilla restaurada apos a quebra visual da rodada UX/UI anterior, preservando dashboard em duas linhas de tres cards e agenda sem mini calendario permanente.
+- Identidade FISIA aplicada como camada visual: verde clinico para operacao e roxo reservado para acentos de inteligencia/assistente.
+- Nomenclaturas visiveis principais atualizadas para o novo produto: `FISIA`, `Pacientes`, `Abrir paciente` e `Nao faturado`.
+- Reforco de CSS para sidebar fixa, conteudo encaixado na largura util e reducao de conflito com regras roxas legadas.
+
+## Ajuste visual 0.1.149
+
+- Dashboard vanilla refeito no padrao do mock operacional FISIA: proximo atendimento em destaque, tres metricas superiores, agenda do dia e prioridades.
+- Logo real removido da interface por decisao visual; sidebar volta a usar apenas o mock `F` como marcador temporario.
+- Card lateral `Pergunte a Fisia` mantido como entrada visual de assistente e ligado a rota local de debug/assistente.
+- Assets temporarios de logo removidos do pacote para evitar peso e confusao visual.
+- Sem git e sem deploy.
+
+## Hotfix 0.1.150
+
+- Corrigido erro de runtime no novo dashboard: `slotsAbertos` agora e calculado dentro de `renderDashboardPro`.
+- Dashboard volta a carregar sem cair para a tela de login por excecao JavaScript.
+- Sem git e sem deploy.
+
+## Proximo update P0 - modelo de linguagem contextual
+
+Prioridade: extremamente urgente.
+
+O proximo update do modelo deve transformar o chat em um nucleo conversacional formal, nao apenas em uma sequencia de parsers e pendencias. A regra de arquitetura fica:
+
+```text
+Contexto sugere.
+Workflow coleta.
+Confirmacao autoriza.
+Banco executa.
+```
+
+### Objetivo
+
+- separar intent, escopo, workflow e permissao de execucao;
+- impedir que `sim`, numeros curtos, contexto de paciente e consulta global concorram de forma insegura;
+- melhorar respostas de WhatsApp para serem operacionais, curtas e acionaveis;
+- reduzir chamadas ao Qwen/LLM quando o caminho local for suficiente;
+- proteger agenda, financeiro, cancelamentos e alteracoes de valor com confirmacao imutavel e idempotencia.
+
+### Componentes obrigatorios
+
+Implementar ou refatorar:
+
+- `MessageFrame`: texto bruto, normalizado, entidades, datas, horarios, valores, formas de pagamento, referencias e intents candidatas.
+- `ScopeResolver`: decide entre entidade explicita, workflow aberto, contexto ativo, standby, consulta global ou escopo desconhecido.
+- `WorkflowEngine`: estados `proposed`, `collecting_slots`, `ready_for_confirmation`, `executing`, `completed`, `cancelled`, `expired`, `failed`, `superseded`.
+- `RiskPolicy`: baixo risco executa; medio risco confirma quando inferido; alto risco confirma sempre.
+- `ResponseFormatter`: monta texto final humano para WhatsApp sem despejar banco cru.
+
+### Estado conversacional
+
+Usar quatro registradores principais:
+
+```text
+focus
+pending_workflow
+query_context
+selection_context
+```
+
+Complementar com:
+
+```text
+recent_entities: maximo 2
+last_completed_action
+```
+
+### Roteamento prioritario
+
+Ordem de decisao:
+
+1. deduplicacao por `source_message_id`;
+2. admin/debug;
+3. meta-intents;
+4. confirmacao/negacao somente se a mensagem for confirmacao-shaped;
+5. selecao numerica valida por `selection_context_id`;
+6. entidade ou referencia explicita;
+7. comando novo completo;
+8. correcao ou preenchimento de workflow;
+9. consulta global declarativa;
+10. comando curto usando `focus`;
+11. retomada de contexto;
+12. classificador local;
+13. Qwen/LLM fallback;
+14. desambiguacao.
+
+### Meta-intents
+
+Adicionar:
+
+- `correct_previous_slot`;
+- `cancel_current_workflow`;
+- `replace_entity`;
+- `undo_last_action`;
+- `resume_context`;
+- `explain_current_state`.
+
+Exemplos:
+
+```text
+nao, segunda
+troca para Rafael
+cancela essa solicitacao
+continua Michelle
+o que esta aberto agora?
+desfaz ultimo pagamento
+```
+
+### Confirmacao e idempotencia
+
+Toda acao sensivel deve gerar snapshot imutavel:
+
+```text
+confirmation_id
+workflow_id
+payload_hash
+action
+entity_id
+entity_name
+amount
+payment_method
+expires_at
+state_version
+```
+
+Toda escrita deve usar:
+
+```text
+source_message_id
+workflow_id
+action_fingerprint
+idempotency_key
+```
+
+Fila por conversa:
+
+```text
+internal_user_id + channel + chat_id
+```
+
+### Regra corrigida para data/hora solta
+
+Data/hora sem nome nao agenda sozinha. Ela so agenda quando houver exatamente um paciente ativo, valido, nao expirado e nao ambiguo.
+
+Exemplo:
+
+```text
+Michelle Rossini
+amanha 11h
+```
+
+Resultado:
+
+```text
+propor agendamento de Michelle Rossini amanha as 11h
+```
+
+Mas:
+
+```text
+agenda amanha
+```
+
+continua sendo consulta global de agenda.
+
+### Respostas de WhatsApp
+
+`Busca pacientes` deve abandonar ID interno e tabela tecnica.
+
+Formato alvo:
+
+```text
+Encontrei 6 pacientes:
+
+1. Aurea Maria - R$ 167,66 em aberto
+2. Rafael Bonfim - R$ 167,66 em aberto
+3. Gabrielle Paiva - sem pendencias
+4. Iara Noto - sem pendencias
+5. Luiza Schchohc - sem atendimentos
+6. Michelle Rossini - proximo atendimento em 21/06 as 11h
+
+Responda com o numero ou nome do paciente.
+```
+
+`Busca Michelle Rossini` deve virar resumo operacional:
+
+```text
+Michelle Rossini
+
+Agenda
+- Proximo atendimento: 21/06 as 11h
+
+Financeiro
+- Valor por sessao: R$ 192,00
+- Credito disponivel: R$ 8.396,66
+- Em aberto: R$ 0,00
+
+Atencao
+- Pagamentos registrados sem atendimento concluido
+- Horarios antigos ainda marcados como agendados
+
+O que deseja fazer?
+1. Registrar atendimento
+2. Ver agenda
+3. Ver financeiro
+4. Registrar pagamento
+5. Verificar inconsistencias
+6. Abrir cadastro
+```
+
+Nao exibir por padrao:
+
+- CPF;
+- endereco;
+- nascimento;
+- campos vazios;
+- status tecnico;
+- todos os pagamentos;
+- todos os agendamentos antigos;
+- historico completo.
+
+### Formatters a criar
+
+- `build_patient_list_summary(...)`;
+- `build_patient_search_summary(...)`;
+- `build_financial_summary(...)`;
+- `build_agenda_summary(...)`;
+- `build_open_state_summary(...)`.
+
+Os formatters devem receber payload operacional estruturado. Nao devem consultar banco diretamente nem chamar LLM.
+
+### Alertas e inconsistencias
+
+Detectar:
+
+- pagamentos sem atendimento correspondente;
+- atendimentos sem evolucao;
+- agendamentos passados ainda como agendados;
+- credito maior que total recebido rastreavel;
+- credito negativo;
+- pagamento sem forma informada;
+- paciente sem telefone;
+- valor de atendimento ausente;
+- conflito entre pacote, credito do paciente, desconto, isencao e pagamento.
+
+### Otimizacao operacional
+
+- cache curto para pacientes por `internal_user_id`;
+- normalizadores e regex compilados no start do worker;
+- caminho local antes de Qwen/LLM;
+- timeout por camada;
+- limpeza periodica de contextos expirados;
+- lock curto por workflow sensivel;
+- metricas de tempo por etapa;
+- logs estruturados, sem dados sensiveis desnecessarios;
+- debug de arvore de decisao apenas para admin.
+
+### Testes obrigatorios
+
+Criar bateria stateful:
+
+```text
+initial_state + turns -> expected_response + expected_state + expected_action
+```
+
+Primeiro corte:
+
+- 50 conversas completas;
+- 200 turnos;
+- agenda, pagamento, evolucao, atendimento, busca, valor global, cancelamento e correcao.
+
+Casos obrigatorios:
+
+```text
+Busca pacientes -> 6
+Michelle Rossini -> amanha 11h -> sim
+Michelle Rossini -> agenda hoje -> agenda ela hoje -> 11h
+pagamento Rafael -> 167,66 pix -> nao, dinheiro -> sim
+valor de todos os atendimentos
+valor de todos 180 -> sim -> nao
+busca Michelle -> 4 -> 200 pix -> sim
+cancelar
+o que esta aberto agora?
+```
+
+### Criterios de aceite
+
+- nenhuma escrita sensivel sem confirmacao vinculada a snapshot;
+- `agenda hj` nunca agenda paciente por contexto implicito;
+- `agenda ela hj` usa paciente ativo quando unico;
+- numero curto so responde ao menu que o gerou;
+- `sim` sozinho nao confirma se houver mais de uma pendencia sensivel;
+- busca de paciente vira resumo acionavel;
+- Qwen/LLM nao executa banco diretamente;
+- testes locais passam antes de qualquer deploy.
+
+### Identidade da assistente Fisia
+
+Prioridade: extremamente urgente.
+
+A FISIA e o produto. A Fisia e a inteligencia conversacional dentro dele.
+
+Papel:
+
+```text
+secretaria clinica extremamente organizada, rapida e confiavel
+```
+
+Definicao:
+
+```text
+A Fisia entende o que voce quer fazer, organiza o que falta e executa somente o que estiver seguro e autorizado.
+```
+
+Posicionamento:
+
+```text
+A Fisia reduz o trabalho de organizar. O profissional continua decidindo.
+```
+
+Nao deve parecer:
+
+- chatbot generico;
+- robo animado;
+- IA medica;
+- mascote infantil;
+- profissional que decide pela clinica.
+
+Funcoes principais:
+
+- assistente operacional;
+- secretaria clinica;
+- navegadora do sistema;
+- guardia da consistencia;
+- facilitadora de registros.
+
+Personalidade:
+
+```text
+calor_humano: 6/10
+objetividade: 9/10
+formalidade: 5/10
+proatividade: 8/10
+humor_na_operacao: 1/10
+humor_no_marketing: 7/10
+assertividade: 8/10
+verbosidade_padrao: 3/10
+```
+
+Ordem da resposta:
+
+1. confirmar o que entendeu;
+2. mostrar o dado principal;
+3. informar pendencias ou riscos;
+4. oferecer a proxima acao.
+
+Padrao WhatsApp:
+
+```text
+1 a 5 linhas
+```
+
+Detalhes somente sob demanda.
+
+Regras de linguagem:
+
+- usar voz ativa;
+- usar `voce`, `seu` e `sua`;
+- usar nome completo do paciente na primeira referencia;
+- usar primeiro nome depois apenas se nao houver ambiguidade;
+- nao usar termos internos como payload, intent, workflow ou entity;
+- nao vazar status tecnico como `scheduled`, `unbilled`, `credit_internal`.
+
+Fontes de verdade:
+
+```text
+O banco informa.
+O contexto orienta.
+A memoria ajuda.
+A inferencia sugere.
+```
+
+Inferencia nunca vira fato sem validacao.
+
+Politica de risco ampliada:
+
+- baixo risco: busca, consulta, saldo, historico e abrir tela;
+- medio risco: agendar, reagendar, evolucao e editar cadastro;
+- alto risco: pagamento, credito do paciente, cancelamento, alterar valor e pacote;
+- muito alto: excluir paciente, apagar evolucao, estornar pagamento, acoes em massa e redefinir financeiro.
+
+Para risco muito alto, exigir confirmacao reforcada:
+
+```text
+Digite EXCLUIR para confirmar.
+```
+
+Vocabulário oficial:
+
+```text
+Paciente
+Atendimento
+Agendamento
+Evolucao
+Avaliacao
+Pagamento
+Recebimento
+Em aberto
+Credito do paciente
+Cartao de credito
+Concluido
+Nao faturado
+```
+
+Frase de controle:
+
+```text
+A Fisia nao conversa para parecer inteligente. Ela conversa para fazer a rotina andar.
+```
+
+### Contrato pratico do ConversationalKernel
+
+Prioridade: extremamente urgente.
+
+O kernel nao e outro modelo de IA. Ele e a camada central que coordena:
+
+```text
+intent_pipeline.py
+conversation_workflow.py
+contextos
+active_pending
+banco
+formatadores de resposta
+```
+
+Definicao:
+
+```text
+Uma camada deterministica de orquestracao que transforma mensagem, contexto e workflows abertos em um plano de acao unico, seguro e auditavel.
+```
+
+Regra executiva:
+
+```text
+Texto sugere.
+Estado valida.
+Risco decide.
+Confirmacao autoriza.
+Executor grava.
+```
+
+O kernel deve ficar acima do parser e do workflow:
+
+```text
+WhatsApp/Telegram/Web
+-> ConversationalKernel
+   -> IntentPipeline
+   -> ContextResolver
+   -> WorkflowManager
+   -> RiskPolicy
+   -> ActionExecutor
+   -> ResponseFormatter
+```
+
+Criar modulo:
+
+```text
+conversational_kernel.py
+```
+
+Responsabilidades:
+
+- carregar estado da conversa;
+- normalizar e enquadrar a mensagem;
+- chamar parser de intent;
+- resolver contexto e referencias;
+- verificar workflows abertos;
+- aplicar politica de risco;
+- montar plano de acao;
+- executar, responder, pedir slot ou pedir confirmacao;
+- atualizar contexto;
+- formatar resposta.
+
+O kernel deve responder sempre uma destas decisoes:
+
+```text
+ANSWER
+REQUEST_SLOT
+REQUEST_CONFIRMATION
+EXECUTE
+```
+
+E retornar `KernelResult`, nao apenas intent:
+
+```text
+conversation_key
+message_id
+interpretation
+entities
+sources
+decision
+risk
+action_plan
+state_changes
+response
+```
+
+### Multi-intent
+
+Prioridade: extremamente urgente.
+
+Uma mensagem pode gerar varias acoes. O kernel deve montar plano, nao escolher uma intent unica.
+
+Exemplo:
+
+```text
+Atendi Michelle hoje, fizemos treino de marcha e ela pagou 200 no pix.
+```
+
+Plano:
+
+```text
+1. registrar_atendimento
+2. registrar_evolucao, dependente do atendimento
+3. registrar_pagamento, dependente do atendimento e com confirmacao
+```
+
+Classificar relacoes:
+
+- dependentes;
+- independentes;
+- compartilhadas;
+- contraditorias.
+
+Se houver contradicao:
+
+```text
+Voce pediu para agendar e cancelar Michelle amanha.
+
+Qual acao deseja realizar?
+1. Agendar as 11h
+2. Cancelar o atendimento existente
+```
+
+Confirmar pacote quando as acoes forem do mesmo evento:
+
+```text
+Vou registrar para Michelle Rossini:
+
+- Atendimento hoje
+- Evolucao: treino de marcha
+- Pagamento de R$ 200,00 via PIX
+
+Confirmar?
+```
+
+Quando misturar consulta e escrita sensivel, executar a consulta e deixar a escrita aguardando confirmacao.
+
+Usar transacao quando as acoes forem fortemente ligadas. Para acoes independentes, permitir resultado parcial com status por acao.
+
+### Concorrencia e isolamento
+
+Prioridade: extremamente urgente.
+
+Separar:
+
+```text
+Multi-intent = planejamento.
+Multiplos usuarios = isolamento e concorrencia.
+```
+
+Regra-mestra:
+
+```text
+Uma mensagem pode gerar varias acoes.
+Uma conversa processa uma mensagem por vez.
+Conversas diferentes processam em paralelo.
+Recursos compartilhados sao protegidos pelo banco.
+Acoes repetidas sao bloqueadas por idempotencia.
+```
+
+Usar chave:
+
+```text
+tenant_id + internal_user_id + channel + chat_id
+```
+
+Regra:
+
+```text
+paralelo entre conversas
+serial dentro da mesma conversa
+```
+
+Nao usar lock global. Usar lock por conversa.
+
+Producao inicial recomendada:
+
+```text
+PostgreSQL como fila, lock, estado e outbox.
+```
+
+Fluxo:
+
+```text
+Webhook recebe mensagem
+-> salva em inbound_messages
+-> worker pega proxima mensagem
+-> adquire lock da conversation_key
+-> carrega estado
+-> kernel cria plano
+-> executor valida e executa
+-> atualiza estado
+-> salva resposta em outbox
+-> commit
+-> envia resposta
+```
+
+Tabelas minimas:
+
+- `inbound_messages`;
+- `conversation_states`;
+- `action_plans`;
+- `message_outbox`.
+
+Usar `pg_advisory_xact_lock(hashtext(conversation_key))` quando o banco for PostgreSQL.
+
+### Migracao PostgreSQL 100% funcional
+
+Prioridade: extremamente urgente.
+
+A migracao para PostgreSQL passa a ser requisito do proximo update do modelo conversacional. O kernel precisa de concorrencia real, transacoes, idempotencia, fila por conversa, outbox e auditoria. SQLite/local continua aceitavel para debug, mas nao deve ser a base final do fluxo multiusuario com WhatsApp, agenda e financeiro.
+
+#### Motivo tecnico
+
+PostgreSQL resolve os pontos criticos do novo modelo:
+
+- mensagens quase simultaneas do WhatsApp;
+- retry do Baileys;
+- workflows aguardando confirmacao;
+- multi-intent em uma mesma mensagem;
+- pagamento duplicado;
+- conflito de agenda;
+- contexto de conversa persistente;
+- outbox transacional;
+- auditoria de acoes sensiveis;
+- locks por conversa e por recurso compartilhado.
+
+#### Estrategia segura
+
+Nao trocar tudo de uma vez.
+
+Fases obrigatorias:
+
+1. Criar schema PostgreSQL em paralelo.
+2. Migrar primeiro estado conversacional, filas, outbox e idempotencia.
+3. Migrar agenda, financeiro, pacientes, evolucoes e atendimentos.
+4. Criar camada de repositorio para esconder temporariamente SQLite/PostgreSQL.
+5. Rodar importador dos bancos atuais.
+6. Validar contagens, saldos, agenda, pagamentos, credito do paciente e evolucoes.
+7. Rodar bateria local do kernel em PostgreSQL.
+8. So apontar producao para PostgreSQL depois de validacao completa.
+
+#### Schema operacional minimo
+
+Criar:
+
+```text
+inbound_messages
+conversation_states
+action_plans
+message_outbox
+idempotency_keys
+audit_events
+```
+
+Campos essenciais:
+
+```text
+tenant_id
+internal_user_id
+conversation_key
+external_message_id
+workflow_id
+plan_id
+action_fingerprint
+idempotency_key
+status
+payload_json
+state_json
+created_at
+updated_at
+expires_at
+processed_at
+```
+
+Indices obrigatorios:
+
+```sql
+UNIQUE (tenant_id, external_message_id)
+UNIQUE (tenant_id, idempotency_key)
+INDEX (conversation_key, created_at)
+INDEX (status, created_at)
+INDEX (tenant_id, internal_user_id)
+```
+
+#### Schema de dominio
+
+Normalizar ou compatibilizar:
+
+```text
+professionals/users
+patients
+appointments
+attendances
+evolutions
+payments
+patient_credits
+packages
+appointment_audit_events
+payment_audit_events
+```
+
+Regras:
+
+- toda tabela sensivel precisa de `tenant_id`/`internal_user_id`;
+- toda escrita sensivel precisa registrar origem;
+- pagamentos precisam de idempotencia;
+- agenda precisa bloquear sobreposicao;
+- credito do paciente precisa ledger, nao apenas saldo solto;
+- pacote, desconto, isencao e forma de pagamento permanecem separados.
+
+#### Fluxo alvo
+
+```text
+Webhook recebe mensagem
+-> salva em inbound_messages
+-> worker pega proxima mensagem pendente
+-> adquire lock por conversation_key
+-> carrega conversation_state
+-> ConversationalKernel monta action_plan
+-> RiskPolicy decide confirmacao ou execucao
+-> Executor valida regras de banco
+-> grava dominio em transacao
+-> grava resposta em message_outbox
+-> commit
+-> sender envia WhatsApp/Telegram
+-> marca outbox como sent
+```
+
+#### Lock correto
+
+Nao usar lock global.
+
+Usar lock por conversa:
+
+```text
+tenant_id + internal_user_id + channel + chat_id
+```
+
+Em PostgreSQL:
+
+```sql
+SELECT pg_advisory_xact_lock(hashtext(:conversation_key));
+```
+
+Para recursos compartilhados, usar protecoes especificas:
+
+- agenda: constraint/lock contra horario sobreposto;
+- pagamento: `idempotency_key` unico;
+- paciente: versionamento otimista quando houver edicao concorrente;
+- credito: ledger transacional;
+- outbox: envio somente apos commit.
+
+#### Camada de repositorio
+
+Criar interfaces para separar regra de negocio do banco:
+
+```text
+ConversationStateRepository
+InboundMessageRepository
+OutboxRepository
+PatientRepository
+AppointmentRepository
+AttendanceRepository
+PaymentRepository
+CreditLedgerRepository
+AuditRepository
+```
+
+Objetivo:
+
+- permitir migracao faseada;
+- facilitar testes locais;
+- evitar SQL espalhado no kernel;
+- permitir rollback controlado durante a transicao.
+
+#### Importador dos bancos atuais
+
+Criar importador idempotente:
+
+```text
+sqlite -> postgres
+```
+
+Validacoes obrigatorias:
+
+- quantidade de pacientes por usuario;
+- agenda por paciente;
+- atendimentos concluidos;
+- evolucoes vinculadas;
+- pagamentos por paciente;
+- saldo de credito do paciente;
+- valores em aberto;
+- pacotes;
+- registros sem dono/tenant;
+- registros duplicados;
+- datas invalidas;
+- formas de pagamento ambíguas.
+
+O importador deve gerar relatorio:
+
+```text
+importados
+ignorados
+corrigidos
+duplicados
+inconsistentes
+pendentes de revisao
+```
+
+#### Testes obrigatorios em PostgreSQL
+
+Minimo:
+
+- bateria stateful do kernel;
+- multi-intent com transacao;
+- pagamento duplicado por retry;
+- duas mensagens da mesma conversa chegando juntas;
+- duas conversas em paralelo;
+- conflito de agenda no mesmo horario;
+- outbox nao envia antes do commit;
+- confirmacao expirada nao executa;
+- rollback de pacote atendimento + evolucao + pagamento;
+- importador rodando duas vezes sem duplicar dados.
+
+#### Criterios de aceite
+
+- PostgreSQL sobe localmente com schema completo;
+- SQLite nao e mais requisito para o kernel em producao;
+- estado conversacional persiste em PostgreSQL;
+- inbound/outbox funcionam com idempotencia;
+- agenda bloqueia conflito real;
+- pagamento duplicado nao grava duas vezes;
+- credito do paciente usa ledger;
+- importador valida os DBs atuais;
+- testes locais passam usando PostgreSQL;
+- deploy so ocorre apos backup completo, salvo ordem explicita em contrario.
+
+### Ajustes P0 do kernel antes da implementacao ampla
+
+Prioridade: extremamente urgente.
+
+O kernel novo nao deve coexistir como mais uma camada paralela ao pipeline antigo. Ele precisa absorver, organizar e encapsular as capacidades atuais. O risco principal e criar dois caminhos decisorios:
+
+```text
+Caminho A: comandos diretos
+Caminho B: kernel/workflow
+```
+
+Isso faria mensagens como `sim`, `6`, `amanha 11h`, `cancelar` e `Michelle` terem comportamento diferente dependendo do ponto de entrada.
+
+Regra nova:
+
+```text
+Depois de autenticacao e deduplicacao, todo caminho operacional passa pelo ConversationalKernel.
+```
+
+Comandos diretos nao desaparecem. Eles viram resolvers prioritarios dentro do kernel:
+
+```text
+ConversationalKernel
+-> DebugResolver
+-> DirectCommandResolver
+-> MetaIntentResolver
+-> SelectionResolver
+-> WorkflowResolver
+-> GlobalQueryResolver
+-> ContextResolver
+-> IntentPipeline
+-> ActionPlan
+-> Executor
+```
+
+#### Fase 1: kernel como fachada
+
+Nao reescrever parser nem executor no primeiro corte.
+
+O kernel deve chamar rotas existentes, receber os resultados e devolver `KernelResult`.
+
+Migrar primeiro:
+
+- selecao numerica;
+- resposta de slot;
+- confirmacao;
+- paciente ativo;
+- agenda global;
+- comandos diretos que hoje executam antes do workflow.
+
+#### Plano antes de execucao
+
+Separar planejamento de efeito colateral.
+
+Contrato alvo:
+
+```python
+frame = kernel.build_frame(message)
+plan = kernel.create_plan(frame, state)
+execution_result = action_executor.execute(plan)
+new_state = kernel.reduce_state(state, plan, execution_result)
+```
+
+`KernelPlan` nao escreve no banco:
+
+```json
+{
+  "decision": "EXECUTE",
+  "actions": [],
+  "state_effects": [],
+  "response_spec": {},
+  "expected_state_version": 18
+}
+```
+
+Beneficios:
+
+- teste sem banco;
+- replay seguro;
+- auditoria;
+- comparacao entre plano e execucao;
+- idempotencia;
+- menor risco de salvar contexto parcial.
+
+#### Ordem de roteamento corrigida
+
+Ordem P0:
+
+```text
+1. Autenticacao e autorizacao
+2. Deduplicacao da mensagem
+3. Meta-intents: corrigir, cancelar fluxo, trocar paciente, retomar, desfazer
+4. Selecao numerica valida
+5. Confirmacao/negacao somente se tiver formato compativel
+6. Novo comando completo com entidade explicita
+7. Resposta ao slot esperado por workflow
+8. Consulta global declarativa
+9. Comando curto usando paciente em foco
+10. Refinamento de query_context
+11. Retomada explicita de entidade recente
+12. Classificador lexical/vetorial
+13. Fallback Qwen/LLM
+14. Desambiguacao
+```
+
+Novo comando completo deve vencer workflow aberto.
+
+Exemplo:
+
+```text
+Workflow aberto: confirmar pagamento da Michelle
+Usuario: Rafael pagou 300 no pix
+```
+
+Resultado:
+
+```text
+novo comando completo para Rafael, nao resposta ao workflow da Michelle
+```
+
+#### Origens de slot
+
+Diferenciar contexto vinculado de inferencia fraca.
+
+Criar:
+
+```text
+explicit_current_message
+workflow_bound
+focus_bound
+pronoun_resolved
+heuristic_inference
+llm_suggested
+```
+
+`focus_bound` e confiavel quando:
+
+- existe exatamente um paciente ativo;
+- contexto nao expirou;
+- nao existe workflow incompativel;
+- nao existe outro paciente explicito;
+- nao existe conflito de agenda.
+
+Politica:
+
+```text
+focus_bound + data explicita + hora explicita
+-> pode executar agendamento diretamente
+```
+
+Caso esperado:
+
+```text
+Michelle Rossini
+amanha 11h
+```
+
+Resposta esperada:
+
+```text
+Agendamento criado para Michelle Rossini amanha as 11h.
+```
+
+Sem paciente ativo:
+
+```text
+amanha 11h
+```
+
+Resposta:
+
+```text
+Para qual paciente?
+```
+
+#### Separacao logica de estados
+
+`active_pending` nao deve virar deposito de toda memoria conversacional.
+
+Separacao minima:
+
+```text
+conversation_state
+-> focus
+-> recent_entities
+-> query_context
+-> selection_context
+
+active_pending
+-> pending_workflow
+
+execution
+-> action_plan
+-> execution_status
+-> idempotency
+```
+
+Mesmo que a primeira versao use tabela unica, o codigo deve tratar essas fronteiras.
+
+#### `nao, dinheiro` corrige slot
+
+Negacao com substituicao nao cancela workflow.
+
+Exemplo:
+
+```text
+Bot: Registrar R$ 167,66 via PIX para Rafael?
+Usuario: nao, dinheiro
+```
+
+Transicao:
+
+```text
+WAITING_CONFIRMATION
+-> patch payment_method = dinheiro
+-> gerar novo snapshot
+-> WAITING_CONFIRMATION
+```
+
+Resposta:
+
+```text
+Certo. Registrar R$ 167,66 em dinheiro para Rafael Bonfim?
+```
+
+Regra:
+
+```python
+if starts_with_denial(message) and has_replacement_value(message):
+    return CORRECT_PREVIOUS_SLOT
+```
+
+#### Multi-intent com vinculo semantico
+
+Nao vincular pagamento automaticamente ao atendimento apenas por aparecerem na mesma frase.
+
+Classificar relacao:
+
+```text
+same_event
+settle_open_debt
+prepayment
+package_purchase
+independent
+unknown
+```
+
+Exemplo:
+
+```text
+Atendi Michelle hoje e ela pagou as duas sessoes atrasadas.
+```
+
+O pagamento deve ser `settle_open_debt`, nao `same_event`.
+
+Cada acao precisa de `entity_id` proprio.
+
+Exemplo:
+
+```text
+Atendi Michelle hoje e Rafael pagou 200.
+```
+
+Plano:
+
+```json
+{
+  "actions": [
+    {
+      "id": "A1",
+      "type": "register_attendance",
+      "entity_id": "MICHELLE"
+    },
+    {
+      "id": "A2",
+      "type": "register_payment",
+      "entity_id": "RAFAEL"
+    }
+  ]
+}
+```
+
+#### Grupos transacionais
+
+Evitar atomicidade excessiva.
+
+Usar grupos:
+
+```json
+{
+  "transaction_groups": [
+    {
+      "id": "TG1",
+      "actions": ["register_attendance", "register_evolution"],
+      "atomic": true
+    },
+    {
+      "id": "TG2",
+      "actions": ["register_payment"],
+      "atomic": true
+    }
+  ]
+}
+```
+
+Nao manter transacao aberta enquanto:
+
+- chama Qwen;
+- envia WhatsApp;
+- consulta API externa;
+- aguarda confirmacao.
+
+#### Lock curto
+
+`pg_advisory_xact_lock` deve ser curto.
+
+Fluxo:
+
+```text
+1. Mensagem entra em inbound_messages
+2. Worker reivindica a proxima mensagem da conversa
+3. Carrega snapshot do estado
+4. Kernel monta plano
+5. Abre transacao curta
+6. Trava estado da conversa
+7. Revalida versao
+8. Executa alteracoes de banco
+9. Salva novo estado e outbox
+10. Commit
+11. Envia resposta fora da transacao
+```
+
+Se a versao mudou:
+
+```text
+recalcular plano
+```
+
+#### Idempotencia em tres niveis
+
+1. Mensagem:
+
+```text
+external_message_id UNIQUE
+```
+
+2. Workflow:
+
+```text
+workflow_id + version
+```
+
+3. Acao de dominio:
+
+```text
+idempotency_key UNIQUE
+```
+
+Isso protege pagamento, agendamento, evolucao, atendimento, estorno e acoes em massa.
+
+#### Undo restrito
+
+`undo_last_action` nao deve apagar registros sensiveis.
+
+Classificar:
+
+```text
+reversible_directly
+reversible_by_compensation
+not_reversible
+```
+
+Regras:
+
+- agendamento recente: pode cancelar;
+- pagamento: gerar estorno compensatorio;
+- evolucao assinada: criar correcao/nova versao;
+- exclusao de paciente: normalmente nao reversivel diretamente;
+- consulta: nao precisa desfazer.
+
+#### Organizacao documental
+
+Separar futuramente:
+
+```text
+docs/conversation/architecture.md
+docs/conversation/behavior-spec.md
+docs/conversation/migration-plan.md
+docs/conversation/changelog.md
+```
+
+`architecture.md`: kernel, frame, workflow, executor, outbox e concorrencia.
+
+`behavior-spec.md`: casos conversacionais.
+
+`migration-plan.md`: ordem de substituicao.
+
+`changelog.md`: implementado, testado, nao implantado.
+
+#### Criterios P0 adicionais
+
+- Todo caminho operacional passa pelo kernel.
+- Comandos diretos nao executam fora do `ActionPlan`.
+- `active_pending` nao e fonte de foco de paciente.
+- `focus_bound` nao e inferencia heuristica.
+- `Michelle -> amanha 11h` executa diretamente quando contexto for valido.
+- `amanha 11h` sem paciente ativo pede paciente.
+- Cada acao multi-intent possui `entity_id` proprio.
+- Pagamento nao e vinculado automaticamente ao atendimento atual.
+- `nao, X` corrige slot antes de cancelar workflow.
+- Envio ao WhatsApp ocorre fora da transacao.
+- Desfazer pagamento gera estorno, nao exclusao.
+- Multi-intent so entra depois de intent unica, contexto, confirmacao e idempotencia estarem estaveis.
+
+Toda escrita deve ter `idempotency_key` no dominio. Exemplo:
+
+```text
+payment:tenant_12:patient_M8ABN0T:20000:pix:workflow_WF123
+```
+
+Agenda e cadastro precisam de protecao propria no banco:
+
+- agenda: verificar sobreposicao com lock/constraint;
+- paciente/cadastro: usar versao otimista;
+- se houve alteracao concorrente, recarregar dados antes de continuar.
