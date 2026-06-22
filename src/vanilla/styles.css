@@ -5506,6 +5506,30 @@ textarea:focus {
   font-size: 14px;
 }
 
+.fisia-recover-box .hint {
+  max-width: 420px;
+}
+
+.recover-support-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+
+.recover-product-mock {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 560px;
+}
+
+.recover-product-mock .mock-assistant {
+  position: static;
+  width: min(100%, 360px);
+  margin-left: auto;
+}
+
 .fisia-auth-copy {
   position: relative;
   overflow: hidden;
@@ -5803,8 +5827,536 @@ textarea:focus {
     flex-direction: column;
   }
 
+  .recover-product-mock .mock-assistant {
+    margin-left: 0;
+  }
+
   .register-commercial-layout,
   .onboarding-commercial-layout {
+    grid-template-columns: 1fr;
+  }
+}
+/* FISIA operational UX pass: state, context and next action first. */
+.fisia-assistant-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 52;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  width: min(420px, 92vw);
+  overflow: auto;
+  border-left: 1px solid var(--border);
+  background: #fff;
+  box-shadow: -22px 0 48px rgba(15, 23, 42, .14);
+  animation: drawerSlideIn 220ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.assistant-panel-backdrop {
+  z-index: 51;
+  background: rgba(15, 23, 42, .24);
+  backdrop-filter: blur(2px);
+}
+
+.fisia-assistant-panel header {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding: 20px;
+}
+
+.fisia-assistant-panel header > span,
+.assistant-context-card > span {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--assistant-soft);
+  color: var(--assistant);
+}
+
+.fisia-assistant-panel header strong {
+  display: block;
+  color: var(--text);
+  font-size: 20px;
+}
+
+.fisia-assistant-panel header small,
+.fisia-assistant-panel footer span {
+  color: var(--muted);
+}
+
+.assistant-context-card {
+  display: grid;
+  gap: 8px;
+  margin: 20px;
+  border: 1px solid #d8eee7;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f4fbf8, #fff);
+  padding: 18px;
+}
+
+.assistant-context-card strong {
+  color: var(--primary);
+  font-size: 20px;
+}
+
+.assistant-context-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.assistant-suggestions {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 0 20px 20px;
+}
+
+.assistant-suggestions h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.assistant-suggestions button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text);
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 750;
+}
+
+.assistant-suggestions button:hover {
+  border-color: #9fd8c6;
+  background: #f5fbf8;
+  color: var(--primary);
+}
+
+.fisia-assistant-panel footer {
+  display: grid;
+  gap: 3px;
+  border-top: 1px solid var(--border);
+  padding: 18px 20px;
+}
+
+.fisia-assistant-panel footer strong {
+  color: var(--primary);
+}
+
+.appointment-state-detail {
+  display: grid;
+  gap: 16px;
+}
+
+.appointment-state-header {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.appointment-state-header .compact-button {
+  justify-self: start;
+}
+
+.appointment-state-header .pill {
+  justify-self: end;
+}
+
+.appointment-state-header > div {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  padding: 16px;
+}
+
+.appointment-state-header strong {
+  color: var(--primary);
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.appointment-state-header span {
+  color: #315c50;
+  font-weight: 750;
+}
+
+.appointment-next-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.appointment-next-actions button {
+  min-height: 42px;
+}
+
+.appointment-context-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.appointment-context-grid > div {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fbfdfc;
+  padding: 12px;
+}
+
+.appointment-context-grid span,
+.appointment-context-grid small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.appointment-context-grid strong {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.appointment-tab-body {
+  display: grid;
+  gap: 12px;
+}
+
+.appointment-reschedule-form {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.appointment-reschedule-form h3 {
+  margin: 0;
+  color: var(--primary);
+  font-size: 16px;
+}
+
+@media (min-width: 900px) {
+  .main {
+    background: linear-gradient(90deg, #f5f7f6 0, #f5f7f6 100%);
+  }
+
+  #view .fisia-dashboard {
+    width: min(100%, 1460px);
+    margin: 0 auto;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  #view .fisia-dashboard-top {
+    grid-template-columns: minmax(470px, 1.55fr) repeat(3, minmax(185px, .72fr));
+    gap: 16px;
+  }
+
+  #view .fisia-dashboard-main {
+    grid-template-columns: minmax(0, 1.08fr) minmax(380px, .92fr);
+    gap: 16px;
+  }
+
+  #view .fisia-stat-card i {
+    z-index: 2;
+  }
+
+  #view .fisia-stat-card::after {
+    max-width: calc(100% - 40px);
+  }
+
+  #view .fisia-next-card footer span:nth-child(n+2) {
+    display: none;
+  }
+}
+
+.patient-profile-drawer.patient-quick-drawer {
+  width: min(520px, calc(100vw - 28px));
+}
+
+.patient-profile-drawer.patient-workspace-drawer {
+  width: min(1080px, calc(100vw - 32px));
+}
+
+.patient-profile-drawer {
+  position: fixed;
+}
+
+.drawer-close-x {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--primary);
+  font-size: 24px;
+  font-weight: 750;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(6, 61, 49, 0.08);
+}
+
+.drawer-close-x:hover {
+  border-color: rgba(8, 107, 84, 0.3);
+  background: var(--primary-soft);
+}
+
+.fisia-patient-header {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 58px 28px 22px;
+}
+
+.fisia-patient-header h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 26px;
+  line-height: 1.15;
+}
+
+.fisia-patient-header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.fisia-patient-header .patient-profile-actions {
+  margin-top: 14px;
+}
+
+.fisia-patient-header > .pill {
+  align-self: start;
+  margin-top: 2px;
+}
+
+.patient-quick-drawer .patient-tabs {
+  display: none;
+}
+
+.patient-quick-view {
+  display: grid;
+  gap: 14px;
+}
+
+.patient-drawer-actions {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.patient-quick-grid,
+.patient-state-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.patient-quick-drawer .patient-quick-grid {
+  grid-template-columns: 1fr;
+}
+
+.patient-state-card {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 14px;
+  box-shadow: 0 12px 28px rgba(6, 61, 49, 0.06);
+}
+
+.patient-state-card.primary {
+  border-color: rgba(8, 107, 84, 0.22);
+  background: linear-gradient(135deg, #eefaf5, #ffffff 72%);
+}
+
+.patient-state-card span,
+.profile-completion-card span,
+.registration-section-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.patient-state-card strong {
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.patient-state-card small {
+  color: #315c50;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.patient-attention-card,
+.patient-recent-box {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fbfdfc;
+  padding: 16px;
+}
+
+.patient-attention-card h3 {
+  margin: 0;
+  color: var(--primary);
+  font-size: 16px;
+}
+
+.patient-attention-card p {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.patient-next-actions {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 10px;
+}
+
+.patient-next-actions button {
+  min-height: 40px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.patient-workspace-link {
+  min-height: 40px;
+  border: 1px solid rgba(8, 107, 84, 0.24);
+  border-radius: 12px;
+  background: #eefaf5;
+  color: var(--primary);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.patient-search-toolbar {
+  grid-template-columns: minmax(280px, 1fr) 128px 104px;
+  align-items: end;
+}
+
+.patient-search-toolbar #apply-patient-search,
+.patient-search-toolbar #clear-patient-search {
+  min-height: 46px;
+  padding: 8px 16px;
+  font-size: 15px;
+}
+
+.fisia-patient-summary-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, .9fr);
+}
+
+.patient-next-panel {
+  align-content: start;
+}
+
+.patient-registration-workspace {
+  display: grid;
+  gap: 16px;
+}
+
+.profile-completion-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(8, 107, 84, 0.18);
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.profile-completion-card strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--primary);
+  font-size: 24px;
+}
+
+.profile-completion-card small {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.completion-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eaf1ee;
+}
+
+.completion-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+
+.registration-section-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.registration-section-card {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.registration-section-card strong {
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.registration-section-card small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.patient-registration-form-card {
+  box-shadow: none;
+}
+
+@media (max-width: 780px) {
+  .patient-profile-drawer.patient-quick-drawer,
+  .patient-profile-drawer.patient-workspace-drawer {
+    width: 100vw;
+  }
+
+  .patient-next-actions,
+  .registration-section-grid,
+  .patient-quick-grid,
+  .patient-state-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -23,6 +23,8 @@ const appRoutes = new Set([
   "/cadastro",
   "/register",
   "/auth",
+  "/recover",
+  "/recuperar-senha",
   "/debug-intents",
   "/app-login",
 ]);

@@ -1057,6 +1057,10 @@ function setDocumentRoute(route: AppState["route"]): void {
 
 async function bootstrap(): Promise<void> {
   if (!app) return;
+  if (window.location.pathname.startsWith("/recover") || window.location.pathname.startsWith("/recuperar-senha")) {
+    renderRecover();
+    return;
+  }
   if (window.location.pathname.startsWith("/cadastro") || window.location.pathname.startsWith("/register") || window.location.pathname.startsWith("/auth")) {
     renderRegister();
     return;
@@ -1135,7 +1139,7 @@ function renderLogin(errorMessage = ""): void {
             <div class="brand-mark" aria-hidden="true">F</div>
             <div>
               <p class="brand-title">FISIA</p>
-              <div class="brand-subtitle">Gestao inteligente para fisioterapeutas</div>
+              <div class="brand-subtitle">Fluxo Inteligente de Saude</div>
             </div>
           </header>
           <p class="eyebrow">Bem-vindo de volta</p>
@@ -1157,7 +1161,7 @@ function renderLogin(errorMessage = ""): void {
                 <input id="remember" name="remember" type="checkbox" checked />
                 Manter este dispositivo conectado
               </label>
-              <a class="text-link" href="/recover">Esqueci minha senha</a>
+              <a class="text-link" id="recover-password-link" href="/recover">Esqueci minha senha</a>
             </div>
             <button class="primary-button" id="submit" type="submit">Entrar</button>
           </form>
@@ -1201,7 +1205,88 @@ function renderLogin(errorMessage = ""): void {
     history.replaceState(null, "", "/cadastro");
     renderRegister();
   });
+  document.querySelector<HTMLAnchorElement>("#recover-password-link")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    history.replaceState(null, "", "/recover");
+    renderRecover();
+  });
   bindPasswordToggles();
+}
+
+function renderRecover(statusMessage = "", sent = false): void {
+  if (!app) return;
+  app.innerHTML = `
+    <main class="auth-shell fisia-login-shell fisia-recover-shell">
+      <section class="auth-panel fisia-login-panel" aria-label="Recuperacao de acesso FISIA">
+        <div class="auth-box fisia-login-box fisia-recover-box">
+          <header class="fisia-auth-brand">
+            <div class="brand-mark" aria-hidden="true">F</div>
+            <div>
+              <p class="brand-title">FISIA</p>
+              <div class="brand-subtitle">Fluxo Inteligente de Saude</div>
+            </div>
+          </header>
+          <p class="eyebrow">Recuperacao de acesso</p>
+          <h1>Volte para sua rotina</h1>
+          <p class="hint">Informe e-mail, usuario ou WhatsApp. Se houver uma conta ativa, enviaremos as instrucoes pelo canal cadastrado.</p>
+          <div id="notice" class="notice ${statusMessage ? (sent ? "info" : "error") : ""}" role="status">${escapeHtml(statusMessage)}</div>
+          <form id="recover-form" class="form-grid fisia-login-form" autocomplete="on" novalidate>
+            <label>E-mail, usuario ou WhatsApp
+              <input id="recover-login" name="login" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+            </label>
+            <button class="primary-button" type="submit">Enviar instrucoes</button>
+          </form>
+          <div class="recover-support-grid" aria-label="Opcoes de acesso">
+            <button class="ghost-button" id="back-to-login-from-recover" type="button">Voltar para entrar</button>
+            <button class="secondary-button" id="open-register-from-recover" type="button">Criar conta</button>
+          </div>
+        </div>
+      </section>
+      <section class="auth-copy fisia-auth-copy" aria-hidden="true">
+        <div class="fisia-flow-lines"></div>
+        <div class="fisia-auth-copy-content">
+          <h2><span>Voce cuida do paciente.</span><strong>A FISIA cuida da rotina.</strong></h2>
+          <p>Recupere o acesso sem sair do fluxo: agenda, pacientes, recebimentos e pendencias continuam preservados na sua conta.</p>
+          <div class="fisia-product-mock recover-product-mock">
+            <div class="mock-dashboard">
+              <div class="mock-toolbar"><span></span><b></b></div>
+              <div class="mock-main-card">
+                <small>Acesso seguro</small>
+                <strong>Conta protegida</strong>
+                <span>Validacao por e-mail ou WhatsApp cadastrado</span>
+              </div>
+              <div class="mock-mini-grid">
+                <span>Sem perder agenda</span>
+                <span>Dados preservados</span>
+                <span>Retorno rapido</span>
+              </div>
+            </div>
+            <div class="mock-assistant">Oi, sou a Fisia. Posso ajudar voce a recuperar o acesso.</div>
+          </div>
+          <footer>Quando o fisio precisa, chama a FISIA.</footer>
+        </div>
+      </section>
+    </main>
+  `;
+  document.querySelector<HTMLFormElement>("#recover-form")?.addEventListener("submit", handleRecover);
+  document.querySelector<HTMLButtonElement>("#back-to-login-from-recover")?.addEventListener("click", () => {
+    history.replaceState(null, "", "/");
+    renderLogin();
+  });
+  document.querySelector<HTMLButtonElement>("#open-register-from-recover")?.addEventListener("click", () => {
+    history.replaceState(null, "", "/cadastro");
+    renderRegister();
+  });
+}
+
+function handleRecover(event: SubmitEvent): void {
+  event.preventDefault();
+  const login = String(new FormData(event.currentTarget as HTMLFormElement).get("login") || "").trim();
+  if (!login) {
+    showNotice("error", "Informe e-mail, usuario ou WhatsApp para recuperar o acesso.");
+    return;
+  }
+  renderRecover("Se houver uma conta FISIA ativa para esse contato, enviaremos as instrucoes de recuperacao.", true);
 }
 
 function loadLocalAccounts(): LocalAccount[] {
@@ -1351,7 +1436,7 @@ function renderRegister(errorMessage = ""): void {
           <div class="brand-mark" aria-hidden="true">F</div>
           <div>
             <p class="brand-title">FISIA</p>
-            <div class="brand-subtitle">Gestao inteligente para fisioterapeutas</div>
+            <div class="brand-subtitle">Fluxo Inteligente de Saude</div>
           </div>
         </div>
         <button class="ghost-button" id="back-to-login" type="button">Entrar</button>
@@ -1742,7 +1827,7 @@ function renderAppShell(): void {
       label: "Operacao",
       items: [
         { route: "agenda", icon: "calendar", title: "Agenda" },
-        { route: "evolucoes", icon: "cadastro", title: "Pacientes" },
+        { route: "pacientes", icon: "cadastro", title: "Pacientes" },
       ],
     },
     {
@@ -1843,10 +1928,7 @@ function renderAppShell(): void {
     state.appointmentDrawerOpen = true;
     await loadAgenda();
   });
-  document.querySelector<HTMLButtonElement>("#assistant-sidebar")?.addEventListener("click", async () => {
-    setDocumentRoute("debug");
-    await loadCurrentRoute();
-  });
+  document.querySelector<HTMLButtonElement>("#assistant-sidebar")?.addEventListener("click", renderAssistantPanel);
   document.querySelector<HTMLButtonElement>("#open-settings-sidebar")?.addEventListener("click", renderSecurityModal);
   document.querySelector<HTMLButtonElement>("#logout-sidebar")?.addEventListener("click", logoutFromWeb);
   document.querySelectorAll<HTMLButtonElement>("[data-route]").forEach((button) => {
@@ -2106,6 +2188,56 @@ async function refreshSecurityModal(): Promise<void> {
   } catch {
     // Modal remains useful with the session payload when profile refresh fails.
   }
+}
+
+function renderAssistantPanel(): void {
+  const root = document.querySelector<HTMLDivElement>("#profile-modal-root");
+  if (!root) return;
+  const todaySlots = state.agenda.filter((slot) => slot.data === todayISO() && !isCanceledStatus(slot.status));
+  const metrics = calculateDashboardMetrics(state.agenda, state.financeiro);
+  root.innerHTML = `
+    <div class="drawer-backdrop assistant-panel-backdrop" role="presentation" data-close-assistant></div>
+    <aside class="fisia-assistant-panel" role="dialog" aria-modal="true" aria-label="Fisia assistente">
+      <header>
+        <span>${navIcon("assistant")}</span>
+        <div>
+          <strong>Fisia</strong>
+          <small>Assistente operacional da sua rotina clinica</small>
+        </div>
+        <button class="ghost-button compact-button" type="button" data-close-assistant>Fechar</button>
+      </header>
+      <section class="assistant-context-card">
+        <span>Agora</span>
+        <strong>${todaySlots.length} atendimento${todaySlots.length === 1 ? "" : "s"} hoje</strong>
+        <p>${metrics.semEvolucaoCount} evolucao${metrics.semEvolucaoCount === 1 ? "" : "es"} pendente${metrics.semEvolucaoCount === 1 ? "" : "s"} e ${metrics.pagamentoPendenteCount} recebimento${metrics.pagamentoPendenteCount === 1 ? "" : "s"} em aberto.</p>
+      </section>
+      <section class="assistant-suggestions">
+        <h3>Atalhos seguros</h3>
+        <button type="button" data-assistant-route="agenda">${navIcon("calendar")} Revisar agenda de hoje</button>
+        <button type="button" data-assistant-route="financeiro">${navIcon("finance")} Ver recebimentos em aberto</button>
+        <button type="button" data-assistant-route="evolucoes">${navIcon("pulse")} Conferir evolucoes pendentes</button>
+        <button type="button" data-assistant-route="pacientes">${navIcon("cadastro")} Abrir pacientes ativos</button>
+      </section>
+      <footer>
+        <strong>Voce cuida do paciente.</strong>
+        <span>A FISIA cuida da rotina.</span>
+      </footer>
+    </aside>
+  `;
+  root.querySelectorAll<HTMLElement>("[data-close-assistant]").forEach((element) => {
+    element.addEventListener("click", (event) => {
+      if (event.target !== element && element.classList.contains("drawer-backdrop")) return;
+      root.innerHTML = "";
+    });
+  });
+  root.querySelectorAll<HTMLButtonElement>("[data-assistant-route]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const route = button.dataset.assistantRoute;
+      root.innerHTML = "";
+      setDocumentRoute(isAppRoute(route) ? route : "dashboard");
+      await loadCurrentRoute();
+    });
+  });
 }
 
 function isAppRoute(value: unknown): value is AppState["route"] {
@@ -3421,7 +3553,7 @@ function renderPacientes(loading = false): void {
     </header>
     <section class="content-panel">
       <div id="patient-notice" class="notice" role="status"></div>
-      <div class="agenda-toolbar">
+      <div class="agenda-toolbar patient-search-toolbar">
         <label>Busca manual
           <input id="patient-search" type="text" value="${escapeHtml(state.patientSearch)}" placeholder="Nome, telefone ou CPF" />
         </label>
@@ -3496,8 +3628,10 @@ function renderPacientes(loading = false): void {
       renderPacientes();
     });
   });
-  document.querySelector<HTMLButtonElement>("[data-retro-attendance]")?.addEventListener("click", () => {
-    if (selected) renderRetroAttendanceModal(selected);
+  document.querySelectorAll<HTMLButtonElement>("[data-retro-attendance]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (selected) renderRetroAttendanceModal(selected);
+    });
   });
   document.querySelector<HTMLButtonElement>("[data-schedule-patient]")?.addEventListener("click", (event) => {
     const patientId = (event.currentTarget as HTMLButtonElement).dataset.schedulePatient || selected?.id || "";
@@ -3528,6 +3662,21 @@ function patientPendingFlags(patient: Paciente): string {
       ${hasOpenPayment ? `<span class="flag-dot info" title="Pagamento pendente">!</span>` : ""}
     </span>
   `;
+}
+
+function patientProfileCompletion(patient: Paciente): { percent: number; missing: string[] } {
+  const fields = [
+    { label: "telefone", value: patient.telefone || patient.telefoneCelular },
+    { label: "CPF", value: patient.cpf },
+    { label: "nascimento", value: patient.dataNascimento },
+    { label: "endereco", value: patient.endereco },
+    { label: "valor do atendimento", value: patient.valorPadraoAtendimento },
+  ];
+  const filled = fields.filter((field) => Boolean(field.value)).length;
+  return {
+    percent: Math.round((filled / fields.length) * 100),
+    missing: fields.filter((field) => !field.value).map((field) => field.label),
+  };
 }
 
 function patientAvatarHtml(patient: Paciente, large = false): string {
@@ -4073,8 +4222,10 @@ function renderEvolucoes(loading = false): void {
       renderEvolucoes();
     });
   });
-  document.querySelector<HTMLButtonElement>("[data-retro-attendance]")?.addEventListener("click", () => {
-    if (selected) renderRetroAttendanceModal(selected);
+  document.querySelectorAll<HTMLButtonElement>("[data-retro-attendance]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (selected) renderRetroAttendanceModal(selected);
+    });
   });
   document.querySelector<HTMLButtonElement>("[data-schedule-patient]")?.addEventListener("click", async (event) => {
     const patientId = (event.currentTarget as HTMLButtonElement).dataset.schedulePatient || selected?.id || "";
@@ -4156,6 +4307,7 @@ function newClientDrawerHtml(): string {
   return `
     <div class="drawer-backdrop patient-drawer-backdrop ${drawerAnimationClass}" role="presentation" data-close-patient-drawer></div>
     <aside class="patient-profile-drawer new-client-drawer ${drawerAnimationClass}" role="dialog" aria-modal="true" aria-label="Novo cliente">
+      <button class="drawer-close-x" type="button" aria-label="Fechar painel" data-close-patient-drawer>×</button>
       <header class="patient-profile-header">
         <span class="patient-avatar large"><span>N</span></span>
         <div>
@@ -4166,7 +4318,6 @@ function newClientDrawerHtml(): string {
           </div>
         </div>
         <span class="pill ok">rascunho</span>
-        <button class="ghost-button" type="button" data-close-patient-drawer>Fechar</button>
       </header>
       <nav class="registry-tabs patient-tabs" role="tablist" aria-label="Novo cliente">
         <button class="selected" type="button">Cadastro</button>
@@ -4180,7 +4331,12 @@ function newClientDrawerHtml(): string {
 
 function patientProfileDrawerHtml(patient: Paciente): string {
   const drawerAnimationClass = state.patientDrawerAnimate ? "" : "no-drawer-animation";
+  const fullWorkspace = state.registryTab !== "resumo";
+  const completion = patientProfileCompletion(patient);
   const patientSlots = state.agenda.filter((slot) => slotMatchesPatient(slot, patient));
+  const nextPatientSlot = [...patientSlots]
+    .filter((slot) => `${slot.data}T${normalizeTimeForDate(slot.horaInicio)}` >= `${todayISO()}T00:00:00`)
+    .sort((a, b) => String(a.data + a.horaInicio).localeCompare(String(b.data + b.horaInicio)))[0];
   const latestDates = [...patientSlots]
     .sort((a, b) => String(b.data + b.horaInicio).localeCompare(String(a.data + a.horaInicio)))
     .slice(0, 4)
@@ -4190,31 +4346,28 @@ function patientProfileDrawerHtml(patient: Paciente): string {
     .reduce((sum, item) => sum + Number(item.valorAtendimento || 0), 0);
   return `
     <div class="drawer-backdrop patient-drawer-backdrop ${drawerAnimationClass}" role="presentation" data-close-patient-drawer></div>
-    <aside class="patient-profile-drawer ${drawerAnimationClass}" role="dialog" aria-modal="true" aria-label="Perfil do paciente">
-      <header class="patient-profile-header">
+    <aside class="patient-profile-drawer ${fullWorkspace ? "patient-workspace-drawer" : "patient-quick-drawer"} ${drawerAnimationClass}" role="dialog" aria-modal="true" aria-label="Perfil do paciente">
+      <button class="drawer-close-x" type="button" aria-label="Fechar painel do paciente" data-close-patient-drawer>×</button>
+      <header class="patient-profile-header fisia-patient-header">
         ${patientAvatarHtml(patient, true)}
         <div>
           <h2>${escapeHtml(patient.nomeCompleto || "-")} ${patientPendingFlags(patient)}</h2>
           <p>${escapeHtml(patientAgeGender(patient))}</p>
-          <div class="patient-profile-actions">
-            <button class="primary-button compact-button" type="button" data-registry-tab="cadastro">Cadastro</button>
-            <button class="ghost-button compact-button" type="button" data-schedule-patient="${escapeHtml(patient.id)}">Agendar</button>
-            <button class="ghost-button danger-button compact-button" type="button" data-delete-patient>Excluir</button>
-          </div>
         </div>
         <span class="pill ${patient.ativo === false ? "warn" : "ok"}">${patient.ativo === false ? "Inativo" : "Ativo"}</span>
-        <button class="ghost-button" type="button" data-close-patient-drawer>Fechar</button>
       </header>
-      <nav class="registry-tabs patient-tabs" role="tablist" aria-label="Ficha do paciente">
-        <button class="${state.registryTab === "resumo" ? "selected" : ""}" type="button" data-registry-tab="resumo">Resumo</button>
-        <button class="${state.registryTab === "cadastro" ? "selected" : ""}" type="button" data-registry-tab="cadastro">Cadastro</button>
-        <button class="${state.registryTab === "evolucoes" ? "selected" : ""}" type="button" data-registry-tab="evolucoes">Evolucoes</button>
-        <button class="${state.registryTab === "avaliacoes" ? "selected" : ""}" type="button" data-registry-tab="avaliacoes">Avaliacoes</button>
-        <button class="${state.registryTab === "financeiro" ? "selected" : ""}" type="button" data-registry-tab="financeiro">Financeiro</button>
-      </nav>
+      ${fullWorkspace ? `
+        <nav class="registry-tabs patient-tabs" role="tablist" aria-label="Prontuario do paciente">
+          <button class="${state.registryTab === "resumo" ? "selected" : ""}" type="button" data-registry-tab="resumo">Resumo</button>
+          <button class="${state.registryTab === "cadastro" ? "selected" : ""}" type="button" data-registry-tab="cadastro">Cadastro</button>
+          <button class="${state.registryTab === "evolucoes" ? "selected" : ""}" type="button" data-registry-tab="evolucoes">Evolucoes</button>
+          <button class="${state.registryTab === "avaliacoes" ? "selected" : ""}" type="button" data-registry-tab="avaliacoes">Avaliacoes</button>
+          <button class="${state.registryTab === "financeiro" ? "selected" : ""}" type="button" data-registry-tab="financeiro">Financeiro</button>
+        </nav>
+      ` : ""}
       <div class="patient-drawer-body">
-        ${state.registryTab === "resumo" ? patientSummaryPanel(patient, latestDates, pending) : ""}
-        ${state.registryTab === "cadastro" ? `<div class="registry-card registry-panel registry-panel-wide">${patientFormHtml(patient)}</div>` : ""}
+        ${state.registryTab === "resumo" ? patientSummaryPanel(patient, latestDates, pending, nextPatientSlot) : ""}
+        ${state.registryTab === "cadastro" ? patientRegistrationPanel(patient) : ""}
         ${state.registryTab === "evolucoes" ? patientOperationalTimeline(patient, patientSlots) : ""}
         ${state.registryTab === "avaliacoes" ? patientEvaluationsPanel(patient) : ""}
         ${state.registryTab === "financeiro" ? patientFinancePanel(pending) : ""}
@@ -4223,30 +4376,99 @@ function patientProfileDrawerHtml(patient: Paciente): string {
   `;
 }
 
-function patientSummaryPanel(patient: Paciente, latestDates: string[], pending: number): string {
+function patientSummaryPanel(patient: Paciente, latestDates: string[], pending: number, nextSlot?: AgendaSlot): string {
+  const nextLabel = nextSlot ? `${formatDate(nextSlot.data)} ${String(nextSlot.horaInicio || "").slice(0, 5)}`.trim() : "Sem proximo horario";
+  const missingEvolutionCount = state.agenda.filter((slot) => slotMatchesPatient(slot, patient) && !slot.evolucao).length;
+  const completion = patientProfileCompletion(patient);
+  const attentionItems = [
+    completion.missing.length ? `Cadastro incompleto: faltam ${completion.missing.slice(0, 3).join(", ")}` : "",
+    missingEvolutionCount ? `${missingEvolutionCount} atendimento(s) sem evolucao` : "",
+    pending ? `${formatMoney(pending)} em aberto` : "",
+  ].filter(Boolean).slice(0, 3);
   return `
-    <div class="stats-grid compact-stats">
-      <div class="stat"><span>Atendimentos</span><strong>${escapeHtml(patient.totalAtendimentos || 0)}</strong></div>
-      <div class="stat"><span>Pendente</span><strong>${formatMoney(pending || patient.totalPendente)}</strong></div>
-      <div class="stat"><span>Evolucoes</span><strong>${state.patientEvolutions.length}</strong></div>
-    </div>
-    <div class="registry-grid drawer-grid">
-      <div class="registry-card registry-panel">
-        <div class="section-title compact-title"><h2>Resumo operacional</h2></div>
+    <section class="patient-quick-view">
+      <div class="patient-drawer-actions">
+        <button class="patient-workspace-link" type="button" data-registry-tab="cadastro">
+          Abrir prontuario completo
+        </button>
+        <div class="patient-next-actions">
+          <button class="primary-button" type="button" data-retro-attendance>Registrar atendimento</button>
+          <button class="ghost-button" type="button" data-schedule-patient="${escapeHtml(patient.id)}">Agendar</button>
+          <button class="ghost-button" type="button" data-registry-tab="financeiro">Pagamento</button>
+        </div>
+      </div>
+      <div class="patient-state-card primary">
+        <span>Proximo atendimento</span>
+        <strong>${escapeHtml(nextLabel)}</strong>
+        <small>${nextSlot ? escapeHtml(nextSlot.servico || "Atendimento") : "Use Agendar para criar um horario"}</small>
+      </div>
+      <div class="patient-quick-grid">
+        <div class="patient-state-card">
+          <span>Financeiro</span>
+          <strong>${formatMoney(pending || patient.totalPendente)}</strong>
+          <small>${pending ? "pendente de recebimento" : "sem pendencia aberta"}</small>
+        </div>
+        <div class="patient-state-card">
+          <span>Cadastro</span>
+          <strong>${completion.percent}%</strong>
+          <small>${completion.missing.length ? `${completion.missing.length} campo(s) ausente(s)` : "completo"}</small>
+        </div>
+        <div class="patient-state-card">
+          <span>Evolucoes</span>
+          <strong>${state.patientEvolutions.length}</strong>
+          <small>${missingEvolutionCount ? `${missingEvolutionCount} pendente(s)` : "historico em dia"}</small>
+        </div>
+      </div>
+      <div class="patient-attention-card">
+        <h3>Atencao</h3>
+        ${attentionItems.length ? attentionItems.map((item) => `<p>${escapeHtml(item)}</p>`).join("") : `<p>Nenhuma pendencia operacional importante.</p>`}
+      </div>
+      <div class="patient-recent-box">
+        <div class="section-title compact-title"><h2>Ultimas atividades</h2><span class="pill">${state.patientEvolutions.length}</span></div>
         <div class="summary-list">
           <div><span>Ultimas datas</span><strong>${escapeHtml(latestDates.join(" | ") || "Sem atendimentos")}</strong></div>
           <div><span>Telefone</span><strong>${escapeHtml(patient.telefone || patient.telefoneCelular || "Nao informado")}</strong></div>
           <div><span>Valor do atendimento</span><strong>${formatMoney(patient.valorPadraoAtendimento)}</strong></div>
         </div>
-        <button class="primary-button" type="button" data-retro-attendance>Registrar Atendimento</button>
       </div>
-      <div class="registry-card registry-panel">
-        <div class="section-title compact-title"><h2>Historico clinico</h2><span class="pill">${state.patientEvolutions.length}</span></div>
-        <div class="timeline-list compact-history">
-          ${state.patientEvolutions.slice(0, 3).map(evolutionItemHtml).join("") || `<div class="empty">Nenhuma evolucao registrada.</div>`}
+    </section>
+  `;
+}
+
+function patientRegistrationPanel(patient: Paciente): string {
+  const completion = patientProfileCompletion(patient);
+  const missing = completion.missing.length ? completion.missing.join(", ") : "Nenhum campo obrigatorio pendente";
+  return `
+    <section class="patient-registration-workspace">
+      <div class="profile-completion-card">
+        <div>
+          <span>Completude do cadastro</span>
+          <strong>${completion.percent}% completo</strong>
+          <small>${escapeHtml(missing)}</small>
+        </div>
+        <div class="completion-bar" aria-hidden="true"><span style="width:${completion.percent}%"></span></div>
+      </div>
+      <div class="registration-section-grid">
+        <div class="registration-section-card">
+          <span>Identificacao</span>
+          <strong>${escapeHtml(patient.nomeCompleto || "Nome nao informado")}</strong>
+          <small>${patient.cpf ? "CPF informado" : "CPF opcional nao informado"}</small>
+        </div>
+        <div class="registration-section-card">
+          <span>Contato</span>
+          <strong>${escapeHtml(patient.telefone || patient.telefoneCelular || "Sem telefone")}</strong>
+          <small>${patient.email ? escapeHtml(patient.email) : "E-mail nao informado"}</small>
+        </div>
+        <div class="registration-section-card">
+          <span>Rotina</span>
+          <strong>${formatMoney(patient.valorPadraoAtendimento)}</strong>
+          <small>Valor padrao do atendimento</small>
         </div>
       </div>
-    </div>
+      <div class="registry-card registry-panel registry-panel-wide patient-registration-form-card">
+        ${patientFormHtml(patient)}
+      </div>
+    </section>
   `;
 }
 
@@ -6172,16 +6394,29 @@ function eventDetailHtml(slot: AgendaSlot): string {
   const canEdit = slot.podeEditar !== false;
   const financial = slotFinancialStatus(slot) || "pendente";
   const tab = state.appointmentTab;
+  const statusText = slot.status || "aberto";
+  const patientName = cliente.nomeCompleto || slot.servico || "Atendimento";
+  const paymentOpen = slotOpenBalance(slot);
+  const evolutionText = slot.evolucao || cliente.evolucao || "";
   return `
-    <div class="detail">
-      <div class="section-title">
-        <h2>Detalhes</h2>
+    <div class="detail appointment-state-detail">
+      <header class="appointment-state-header">
         <button class="ghost-button compact-button" type="button" data-close-drawer="true">Fechar</button>
-        <span class="pill ${slot.status === "concluido" ? "ok" : slot.status === "cancelado" ? "warn" : ""}">${escapeHtml(slot.status || "aberto")}</span>
-      </div>
-      <div class="detail-hero">
-        <strong>${escapeHtml(cliente.nomeCompleto || slot.servico || "Atendimento")}</strong>
-        <span>${formatDate(slot.data)} ${escapeHtml(slot.horaInicio || "")}${slot.horaFim ? `-${escapeHtml(slot.horaFim)}` : ""}</span>
+        <span class="pill ${slot.status === "concluido" ? "ok" : slot.status === "cancelado" ? "warn" : ""}">${escapeHtml(statusText)}</span>
+        <div>
+          <strong>${escapeHtml(patientName)}</strong>
+          <span>${formatDate(slot.data)} ${escapeHtml(slot.horaInicio || "")}${slot.horaFim ? `-${escapeHtml(slot.horaFim)}` : ""}</span>
+        </div>
+      </header>
+      <section class="appointment-next-actions" aria-label="Proximas acoes">
+        <button class="primary-button" id="complete-event" type="button">Concluir atendimento</button>
+        <button class="ghost-button" type="button" data-appointment-tab="financeiro">Registrar pagamento</button>
+        <button class="ghost-button" type="button" data-appointment-tab="historico">Ver historico</button>
+      </section>
+      <div class="appointment-context-grid">
+        <div><span>Financeiro</span><strong>${escapeHtml(displaySlotMoney(slot))}</strong><small>${escapeHtml(financial)}${paymentOpen > 0 ? ` · saldo ${formatMoney(paymentOpen)}` : ""}</small></div>
+        <div><span>Evolucao</span><strong>${evolutionText ? "Registrada" : "Pendente"}</strong><small>${evolutionText ? "Historico disponivel" : "Sem evolucao vinculada"}</small></div>
+        <div><span>Tipo</span><strong>${escapeHtml(slot.servico || "Atendimento")}</strong><small>${escapeHtml(appointmentDurationMinutes(slot))} min</small></div>
       </div>
       <div class="appointment-tabs">
         <button class="${tab === "atendimento" ? "active" : ""}" type="button" data-appointment-tab="atendimento">Atendimento</button>
@@ -6202,16 +6437,15 @@ function eventDetailHtml(slot: AgendaSlot): string {
 function appointmentAttendanceTabHtml(slot: AgendaSlot, canEdit: boolean, financial: string): string {
   const cliente = slot.clientes?.[0] || {};
   return `
-    <div class="detail-row"><span>Paciente</span><strong>${escapeHtml(cliente.nomeCompleto || "-")}</strong></div>
-    <div class="detail-row"><span>Data e horario</span><strong>${formatDate(slot.data)} ${escapeHtml(slot.horaInicio || "")}${slot.horaFim ? `-${escapeHtml(slot.horaFim)}` : ""}</strong></div>
-    <div class="detail-row"><span>Servico</span><strong>${escapeHtml(slot.servico || "Fisioterapia")}</strong></div>
-    <div class="detail-row"><span>Financeiro</span><strong>${escapeHtml(displaySlotMoney(slot))} - ${escapeHtml(financial)}</strong></div>
-    <div class="detail-row"><span>Evolucao</span><p>${escapeHtml(slot.evolucao || cliente.evolucao || "Sem evolucao registrada.")}</p></div>
-    <div class="button-row">
-      <button class="secondary-button" id="complete-event" type="button">Concluir</button>
-      <button class="ghost-button" id="cancel-event" type="button" ${canEdit ? "" : "disabled"}>Cancelar</button>
-    </div>
-    <form id="reschedule-form" class="form-grid">
+    <section class="appointment-tab-body">
+      <div class="detail-row"><span>Paciente</span><strong>${escapeHtml(cliente.nomeCompleto || "-")}</strong></div>
+      <div class="detail-row"><span>Data e horario</span><strong>${formatDate(slot.data)} ${escapeHtml(slot.horaInicio || "")}${slot.horaFim ? `-${escapeHtml(slot.horaFim)}` : ""}</strong></div>
+      <div class="detail-row"><span>Servico</span><strong>${escapeHtml(slot.servico || "Fisioterapia")}</strong></div>
+      <div class="detail-row"><span>Financeiro</span><strong>${escapeHtml(displaySlotMoney(slot))} - ${escapeHtml(financial)}</strong></div>
+      <div class="detail-row"><span>Evolucao</span><p>${escapeHtml(slot.evolucao || cliente.evolucao || "Sem evolucao registrada.")}</p></div>
+    </section>
+    <form id="reschedule-form" class="form-grid appointment-reschedule-form">
+      <h3>Reagendar</h3>
       <div class="button-row">
         <label>Nova data
           <input name="data" type="date" value="${escapeHtml(slot.data)}" ${canEdit ? "" : "disabled"} />
@@ -6223,7 +6457,10 @@ function appointmentAttendanceTabHtml(slot: AgendaSlot, canEdit: boolean, financ
           <input name="horaFim" type="time" value="${escapeHtml(slot.horaFim || "")}" ${canEdit ? "" : "disabled"} />
         </label>
       </div>
-      <button class="primary-button" type="submit" ${canEdit ? "" : "disabled"}>Reagendar</button>
+      <div class="button-row">
+        <button class="primary-button" type="submit" ${canEdit ? "" : "disabled"}>Salvar nova data</button>
+        <button class="ghost-button" id="cancel-event" type="button" ${canEdit ? "" : "disabled"}>Cancelar atendimento</button>
+      </div>
     </form>
   `;
 }
