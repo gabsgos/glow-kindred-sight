@@ -698,13 +698,6 @@ textarea:focus {
   color: var(--primary);
 }
 
-.nav .react-switch {
-  border: 1px solid var(--border);
-  background: var(--surface-muted);
-  color: var(--primary);
-  font-weight: 750;
-}
-
 .main {
   min-width: 0;
   padding: 0 clamp(16px, 3vw, 28px) 34px;
@@ -5770,6 +5763,89 @@ textarea:focus {
   font-weight: 650;
 }
 
+.fisia-register-shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: minmax(360px, 42%) minmax(0, 58%);
+  padding: 0;
+  background: #fff;
+}
+
+.fisia-register-shell .fisia-register-topbar {
+  display: none;
+}
+
+.fisia-register-shell .register-commercial-layout {
+  display: contents;
+  max-width: none;
+  margin: 0;
+}
+
+.fisia-register-shell .register-commercial-side {
+  min-height: 100vh;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: #fff;
+  padding: clamp(36px, 5vw, 76px) clamp(34px, 5vw, 84px);
+  justify-content: center;
+}
+
+.fisia-register-shell .register-commercial-card {
+  min-height: 100vh;
+  overflow: auto;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: clamp(34px, 5vw, 72px) clamp(38px, 5.5vw, 88px);
+  background:
+    radial-gradient(circle at 88% 18%, rgba(20, 160, 124, .34), transparent 34%),
+    radial-gradient(circle at 20% 88%, rgba(107, 70, 229, .14), transparent 32%),
+    linear-gradient(135deg, #063d31 0%, #086b54 58%, #0b6b54 100%);
+  color: #fff;
+}
+
+.fisia-register-shell .register-commercial-card .eyebrow,
+.fisia-register-shell .register-commercial-card h2,
+.fisia-register-shell .register-commercial-card .hint,
+.fisia-register-shell .register-account-form label,
+.fisia-register-shell .register-account-form label small,
+.fisia-register-shell .password-rules {
+  color: rgba(255, 255, 255, .92);
+}
+
+.fisia-register-shell .register-account-form input,
+.fisia-register-shell .register-account-form select,
+.fisia-register-shell .register-whatsapp-box input {
+  background: #fff;
+  color: var(--text);
+  border-color: rgba(255, 255, 255, .42);
+}
+
+.fisia-register-shell .register-whatsapp-box,
+.fisia-register-shell .terms-block {
+  background: rgba(255, 255, 255, .12);
+  border-color: rgba(255, 255, 255, .28);
+  color: #fff;
+}
+
+.fisia-register-shell .register-whatsapp-box label,
+.fisia-register-shell .register-whatsapp-box span,
+.fisia-register-shell .register-whatsapp-box strong,
+.fisia-register-shell .terms-block span {
+  color: #fff;
+}
+
+.fisia-register-shell .notice:not(:empty) {
+  background: rgba(255, 255, 255, .14);
+  border-color: rgba(255, 255, 255, .28);
+  color: #fff;
+}
+
+.fisia-register-shell .register-benefits {
+  display: none;
+}
+
 .onboarding-complete-shell {
   display: grid;
   place-items: center;
@@ -5834,6 +5910,20 @@ textarea:focus {
   .register-commercial-layout,
   .onboarding-commercial-layout {
     grid-template-columns: 1fr;
+  }
+
+  .fisia-register-shell {
+    display: block;
+  }
+
+  .fisia-register-shell .register-commercial-layout {
+    display: grid;
+  }
+
+  .fisia-register-shell .register-commercial-side,
+  .fisia-register-shell .register-commercial-card {
+    min-height: auto;
+    padding: 28px 20px;
   }
 }
 /* FISIA operational UX pass: state, context and next action first. */

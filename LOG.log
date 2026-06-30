@@ -930,3 +930,10 @@
 - Onboarding reduzido para 4 etapas, combinando recebimentos e WhatsApp, e tela final com acoes de ativacao.
 - Metadados HTML/PWA e downloads exportados atualizados para FISIA.
 - Build local `npm run build:tablet` validado. Sem git e sem deploy.
+
+[2026-06-30 12:46:40 -03:00] build 0.1.153 - autenticacao vanilla exclusiva
+- Removida a entrada React do build tablet e a copia `react.html`; o artefato publicado passa a conter somente a interface vanilla FISIA.
+- Login, recuperacao, cadastro, onboarding e pacientes receberam mascaras compartilhadas para CPF, telefone, WhatsApp e identificador de acesso.
+- CPF voltou a ser obrigatorio no cadastro, com validacao de 11 digitos e bloqueio de duplicidade.
+- Cadastro reorganizado no desktop com guia de etapas no painel branco e formulario no painel verde, sem o bloco promocional da tela de login.
+- Preparado cache bust e deploy atomico do `dist-tablet`, com validacao de ausencia de bundle React.

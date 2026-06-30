@@ -960,8 +960,30 @@ function onlyDigits(value: unknown): string {
 
 function formatCpf(value?: string): string {
   const digits = onlyDigits(value).slice(0, 11);
-  if (digits.length !== 11) return digits;
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+}
+
+function formatPhone(value?: string): string {
+  const digits = onlyDigits(value).slice(0, 11);
+  if (digits.length <= 2) return digits ? `(${digits}` : "";
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+function looksLikePhone(value?: string): boolean {
+  const raw = String(value ?? "");
+  const digits = onlyDigits(raw);
+  return raw.includes("(") || raw.includes(")") || digits.length > 11 || (digits.length >= 10 && digits[2] === "9");
+}
+
+function formatLoginIdentifier(value?: string): string {
+  const raw = String(value ?? "");
+  if (/[a-z@]/i.test(raw)) return raw;
+  return looksLikePhone(raw) ? formatPhone(raw) : formatCpf(raw);
 }
 
 function bindCpfMasks(root: ParentNode = document): void {
@@ -971,6 +993,31 @@ function bindCpfMasks(root: ParentNode = document): void {
       input.value = formatCpf(input.value);
     });
   });
+}
+
+function bindPhoneMasks(root: ParentNode = document): void {
+  root.querySelectorAll<HTMLInputElement>('input[type="tel"], input[name*="phone" i], input[name*="telefone" i], input[name*="whatsapp" i]').forEach((input) => {
+    if (input.disabled) return;
+    input.addEventListener("input", () => {
+      input.value = formatPhone(input.value);
+    });
+    if (input.value) input.value = formatPhone(input.value);
+  });
+}
+
+function bindIdentifierMasks(root: ParentNode = document): void {
+  root.querySelectorAll<HTMLInputElement>('input[name="login"], input[name="identifier"], #login-identifier, #recover-identifier').forEach((input) => {
+    if (input.disabled) return;
+    input.addEventListener("input", () => {
+      input.value = formatLoginIdentifier(input.value);
+    });
+  });
+}
+
+function bindInputMasks(root: ParentNode = document): void {
+  bindCpfMasks(root);
+  bindPhoneMasks(root);
+  bindIdentifierMasks(root);
 }
 
 function escapeHtml(value: unknown): string {
@@ -1210,6 +1257,7 @@ function renderLogin(errorMessage = ""): void {
     history.replaceState(null, "", "/recover");
     renderRecover();
   });
+  bindInputMasks();
   bindPasswordToggles();
 }
 
@@ -1277,6 +1325,7 @@ function renderRecover(statusMessage = "", sent = false): void {
     history.replaceState(null, "", "/cadastro");
     renderRegister();
   });
+  bindInputMasks();
 }
 
 function handleRecover(event: SubmitEvent): void {
@@ -1459,7 +1508,7 @@ function renderRegister(errorMessage = ""): void {
             <span>Recebimentos e WhatsApp</span>
           </div>
           <div class="register-benefits" aria-label="Resumo">
-            <div><strong>Campos unicos</strong><span>E-mail e WhatsApp nao podem duplicar. CPF pode ser informado depois.</span></div>
+            <div><strong>Campos unicos</strong><span>E-mail, WhatsApp e CPF nao podem duplicar.</span></div>
             <div><strong>Nome de exibicao</strong><span>Usado no painel, links e mensagens.</span></div>
             <div><strong>Ativacao real</strong><span>O fluxo termina com paciente, convite ou exploracao do painel.</span></div>
           </div>
@@ -1508,8 +1557,8 @@ function renderRegister(errorMessage = ""): void {
             <label>Nome de exibicao
               <input name="nomeExibicao" type="text" placeholder="Ex.: Dr. Gabriel, CW Rehab" required />
             </label>
-            <label>CPF <small>opcional agora</small>
-              <input name="cpf" type="text" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" />
+            <label>CPF <small>obrigatorio</small>
+              <input name="cpf" type="text" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" required />
             </label>
             <label>E-mail
               <input name="email" type="email" autocomplete="email" placeholder="voce@clinica.com" required />
@@ -1537,7 +1586,7 @@ function renderRegister(errorMessage = ""): void {
       </section>
     </main>
   `;
-  bindCpfMasks();
+  bindInputMasks();
   bindPasswordToggles();
   document.querySelector<HTMLButtonElement>("#back-to-login")?.addEventListener("click", () => renderLogin());
   document.querySelector<HTMLButtonElement>("#save-exit-register")?.addEventListener("click", () => {
@@ -1627,8 +1676,12 @@ function handleRegister(event: SubmitEvent): void {
   const password = String(data.get("secret") || "");
   const passwordConfirm = String(data.get("secretConfirm") || "");
   const acceptTerms = data.get("acceptTerms") === "on";
-  if (!nomeCompleto || !nomeExibicao || !email || !telefone || !password || !passwordConfirm || !acceptTerms) {
+  if (!nomeCompleto || !nomeExibicao || !cpf || !email || !telefone || !password || !passwordConfirm || !acceptTerms) {
     showNotice("error", "Preencha todos os campos obrigatorios.");
+    return;
+  }
+  if (cpf.length !== 11) {
+    showNotice("error", "Informe um CPF valido com 11 digitos.");
     return;
   }
   if (nomeCompleto.split(/\s+/).filter(Boolean).length < 2) {
@@ -1644,7 +1697,7 @@ function handleRegister(event: SubmitEvent): void {
     return;
   }
   const accounts = loadLocalAccounts();
-  if (cpf && accounts.some((account) => account.cpf === cpf)) {
+  if (accounts.some((account) => account.cpf === cpf)) {
     showNotice("error", "CPF ja cadastrado.");
     return;
   }
@@ -1661,7 +1714,7 @@ function handleRegister(event: SubmitEvent): void {
     login: email,
     nomeCompleto,
     nomeExibicao,
-    cpf: cpf || "",
+    cpf,
     email,
     telefone,
     password: "local-password-defined",
@@ -1672,7 +1725,7 @@ function handleRegister(event: SubmitEvent): void {
     authToken: verification.authToken,
   };
   saveLocalAccounts([...accounts, account]);
-  localStorage.setItem(LOCAL_ACTIVE_ACCOUNT_KEY, cpf || email);
+  localStorage.setItem(LOCAL_ACTIVE_ACCOUNT_KEY, cpf);
   state.user = account;
   const profile = defaultOnboardingProfile(account);
   saveOnboardingProfile({ ...profile, conta: { ...profile.conta, nomeCompleto, nomeExibicao, cpf, email, telefone } });
@@ -2557,7 +2610,7 @@ function renderOnboarding(): void {
       </section>
     </main>
   `;
-  bindCpfMasks();
+  bindInputMasks();
   document.querySelector<HTMLButtonElement>("#onboarding-enter")?.addEventListener("click", () => renderLogin());
   document.querySelectorAll<HTMLButtonElement>("[data-onboarding-step]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -3617,7 +3670,7 @@ function renderPacientes(loading = false): void {
   document.querySelectorAll<HTMLButtonElement>("[data-summary-evaluation]").forEach((button) => {
     button.addEventListener("click", () => handleEvaluationSummary(button.dataset.summaryEvaluation || ""));
   });
-  bindCpfMasks(document);
+  bindInputMasks(document);
   document.querySelector<HTMLButtonElement>("#delete-patient")?.addEventListener("click", handlePatientDelete);
   document.querySelectorAll<HTMLButtonElement>("[data-delete-patient]").forEach((button) => {
     button.addEventListener("click", handlePatientDelete);
@@ -4211,7 +4264,7 @@ function renderEvolucoes(loading = false): void {
     });
   });
   document.querySelector<HTMLFormElement>("#patient-form")?.addEventListener("submit", handlePatientSubmit);
-  bindCpfMasks(document);
+  bindInputMasks(document);
   document.querySelector<HTMLButtonElement>("#delete-patient")?.addEventListener("click", handlePatientDelete);
   document.querySelectorAll<HTMLButtonElement>("[data-delete-patient]").forEach((button) => {
     button.addEventListener("click", handlePatientDelete);

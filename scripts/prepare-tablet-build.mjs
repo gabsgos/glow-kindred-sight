@@ -4,8 +4,6 @@ import { resolve } from "node:path";
 const outDir = resolve("dist-tablet");
 const target = resolve(outDir, "index.html");
 const vanillaSource = resolve(outDir, "tablet.index.html");
-const reactSource = resolve(outDir, "tablet.react.html");
-const reactTarget = resolve(outDir, "react.html");
 const staticPages = [
   ["tablet.app-login.html", "app-login.html"],
   ["tablet.app-login-code.html", "app-login-code.html"],
@@ -25,11 +23,7 @@ const pwaAssets = [
 if (!existsSync(vanillaSource)) {
   throw new Error(`Tablet vanilla build entry not found: ${vanillaSource}`);
 }
-if (!existsSync(reactSource)) {
-  throw new Error(`Tablet React build entry not found: ${reactSource}`);
-}
 copyFileSync(vanillaSource, target);
-copyFileSync(reactSource, reactTarget);
 
 for (const [pageSource, pageTarget] of staticPages) {
   const pageSourcePath = resolve(pageSource);
